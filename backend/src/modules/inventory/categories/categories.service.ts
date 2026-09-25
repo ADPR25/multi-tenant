@@ -4,6 +4,11 @@ import { UpdateCategoryDto } from "./dto/update-category.dto";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Category } from "./entities/category.entity";
 import { Repository } from "typeorm";
+import {
+  paginate,
+  paginatedResponse,
+} from "@/common/helpers/pagination.helper";
+import { PaginationDto } from "@/common/dto/pagination.dto";
 
 @Injectable()
 export class CategoriesService {
@@ -14,38 +19,50 @@ export class CategoriesService {
 
   create(createCategoryDto: CreateCategoryDto, companyId: string) {
     const data = this.repoService.create({
-      name: createCategoryDto.name,
-      description: createCategoryDto.description,
+      ...createCategoryDto,
       companyId: companyId,
     });
     const create = this.repoService.save(data);
     return create;
   }
 
-  findAll(companyId: string) {
-    const find = this.repoService.find({
+  async findAll(companyId: string, pagination: PaginationDto) {
+    const [data, total] = await this.repoService.findAndCount({
       where: { companyId: companyId },
+      order: { createdAt: "DESC" },
+      ...paginate(pagination),
     });
-    return find;
+    return paginatedResponse(data, total, pagination);
   }
 
-  findOne(id: string, companyId: string) {
-    const category = this.repoService.findOne({
+  async findOne(id: string, companyId: string) {
+    const category = await this.repoService.findOne({
       where: { id, companyId },
     });
-    if (!category) throw new NotFoundException(`categoria con id: ${id} no encontrada`)
+    if (!category)
+      throw new NotFoundException(`categoria con id: ${id} no encontrada`);
     return category;
   }
 
-  async update(id: string, updateCategoryDto: UpdateCategoryDto, companyId: string) {
-    const category = await this.findOne(id, companyId)
-    Object.assign(category, updateCategoryDto)
-    return await this.repoService.save(category)
+  async update(
+    id: string,
+    updateCategoryDto: UpdateCategoryDto,
+    companyId: string,
+  ) {
+    const category = await this.findOne(id, companyId);
+    if (!category) {
+      throw new NotFoundException(`category ${id} not found`);
+    }
+    Object.assign(category, updateCategoryDto);
+    return await this.repoService.save(category);
   }
 
   async toggleActive(id: string, companyId: string) {
-    const category = await this.findOne(id, companyId)
-    category.isActive = !category.isActive
-    return await this.repoService.save(category)
+    const category = await this.findOne(id, companyId);
+    if (!category) {
+      throw new NotFoundException(`category ${id} not found`);
+    }
+    category.isActive = !category.isActive;
+    return await this.repoService.save(category);
   }
 }

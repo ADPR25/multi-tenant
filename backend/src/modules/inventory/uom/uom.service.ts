@@ -1,26 +1,58 @@
-import { Injectable } from '@nestjs/common';
-import { CreateUomDto } from './dto/create-uom.dto';
-import { UpdateUomDto } from './dto/update-uom.dto';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { CreateUomDto } from "./dto/create-uom.dto";
+import { UpdateUomDto } from "./dto/update-uom.dto";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Uom } from "./entities/uom.entity";
+import { Repository } from "typeorm";
+import {
+  paginate,
+  paginatedResponse,
+} from "@/common/helpers/pagination.helper";
+import { PaginationDto } from "@/common/dto/pagination.dto";
 
 @Injectable()
 export class UomService {
-  create(createUomDto: CreateUomDto) {
-    return 'This action adds a new uom';
+  constructor(
+    @InjectRepository(Uom) private readonly repoService: Repository<Uom>,
+  ) {}
+  create(createUomDto: CreateUomDto, companyId: string) {
+    const create = this.repoService.create({
+      ...createUomDto,
+      companyId,
+    });
+    return this.repoService.save(create);
   }
 
-  findAll() {
-    return `This action returns all uom`;
+  async findAll(companyId: string, pagination: PaginationDto) {
+    const [data, total] = await this.repoService.findAndCount({
+      where: { companyId },
+      order: { createdAt: "DESC" },
+      ...paginate(pagination),
+    });
+    return paginatedResponse(data, total, pagination);
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} uom`;
+  findOne(id: string, companyId: string) {
+    return this.repoService.findOne({
+      where: { id, companyId },
+    });
   }
 
-  update(id: number, updateUomDto: UpdateUomDto) {
-    return `This action updates a #${id} uom`;
+  async update(id: string, updateUomDto: UpdateUomDto, companyId: string) {
+    const uom = await this.findOne(id, companyId);
+    if (!uom) {
+      throw new NotFoundException(`brand ${id} not found`);
+    }
+    Object.assign(uom, updateUomDto);
+    return await this.repoService.save(uom);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} uom`;
+  async toggleActive(id: string, companyId: string) {
+    const uom = await this.findOne(id, companyId);
+    if (!uom) {
+      throw new NotFoundException(`brand ${id} not found`);
+    }
+    uom.isActive = !uom.isActive;
+    return this.repoService.save(uom);
   }
 }

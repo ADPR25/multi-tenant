@@ -11,6 +11,7 @@ import { UpdateRoleDto } from "./dto/update-role.dto";
 import { User } from "../users/entities/user.entity";
 import { normalizeRoleCode } from "./utils/role-code.util";
 import { PaginationDto } from "@/common/dto/pagination.dto";
+import { paginate, paginatedResponse } from "@/common/helpers/pagination.helper";
 
 @Injectable()
 export class RolesService {
@@ -56,18 +57,14 @@ export class RolesService {
   }
 
   async findAll(companyId: string, pagination?: PaginationDto) {
-    const page = pagination?.page || 1;
-    const limit = pagination?.limit || 20;
-    const skip = (page - 1) * limit;
     const [data, total] = await this.repo.findAndCount({
       where: { companyId },
       order: { createdAt: "DESC" },
-      skip,
-      take: limit,
+      ...paginate(pagination)
     });
-    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+    return paginatedResponse(data, total, pagination)
   }
-  
+
   async findOne(id: string, companyId: string) {
     const role = await this.repo.findOne({ where: { id, companyId } });
     if (!role) throw new NotFoundException("Rol no encontrado");

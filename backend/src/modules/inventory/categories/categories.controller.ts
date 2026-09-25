@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   UseGuards,
+  Query,
 } from "@nestjs/common";
 import { CategoriesService } from "./categories.service";
 import { CreateCategoryDto } from "./dto/create-category.dto";
@@ -15,6 +16,7 @@ import { JwtAuthGuard } from "@/common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "@/common/guards/permissions.guard";
 import { RequirePermissions } from "@/common/decorators/permissions.decorator";
 import { CurrentCompanyId } from "@/common/decorators/current-company.decorator";
+import { PaginationDto } from "@/common/dto/pagination.dto";
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller("categories")
@@ -31,25 +33,25 @@ export class CategoriesController {
   }
 
   @Get()
-  @RequirePermissions("inventory:read")
-  findAll(@CurrentCompanyId() companyId: string) {
-    return this.categoriesService.findAll(companyId);
+  @RequirePermissions("inventory:categories:read")
+  findAll(@CurrentCompanyId() companyId: string, @Query() pagination: PaginationDto) {
+    return this.categoriesService.findAll(companyId, pagination);
   }
 
-  @Patch()
-  @RequirePermissions("inventory:active")
+  @Patch('active/:id')
+  @RequirePermissions("inventory:categories:state")
   isActive(@Param("id") id: string, @CurrentCompanyId() companyId: string) {
     return this.categoriesService.toggleActive(id, companyId);
   }
 
   @Get(":id")
-  @RequirePermissions("inventory:read")
+  @RequirePermissions("inventory:categories:read")
   findOne(@Param("id") id: string, @CurrentCompanyId() companyId: string) {
     return this.categoriesService.findOne(id, companyId);
   }
 
   @Patch(":id")
-  @RequirePermissions("inventory:update")
+  @RequirePermissions("inventory:categories:update")
   update(
     @Param("id") id: string,
     @Body() updateCategoryDto: UpdateCategoryDto,

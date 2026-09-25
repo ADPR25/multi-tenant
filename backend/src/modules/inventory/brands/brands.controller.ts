@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   UseGuards,
+  Query,
 } from "@nestjs/common";
 import { BrandsService } from "./brands.service";
 import { CreateBrandDto } from "./dto/create-brand.dto";
@@ -15,6 +16,7 @@ import { CurrentCompanyId } from "@/common/decorators/current-company.decorator"
 import { JwtAuthGuard } from "@/common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "@/common/guards/permissions.guard";
 import { RequirePermissions } from "@/common/decorators/permissions.decorator";
+import { PaginationDto } from "@/common/dto/pagination.dto";
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller("brands")
@@ -32,12 +34,12 @@ export class BrandsController {
 
   @Get()
   @RequirePermissions("inventory:brands:read")
-  findAll(@CurrentCompanyId() companyId: string) {
-    return this.brandsService.findAll(companyId);
+  findAll(@CurrentCompanyId() companyId: string, @Query() pagination: PaginationDto) {
+    return this.brandsService.findAll(companyId, pagination);
   }
 
   @Patch("active/:id")
-  @RequirePermissions("inventory:brands:active")
+  @RequirePermissions("inventory:brands:state")
   isActive(@Param("id") id: string, @CurrentCompanyId() companyId: string) {
     return this.brandsService.toggleActive(id, companyId);
   }

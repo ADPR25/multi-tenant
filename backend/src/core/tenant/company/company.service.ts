@@ -13,6 +13,7 @@ import { Permission } from "@/core/iam/permissions/entities/permission.entity";
 import { RolePermission } from "@/core/iam/role-permissions/entities/role-permission.entity";
 import { CompanySetting } from "../company-settings/entities/company-setting.entity";
 import { PaginationDto } from "@/common/dto/pagination.dto";
+import { paginate, paginatedResponse } from "@/common/helpers/pagination.helper";
 
 @Injectable()
 export class CompanyService {
@@ -91,17 +92,10 @@ export class CompanyService {
   async findAll(pagination: PaginationDto) {
     const [data, total] = await this.companyRepo.findAndCount({
       order: { createdAt: "DESC" },
-      skip: pagination.skip,
-      take: pagination.limit,
+      ...paginate(pagination)
     });
 
-    return {
-      data,
-      total,
-      page: pagination.page,
-      limit: pagination.limit,
-      totalPages: Math.ceil(total / pagination.limit),
-    };
+    return paginatedResponse(data, total, pagination)
   }
 
   async findOne(id: string) {

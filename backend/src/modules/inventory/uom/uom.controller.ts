@@ -1,34 +1,56 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-import { UomService } from './uom.service';
-import { CreateUomDto } from './dto/create-uom.dto';
-import { UpdateUomDto } from './dto/update-uom.dto';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Query,
+} from "@nestjs/common";
+import { UomService } from "./uom.service";
+import { CreateUomDto } from "./dto/create-uom.dto";
+import { UpdateUomDto } from "./dto/update-uom.dto";
+import { JwtAuthGuard } from "@/common/guards/jwt-auth.guard";
+import { PermissionsGuard } from "@/common/guards/permissions.guard";
+import { RequirePermissions } from "@/common/decorators/permissions.decorator";
+import { CurrentCompanyId } from "@/common/decorators/current-company.decorator";
+import { PaginationDto } from "@/common/dto/pagination.dto";
 
-@Controller('uom')
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@Controller("uom")
 export class UomController {
   constructor(private readonly uomService: UomService) {}
 
   @Post()
-  create(@Body() createUomDto: CreateUomDto) {
-    return this.uomService.create(createUomDto);
+  @RequirePermissions("inventory:uom:create")
+  create(
+    @Body() createUomDto: CreateUomDto,
+    @CurrentCompanyId() companyId: string,
+  ) {
+    return this.uomService.create(createUomDto, companyId);
   }
 
   @Get()
-  findAll() {
-    return this.uomService.findAll();
+  @RequirePermissions("inventory:uom:read")
+  findAll(@CurrentCompanyId() companyId: string, @Query() pagination: PaginationDto) {
+    return this.uomService.findAll(companyId, pagination);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.uomService.findOne(+id);
+  @Get(":id")
+  @RequirePermissions("inventory:uom:read")
+  findOne(@Param("id") id: string, @CurrentCompanyId() companyId: string) {
+    return this.uomService.findOne(id, companyId);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUomDto: UpdateUomDto) {
-    return this.uomService.update(+id, updateUomDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.uomService.remove(+id);
+  @Patch(":id")
+  @RequirePermissions("inventory:uom:update")
+  update(
+    @Param("id") id: string,
+    @Body() updateUomDto: UpdateUomDto,
+    @CurrentCompanyId() companyId: string,
+  ) {
+    return this.uomService.update(id, updateUomDto, companyId);
   }
 }

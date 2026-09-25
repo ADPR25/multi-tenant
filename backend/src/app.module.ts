@@ -14,6 +14,7 @@ import { JwtAuthGuard } from "@/common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "@/common/guards/permissions.guard";
 import { AuditInterceptor } from "@/infrastructure/audit/interceptors/audit.interceptor";
 import { AuditModule } from "@/infrastructure/audit/audit.module";
+import { InventoryModule } from "./modules/inventory/inventory.module";
 
 @Module({
   imports: [
@@ -43,8 +44,6 @@ import { AuditModule } from "@/infrastructure/audit/audit.module";
           logging: db.logging,
           autoLoadEntities: db.autoLoadEntities,
           subscribers: [TenantSubscriber],
-          entities: [__dirname + "/**/*.entity{.ts,.js}"],
-          migrations: [__dirname + "/common/database/migrations/*{.ts,.js}"],
           migrationsRun: false,
         };
       },
@@ -53,6 +52,7 @@ import { AuditModule } from "@/infrastructure/audit/audit.module";
     AuthModule,
     TenantModule,
     IamModule,
+    InventoryModule
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

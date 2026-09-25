@@ -13,6 +13,7 @@ import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { Role } from "../roles/entities/role.entity";
 import { PaginationDto } from "@/common/dto/pagination.dto";
+import { paginate, paginatedResponse } from "@/common/helpers/pagination.helper";
 
 @Injectable()
 export class UsersService {
@@ -57,17 +58,9 @@ export class UsersService {
     const [data, total] = await this.repo.findAndCount({
       where: { companyId },
       relations: { role: true },
-      order: { createdAt: "DESC" },
-      skip: pagination.skip,
-      take: pagination.limit,
+      ...paginate(pagination)
     });
-    return {
-      data,
-      total,
-      page: pagination.page,
-      limit: pagination.limit,
-      totalPages: Math.ceil(total / pagination.limit),
-    };
+    return paginatedResponse(data, total, pagination)
   }
 
   async findOne(id: string, companyId: string) {
