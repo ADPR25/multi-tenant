@@ -14,6 +14,7 @@ import { RolePermission } from "@/core/iam/role-permissions/entities/role-permis
 import { CompanySetting } from "../company-settings/entities/company-setting.entity";
 import { PaginationDto } from "@/common/dto/pagination.dto";
 import { paginate, paginatedResponse } from "@/common/helpers/pagination.helper";
+import { ACCESS_CATALOG } from "@/modules/frontend/data/access.catalog";
 
 @Injectable()
 export class CompanyService {
@@ -44,15 +45,18 @@ export class CompanyService {
       });
       superRole = await manager.save(superRole);
 
-      const basePermissions = [
-        "companies",
-        "iam:roles",
-        "iam:users",
-        "iam:permissions",
-        "iam:role-permissions",
-        "tenant:company-settings",
+      // FIX: Se alimenta 100% del ACCESS_CATALOG, no hardcodeado
+      const allPermissionNames = [
+        ...new Set(
+          ACCESS_CATALOG.flatMap((mod) =>
+            mod.children
+              ? mod.children.flatMap((c) => c.permissions ?? [])
+              : mod.permissions ?? []
+          )
+        ),
       ];
-      for (const permName of basePermissions) {
+
+      for (const permName of allPermissionNames) {
         let perm = await manager.findOne(Permission, {
           where: { companyId: savedCompany.id, name: permName },
         });
@@ -60,7 +64,7 @@ export class CompanyService {
           perm = manager.create(Permission, {
             companyId: savedCompany.id,
             name: permName,
-            description: `Acceso a ${permName}`,
+            description: permName,
             module: permName.split(":")[0],
           });
           perm = await manager.save(perm);
@@ -69,10 +73,6 @@ export class CompanyService {
           companyId: savedCompany.id,
           roleId: superRole.id,
           permissionId: perm.id,
-          canCreate: true,
-          canRead: true,
-          canUpdate: true,
-          canDelete: true,
         });
         await manager.save(rp);
       }
@@ -92,10 +92,9 @@ export class CompanyService {
   async findAll(pagination: PaginationDto) {
     const [data, total] = await this.companyRepo.findAndCount({
       order: { createdAt: "DESC" },
-      ...paginate(pagination)
+      ...paginate(pagination),
     });
-
-    return paginatedResponse(data, total, pagination)
+    return paginatedResponse(data, total, pagination);
   }
 
   async findOne(id: string) {

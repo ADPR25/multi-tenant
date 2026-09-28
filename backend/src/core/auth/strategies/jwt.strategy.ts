@@ -19,8 +19,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
+    if (!payload?.jti) return payload;
+
     const isBlacklisted = await this.cacheManager.get(
-      `blacklist:${payload.jti || payload.sub}:${payload.iat}`,
+      `blacklist:${payload.jti}`,
     );
     if (isBlacklisted) throw new UnauthorizedException("Token revocado");
     return payload;

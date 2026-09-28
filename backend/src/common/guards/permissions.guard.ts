@@ -14,8 +14,6 @@ import { Role } from "@/core/iam/roles/entities/role.entity";
 import { PERMISSIONS_KEY } from "@/common/decorators/permissions.decorator";
 import { IS_PUBLIC_KEY } from "../decorators/public.decorator";
 
-type Action = "create" | "read" | "update" | "delete";
-
 @Injectable()
 export class PermissionsGuard implements CanActivate {
   constructor(
@@ -35,61 +33,36 @@ export class PermissionsGuard implements CanActivate {
       PERMISSIONS_KEY,
       [context.getHandler(), context.getClass()],
     );
-    if (!required || required.length === 0) return true;
+    if (!required?.length) return true;
 
     const request = context.switchToHttp().getRequest();
     const user = request.user;
     if (!user?.roleId) throw new ForbiddenException("Sin rol asignado");
-    if (!user?.companyId) throw new ForbiddenException("Sin empresa");
     if (user.roleCode === "SUPER_ADMIN" || user.code === "SUPER_ADMIN")
       return true;
-
-    // FIX: Validación de companies:create fuera del loop
-    if (required.includes("companies:create")) {
-      throw new ForbiddenException("Solo SUPER_ADMIN puede crear empresas");
-    }
 
     const cacheKey = `perms:${user.companyId}:${user.roleId}`;
     let perms: RolePermission[] | undefined =
       await this.cacheManager.get(cacheKey);
 
     if (!perms) {
-      const roleRepo = this.dataSource.getRepository(Role);
-      const rpRepo = this.dataSource.getRepository(RolePermission);
-      const role = await roleRepo.findOne({ where: { id: user.roleId } });
-      if (role && role.code === "SUPER_ADMIN") return true;
-      perms = await rpRepo.find({
+      const role = await this.dataSource
+        .getRepository(Role)
+        .findOne({ where: { id: user.roleId } });
+      if (role?.code === "SUPER_ADMIN") return true;
+
+      perms = await this.dataSource.getRepository(RolePermission).find({
         where: { companyId: user.companyId, roleId: user.roleId },
         relations: { permission: true },
       });
       await this.cacheManager.set(cacheKey, perms, 120);
     }
 
+    const userPermissionNames = new Set(perms.map((p) => p.permission?.name));
+
     for (const req of required) {
-      const lastColon = req.lastIndexOf(":");
-      let resource: string;
-      let action: Action | undefined;
-      if (lastColon === -1) {
-        resource = req;
-      } else {
-        resource = req.substring(0, lastColon);
-        action = req.substring(lastColon + 1) as Action;
-      }
-      const match = perms.find(
-        (p) => p.permission && p.permission.name === resource,
-      );
-      if (!match) throw new ForbiddenException(`Falta permiso: ${req}`);
-      if (action) {
-        const map: Record<Action, keyof RolePermission> = {
-          create: "canCreate",
-          read: "canRead",
-          update: "canUpdate",
-          delete: "canDelete",
-        };
-        const field = map[action];
-        if (field && !match[field]) {
-          throw new ForbiddenException(`Falta permiso: ${req}`);
-        }
+      if (!userPermissionNames.has(req)) {
+        throw new ForbiddenException(`Falta permiso: ${req}`);
       }
     }
     return true;

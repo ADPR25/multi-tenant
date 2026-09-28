@@ -20,16 +20,4 @@ export class RolePermission extends BaseTenantEntity {
   @ManyToOne(() => Permission, { onDelete: "CASCADE" })
   @JoinColumn({ name: "permissionId" })
   permission: Permission;
-
-  @Column({ default: false }) 
-  canCreate: boolean;
-  
-  @Column({ default: false }) 
-  canRead: boolean;
-
-  @Column({ default: false }) 
-  canUpdate: boolean;
-
-  @Column({ default: false }) 
-  canDelete: boolean;
 }

@@ -14,7 +14,7 @@ import { JwtAuthGuard } from "@/common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "@/common/guards/permissions.guard";
 import { AuditInterceptor } from "@/infrastructure/audit/interceptors/audit.interceptor";
 import { AuditModule } from "@/infrastructure/audit/audit.module";
-import { InventoryModule } from "./modules/inventory/inventory.module";
+import { Modules } from "./modules/modules.module";
 
 @Module({
   imports: [
@@ -52,7 +52,7 @@ import { InventoryModule } from "./modules/inventory/inventory.module";
     AuthModule,
     TenantModule,
     IamModule,
-    InventoryModule
+    Modules
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

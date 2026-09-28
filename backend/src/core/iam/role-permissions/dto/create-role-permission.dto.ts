@@ -1,4 +1,4 @@
-import { IsBoolean, IsNotEmpty, IsUUID } from "class-validator";
+import { IsNotEmpty, IsUUID } from "class-validator";
 
 export class CreateRolePermissionDto {
   @IsNotEmpty()
@@ -8,20 +8,4 @@ export class CreateRolePermissionDto {
   @IsNotEmpty()
   @IsUUID()
   permissionId: string;
-
-  @IsNotEmpty()
-  @IsBoolean()
-  canCreate: boolean;
-
-  @IsNotEmpty()
-  @IsBoolean()
-  canRead: boolean;
-
-  @IsNotEmpty()
-  @IsBoolean()
-  canUpdate: boolean;
-
-  @IsNotEmpty()
-  @IsBoolean()
-  canDelete: boolean;
 }

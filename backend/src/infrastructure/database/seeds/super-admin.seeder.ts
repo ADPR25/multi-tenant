@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import "dotenv/config";
 import { DataSource } from "typeorm";
 import * as bcrypt from "bcrypt";
 import { Company } from "@/core/tenant/company/entities/company.entity";
@@ -9,6 +9,7 @@ import { Permission } from "@/core/iam/permissions/entities/permission.entity";
 import { RolePermission } from "@/core/iam/role-permissions/entities/role-permission.entity";
 import { Session } from "@/core/auth/entities/session.entity";
 import { AuditLog } from "../../audit/entities/audit-log.entity";
+import { ACCESS_CATALOG } from "@/modules/frontend/data/access.catalog";
 
 const dataSource = new DataSource({
   type: "postgres",
@@ -19,7 +20,16 @@ const dataSource = new DataSource({
   database: process.env.DB_DATABASE,
   synchronize: false,
   logging: false,
-  entities: [Company, CompanySetting, Role, User, Permission, RolePermission, Session, AuditLog],
+  entities: [
+    Company,
+    CompanySetting,
+    Role,
+    User,
+    Permission,
+    RolePermission,
+    Session,
+    AuditLog,
+  ],
 });
 
 async function seed() {
@@ -27,7 +37,9 @@ async function seed() {
   console.log("🌱 Seedeando...");
 
   await dataSource.transaction(async (manager) => {
-    let company = await manager.findOne(Company, { where: { tax_id: "900000001" } });
+    let company = await manager.findOne(Company, {
+      where: { tax_id: "900000001" },
+    });
     if (!company) {
       company = manager.create(Company, {
         name: "Admin Corp",
@@ -43,9 +55,29 @@ async function seed() {
       console.log(`✅ Empresa creada: ${company.id}`);
     }
 
-    let superRole = await manager.findOne(Role, { where: { companyId: company.id, code: "SUPER_ADMIN" } });
+    let setting = await manager.findOne(CompanySetting, {
+      where: { companyId: company.id },
+    });
+    if (!setting) {
+      setting = manager.create(CompanySetting, {
+        companyId: company.id,
+        language: "es",
+        currency: "COP",
+        logoUrl: "",
+      });
+      await manager.save(setting);
+      console.log(`✅ CompanySetting creado`);
+    }
+
+    let superRole = await manager.findOne(Role, {
+      where: { companyId: company.id, code: "SUPER_ADMIN" },
+    });
     if (!superRole) {
-      await manager.update(Role, { companyId: company.id, isPrincipal: true }, { isPrincipal: false });
+      await manager.update(
+        Role,
+        { companyId: company.id, isPrincipal: true },
+        { isPrincipal: false },
+      );
       superRole = manager.create(Role, {
         companyId: company.id,
         name: "SUPER ADMIN",
@@ -58,22 +90,52 @@ async function seed() {
       console.log(`✅ Rol SUPER_ADMIN creado`);
     }
 
-    const basePermissions = ["companies", "iam:roles", "iam:users", "iam:permissions", "iam:role-permissions", "tenant:company-settings"];
-    for (const permName of basePermissions) {
-      let perm = await manager.findOne(Permission, { where: { companyId: company.id, name: permName } });
+    const allPermissionNames = [
+      ...new Set(
+        ACCESS_CATALOG.flatMap((mod) =>
+          mod.children
+            ? mod.children.flatMap((c) => c.permissions ?? [])
+            : (mod.permissions ?? []),
+        ),
+      ),
+    ];
+
+    console.log(`🔐 Seedeando ${allPermissionNames.length} permisos...`);
+
+    for (const permName of allPermissionNames) {
+      let perm = await manager.findOne(Permission, {
+        where: { companyId: company.id, name: permName },
+      });
       if (!perm) {
-        perm = manager.create(Permission, { companyId: company.id, name: permName, description: `Acceso a ${permName}`, module: permName.split(":")[0] });
+        perm = manager.create(Permission, {
+          companyId: company.id,
+          name: permName,
+          description: permName,
+          module: permName.split(":")[0],
+        });
         perm = await manager.save(perm);
       }
-      const exists = await manager.findOne(RolePermission, { where: { companyId: company.id, roleId: superRole.id, permissionId: perm.id } });
+      const exists = await manager.findOne(RolePermission, {
+        where: {
+          companyId: company.id,
+          roleId: superRole.id,
+          permissionId: perm.id,
+        },
+      });
       if (!exists) {
-        const rp = manager.create(RolePermission, { companyId: company.id, roleId: superRole.id, permissionId: perm.id, canCreate: true, canRead: true, canUpdate: true, canDelete: true });
+        const rp = manager.create(RolePermission, {
+          companyId: company.id,
+          roleId: superRole.id,
+          permissionId: perm.id,
+        });
         await manager.save(rp);
       }
     }
 
     const docNumber = "00000000";
-    let superUser = await manager.findOne(User, { where: { companyId: company.id, document_number: docNumber } });
+    let superUser = await manager.findOne(User, {
+      where: { companyId: company.id, document_number: docNumber },
+    });
     if (!superUser) {
       const rounds = parseInt(process.env.BCRYPT_ROUNDS || "10", 10);
       superUser = manager.create(User, {
@@ -87,7 +149,9 @@ async function seed() {
         isActive: true,
       });
       await manager.save(superUser);
-      console.log(`✅ Usuario: superadmin@system.com / Admin123* / doc: ${docNumber}`);
+      console.log(
+        `✅ Usuario: superadmin@system.com / Admin123* / doc: ${docNumber}`,
+      );
     }
   });
 
@@ -95,4 +159,7 @@ async function seed() {
   await dataSource.destroy();
 }
 
-seed().catch((e) => { console.error(e); process.exit(1); });
+seed().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

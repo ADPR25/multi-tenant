@@ -182,14 +182,15 @@ export class AuthService {
     if (accessToken) {
       try {
         const decoded: any = this.jwtService.decode(accessToken);
-        if (decoded?.exp) {
-          const ttl = decoded.exp * 1000 - Date.now();
-          if (ttl > 0)
+        if (decoded?.jti && decoded?.exp) {
+          const ttlMs = decoded.exp * 1000 - Date.now();
+          if (ttlMs > 0) {
             await this.cacheManager.set(
-              `blacklist:${decoded.jti}:${decoded.iat}`,
+              `blacklist:${decoded.jti}`,
               true,
-              ttl,
+              ttlMs,
             );
+          }
         }
       } catch {}
     }
