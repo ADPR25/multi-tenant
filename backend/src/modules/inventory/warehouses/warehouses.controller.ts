@@ -32,7 +32,7 @@ export class WarehousesController {
     return this.warehousesService.create(createWarehouseDto, companyId);
   }
 
-  @Get(":state")
+  @Get()
   @RequirePermissions("inventory:warehouse:read")
   findAll(
     @CurrentCompanyId() companyId: string,
@@ -59,7 +59,7 @@ export class WarehousesController {
     return this.warehousesService.update(id, updateWarehouseDto, companyId);
   }
 
-  @Patch("/active/:id")
+  @Patch("active/:id")
   @RequirePermissions("inventory:warehouse:state")
   isActive(@Param("id") id: string, @CurrentCompanyId() companyId: string) {
     return this.warehousesService.toggleActive(id, companyId);

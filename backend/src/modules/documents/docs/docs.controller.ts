@@ -5,7 +5,6 @@ import {
   Body,
   Patch,
   Param,
-  Delete,
   Query,
   UseGuards,
 } from "@nestjs/common";
@@ -19,48 +18,45 @@ import { JwtAuthGuard } from "@/common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "@/common/guards/permissions.guard";
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
-@Controller("docs")
+@Controller("documents/docs")
 export class DocsController {
   constructor(private readonly docsService: DocsService) {}
 
   @Post()
-  @RequirePermissions("documents:docs:read")
-  create(
-    @Body() createDocDto: CreateDocDto,
-    @CurrentCompanyId() copmpanyId: string,
-  ) {
-    return this.docsService.create(createDocDto, copmpanyId);
+  @RequirePermissions("documents:docs:create")
+  create(@Body() dto: CreateDocDto, @CurrentCompanyId() companyId: string) {
+    return this.docsService.create(dto, companyId);
   }
 
-  @Get(":state")
+  @Get()
   @RequirePermissions("documents:docs:read")
   findAll(
-    @CurrentCompanyId() copmpanyId: string,
+    @CurrentCompanyId() companyId: string,
     @Query() pagination: PaginationDto,
     @Query("state") state?: string,
   ) {
     const isActive = state !== undefined ? state === "true" : undefined;
-    return this.docsService.findAll(copmpanyId, pagination, isActive);
+    return this.docsService.findAll(companyId, pagination, isActive);
   }
 
   @Get(":id")
   @RequirePermissions("documents:docs:read")
-  findOne(@Param("id") id: string, @CurrentCompanyId() copmpanyId: string) {
-    return this.docsService.findOne(id, copmpanyId);
+  findOne(@Param("id") id: string, @CurrentCompanyId() companyId: string) {
+    return this.docsService.findOne(id, companyId);
   }
 
   @Patch(":id")
-  @RequirePermissions("documents:docs:read")
+  @RequirePermissions("documents:docs:update")
   update(
     @Param("id") id: string,
-    @Body() updateDocDto: UpdateDocDto,
-    @CurrentCompanyId() copmpanyId: string,
+    @Body() dto: UpdateDocDto,
+    @CurrentCompanyId() companyId: string,
   ) {
-    return this.docsService.update(id, updateDocDto, copmpanyId);
+    return this.docsService.update(id, dto, companyId);
   }
 
   @Patch("active/:id")
-  @RequirePermissions("documents:folders:state")
+  @RequirePermissions("documents:docs:state")
   isActive(@Param("id") id: string, @CurrentCompanyId() companyId: string) {
     return this.docsService.toggleActive(id, companyId);
   }

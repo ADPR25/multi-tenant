@@ -32,7 +32,7 @@ export class BrandsController {
     return this.brandsService.create(createBrandDto, companyId);
   }
 
-  @Get(":state")
+  @Get()
   @RequirePermissions("inventory:brands:read")
   findAll(
     @CurrentCompanyId() companyId: string,

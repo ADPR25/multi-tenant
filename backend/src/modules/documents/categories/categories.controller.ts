@@ -5,7 +5,6 @@ import {
   Body,
   Patch,
   Param,
-  Delete,
   UseGuards,
   Query,
 } from "@nestjs/common";
@@ -19,28 +18,28 @@ import { CurrentCompanyId } from "@/common/decorators/current-company.decorator"
 import { PaginationDto } from "@/common/dto/pagination.dto";
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
-@Controller("documents:categories")
+@Controller("documents/categories")
 export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
 
   @Post()
   @RequirePermissions("documents:categories:create")
   create(
-    @Body() createCategoryDto: CreateCategoryDto,
+    @Body() dto: CreateCategoryDto,
     @CurrentCompanyId() companyId: string,
   ) {
-    return this.categoriesService.create(createCategoryDto, companyId);
+    return this.categoriesService.create(dto, companyId);
   }
 
-  @Get(":state")
+  @Get()
   @RequirePermissions("documents:categories:read")
   findAll(
-    @CurrentCompanyId() CompanyId: string,
+    @CurrentCompanyId() companyId: string,
     @Query() pagination: PaginationDto,
     @Query("state") state?: string,
   ) {
     const isActive = state !== undefined ? state === "true" : undefined;
-    return this.categoriesService.findAll(CompanyId, pagination, isActive);
+    return this.categoriesService.findAll(companyId, pagination, isActive);
   }
 
   @Get(":id")
@@ -53,10 +52,10 @@ export class CategoriesController {
   @RequirePermissions("documents:categories:update")
   update(
     @Param("id") id: string,
-    @Body() updateCategoryDto: UpdateCategoryDto,
+    @Body() dto: UpdateCategoryDto,
     @CurrentCompanyId() companyId: string,
   ) {
-    return this.categoriesService.update(id, updateCategoryDto, companyId);
+    return this.categoriesService.update(id, dto, companyId);
   }
 
   @Patch("active/:id")

@@ -32,7 +32,7 @@ export class UomController {
     return this.uomService.create(createUomDto, companyId);
   }
 
-  @Get(":state")
+  @Get()
   @RequirePermissions("inventory:uom:read")
   findAll(
     @CurrentCompanyId() companyId: string,

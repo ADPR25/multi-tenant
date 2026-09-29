@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from "@nestjs/common";
 import { CreateBrandDto } from "./dto/create-brand.dto";
 import { UpdateBrandDto } from "./dto/update-brand.dto";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -17,6 +21,11 @@ export class BrandsService {
   ) {}
 
   async create(createBrandDto: CreateBrandDto, companyId: string) {
+    const exists = await this.repoService.findOne({
+      where: { companyId, name: createBrandDto.name },
+    });
+    if (exists)
+      throw new ConflictException(`Marca ${createBrandDto.name} ya existe`);
     const data = this.repoService.create({
       name: createBrandDto.name,
       companyId,
@@ -24,7 +33,7 @@ export class BrandsService {
     return await this.repoService.save(data);
   }
 
-  async findAll(companyId: string, pagination: PaginationDto, state: boolean) {
+  async findAll(companyId: string, pagination: PaginationDto, state?: boolean) {
     const [data, total] = await this.repoService.findAndCount({
       where: { companyId, ...(state !== undefined ? { isActive: state } : {}) },
       order: { createdAt: "DESC" },
@@ -39,9 +48,15 @@ export class BrandsService {
     return brand;
   }
 
-  async update(id: string, updateBrandDto: UpdateBrandDto, companyId: string) {
+  async update(id: string, dto: UpdateBrandDto, companyId: string) {
     const brand = await this.findOne(id, companyId);
-    Object.assign(brand, updateBrandDto);
+    if (dto.name && dto.name !== brand.name) {
+      const exists = await this.repoService.findOne({
+        where: { companyId, name: dto.name },
+      });
+      if (exists) throw new ConflictException(`Marca ${dto.name} ya existe`);
+    }
+    Object.assign(brand, dto);
     return await this.repoService.save(brand);
   }
 

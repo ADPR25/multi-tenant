@@ -32,7 +32,7 @@ export class CategoriesController {
     return this.categoriesService.create(createCategoryDto, companyId);
   }
 
-  @Get(":state")
+  @Get()
   @RequirePermissions("inventory:categories:read")
   findAll(
     @CurrentCompanyId() companyId: string,

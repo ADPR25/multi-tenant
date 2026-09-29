@@ -23,7 +23,7 @@ export class FoldersService {
   async create(dto: CreateFolderDto, companyId: string) {
     if (dto.parentId) {
       const parent = await this.repo.findOne({
-        where: { id: dto.parentId, companyId },
+        where: { id: dto.parentId, companyId, isActive: true },
       });
       if (!parent)
         throw new NotFoundException(`Carpeta padre ${dto.parentId} no existe`);
@@ -32,7 +32,7 @@ export class FoldersService {
     return this.repo.save(data);
   }
 
-  async findAll(companyId: string, pagination: PaginationDto, state: boolean) {
+  async findAll(companyId: string, pagination: PaginationDto, state?: boolean) {
     const [data, total] = await this.repo.findAndCount({
       where: { companyId, ...(state !== undefined ? { isActive: state } : {}) },
       order: { createdAt: "DESC" },
@@ -47,9 +47,42 @@ export class FoldersService {
     return folder;
   }
 
+  private async isDescendant(
+    potentialParentId: string,
+    childId: string,
+    companyId: string,
+  ): Promise<boolean> {
+    let currentId = potentialParentId;
+    for (let i = 0; i < 20; i++) {
+      // limite de profundidad para evitar loop infinito
+      if (!currentId) return false;
+      if (currentId === childId) return true;
+      const parent = await this.repo.findOne({
+        where: { id: currentId, companyId },
+      });
+      if (!parent) return false;
+      currentId = parent.parentId;
+    }
+    return false;
+  }
+
   async update(id: string, companyId: string, dto: UpdateFolderDto) {
-    if (dto.parentId && dto.parentId === id) {
-      throw new BadRequestException("Una carpeta no puede ser su propio padre");
+    if (dto.parentId) {
+      if (dto.parentId === id)
+        throw new BadRequestException(
+          "Una carpeta no puede ser su propio padre",
+        );
+      const willBeCycle = await this.isDescendant(dto.parentId, id, companyId);
+      if (willBeCycle)
+        throw new BadRequestException(
+          "Ciclo detectado: no puedes mover una carpeta dentro de su propio hijo",
+        );
+
+      const parent = await this.repo.findOne({
+        where: { id: dto.parentId, companyId },
+      });
+      if (!parent)
+        throw new NotFoundException(`Carpeta padre ${dto.parentId} no existe`);
     }
     const folder = await this.findOne(id, companyId);
     Object.assign(folder, dto);

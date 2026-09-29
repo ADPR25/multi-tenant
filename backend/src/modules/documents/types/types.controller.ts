@@ -5,7 +5,6 @@ import {
   Body,
   Patch,
   Param,
-  Delete,
   Query,
   UseGuards,
 } from "@nestjs/common";
@@ -19,25 +18,22 @@ import { JwtAuthGuard } from "@/common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "@/common/guards/permissions.guard";
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
-@Controller("types")
+@Controller("documents/types")
 export class TypesController {
   constructor(private readonly typesService: TypesService) {}
 
   @Post()
   @RequirePermissions("documents:types:create")
-  create(
-    @Body() createTypeDto: CreateTypeDto,
-    @CurrentCompanyId() companyId: string,
-  ) {
-    return this.typesService.create(createTypeDto, companyId);
+  create(@Body() dto: CreateTypeDto, @CurrentCompanyId() companyId: string) {
+    return this.typesService.create(dto, companyId);
   }
 
-  @Get(":state")
+  @Get()
   @RequirePermissions("documents:types:read")
   findAll(
     @CurrentCompanyId() companyId: string,
     @Query() pagination: PaginationDto,
-    @Query("state") state?: string
+    @Query("state") state?: string,
   ) {
     const isActive = state !== undefined ? state === "true" : undefined;
     return this.typesService.findAll(companyId, pagination, isActive);
@@ -53,9 +49,15 @@ export class TypesController {
   @RequirePermissions("documents:types:update")
   update(
     @Param("id") id: string,
-    @Body() updateTypeDto: UpdateTypeDto,
+    @Body() dto: UpdateTypeDto,
     @CurrentCompanyId() companyId: string,
   ) {
-    return this.typesService.update(id, updateTypeDto, companyId);
+    return this.typesService.update(id, dto, companyId);
+  }
+
+  @Patch("active/:id")
+  @RequirePermissions("documents:types:state")
+  isActive(@Param("id") id: string, @CurrentCompanyId() companyId: string) {
+    return this.typesService.toggleActive(id, companyId);
   }
 }

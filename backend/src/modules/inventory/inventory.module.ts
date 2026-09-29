@@ -1,10 +1,11 @@
 import { Module } from "@nestjs/common";
-import { RouterModule } from "@nestjs/core";
 import { BrandsModule } from "./brands/brands.module";
 import { CategoriesModule } from "./categories/categories.module";
-import { WarehousesModule } from "./warehouses/warehouses.module";
-import { UomModule } from "./uom/uom.module";
 import { ProductsModule } from "./products/products.module";
+import { StockMovementsModule } from "./stock-movements/stock-movements.module";
+import { StocksModule } from "./stocks/stocks.module";
+import { UomModule } from "./uom/uom.module";
+import { WarehousesModule } from "./warehouses/warehouses.module";
 
 @Module({
   imports: [
@@ -13,6 +14,8 @@ import { ProductsModule } from "./products/products.module";
     WarehousesModule,
     UomModule,
     ProductsModule,
+    StocksModule,
+    StockMovementsModule,
   ],
   exports: [
     BrandsModule,
@@ -20,6 +23,8 @@ import { ProductsModule } from "./products/products.module";
     WarehousesModule,
     UomModule,
     ProductsModule,
+    StocksModule,
+    StockMovementsModule,
   ],
 })
 export class InventoryModule {}

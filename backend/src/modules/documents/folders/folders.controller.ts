@@ -28,7 +28,7 @@ export class FoldersController {
     return this.foldersService.create(dto, companyId);
   }
 
-  @Get(":state")
+  @Get()
   @RequirePermissions("documents:folders:read")
   findAll(
     @CurrentCompanyId() companyId: string,
