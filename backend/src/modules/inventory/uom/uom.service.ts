@@ -23,9 +23,9 @@ export class UomService {
     return this.repoService.save(create);
   }
 
-  async findAll(companyId: string, pagination: PaginationDto) {
+  async findAll(companyId: string, pagination: PaginationDto, state: boolean) {
     const [data, total] = await this.repoService.findAndCount({
-      where: { companyId },
+      where: { companyId, ...(state !== undefined ? { isActive: state } : {}) },
       order: { createdAt: "DESC" },
       ...paginate(pagination),
     });
@@ -40,18 +40,12 @@ export class UomService {
 
   async update(id: string, updateUomDto: UpdateUomDto, companyId: string) {
     const uom = await this.findOne(id, companyId);
-    if (!uom) {
-      throw new NotFoundException(`brand ${id} not found`);
-    }
     Object.assign(uom, updateUomDto);
     return await this.repoService.save(uom);
   }
 
   async toggleActive(id: string, companyId: string) {
     const uom = await this.findOne(id, companyId);
-    if (!uom) {
-      throw new NotFoundException(`brand ${id} not found`);
-    }
     uom.isActive = !uom.isActive;
     return this.repoService.save(uom);
   }

@@ -26,9 +26,12 @@ export class CategoriesService {
     return create;
   }
 
-  async findAll(companyId: string, pagination: PaginationDto) {
+  async findAll(companyId: string, pagination: PaginationDto, state: boolean) {
     const [data, total] = await this.repoService.findAndCount({
-      where: { companyId: companyId },
+      where: {
+        companyId: companyId,
+        ...(state !== undefined ? { isActive: state } : {}),
+      },
       order: { createdAt: "DESC" },
       ...paginate(pagination),
     });
@@ -50,18 +53,12 @@ export class CategoriesService {
     companyId: string,
   ) {
     const category = await this.findOne(id, companyId);
-    if (!category) {
-      throw new NotFoundException(`category ${id} not found`);
-    }
     Object.assign(category, updateCategoryDto);
     return await this.repoService.save(category);
   }
 
   async toggleActive(id: string, companyId: string) {
     const category = await this.findOne(id, companyId);
-    if (!category) {
-      throw new NotFoundException(`category ${id} not found`);
-    }
     category.isActive = !category.isActive;
     return await this.repoService.save(category);
   }

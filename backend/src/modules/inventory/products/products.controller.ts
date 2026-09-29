@@ -34,8 +34,13 @@ export class ProductsController {
 
   @Get()
   @RequirePermissions("inventory:product:read")
-  findAll(@CurrentCompanyId() companyId: string, @Query() pagination: PaginationDto) {
-    return this.productsService.findAll(companyId, pagination);
+  findAll(
+    @CurrentCompanyId() companyId: string,
+    @Query() pagination: PaginationDto,
+    @Query("state") state?: string,
+  ) {
+    const isActive = state !== undefined ? state === "true" : undefined;
+    return this.productsService.findAll(companyId, pagination, isActive);
   }
 
   @Get(":id")

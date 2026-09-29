@@ -8,4 +8,4 @@ import { Module } from "@nestjs/common";
   imports: [CategoriesModule, TypesModule, DocsModule, FoldersModule],
   exports: [CategoriesModule, TypesModule, DocsModule, FoldersModule],
 })
-export class DocumensModule {}
+export class DocumentsModule {}

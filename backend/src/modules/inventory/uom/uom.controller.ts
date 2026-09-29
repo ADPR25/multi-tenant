@@ -32,10 +32,15 @@ export class UomController {
     return this.uomService.create(createUomDto, companyId);
   }
 
-  @Get()
+  @Get(":state")
   @RequirePermissions("inventory:uom:read")
-  findAll(@CurrentCompanyId() companyId: string, @Query() pagination: PaginationDto) {
-    return this.uomService.findAll(companyId, pagination);
+  findAll(
+    @CurrentCompanyId() companyId: string,
+    @Query() pagination: PaginationDto,
+    @Query("state") state?: string,
+  ) {
+    const isActive = state !== undefined ? state === "true" : undefined;
+    return this.uomService.findAll(companyId, pagination, isActive);
   }
 
   @Get(":id")
@@ -52,5 +57,11 @@ export class UomController {
     @CurrentCompanyId() companyId: string,
   ) {
     return this.uomService.update(id, updateUomDto, companyId);
+  }
+
+  @Patch("active/:id")
+  @RequirePermissions("inventory:uom:state")
+  isActive(@Param("id") id: string, @CurrentCompanyId() companyId: string) {
+    return this.uomService.toggleActive(id, companyId);
   }
 }

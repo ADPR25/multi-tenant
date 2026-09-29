@@ -25,9 +25,9 @@ export class ProductsService {
     return this.repoService.save(data);
   }
 
-  async findAll(companyId: string, pagination: PaginationDto) {
+  async findAll(companyId: string, pagination: PaginationDto, state: boolean) {
     const [data, total] = await this.repoService.findAndCount({
-      where: { companyId },
+      where: { companyId, ...(state !== undefined ? { isActive: state } : {}) },
       order: { createdAt: "DESC" },
       ...paginate(pagination),
     });
@@ -44,18 +44,12 @@ export class ProductsService {
     companyId: string,
   ) {
     const product = await this.findOne(id, companyId);
-    if (!product) {
-      throw new NotFoundException(`product ${id} not found`);
-    }
     Object.assign(product, updateProductDto);
     return await this.repoService.save(product);
   }
 
   async toggleActive(id: string, companyId: string) {
     const product = await this.findOne(id, companyId);
-    if (!product) {
-      throw new NotFoundException(`product ${id} not found`);
-    }
     product.isActive = !product.isActive;
     return await this.repoService.save(product);
   }

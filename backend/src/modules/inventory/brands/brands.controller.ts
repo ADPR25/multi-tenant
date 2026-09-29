@@ -32,10 +32,15 @@ export class BrandsController {
     return this.brandsService.create(createBrandDto, companyId);
   }
 
-  @Get()
+  @Get(":state")
   @RequirePermissions("inventory:brands:read")
-  findAll(@CurrentCompanyId() companyId: string, @Query() pagination: PaginationDto) {
-    return this.brandsService.findAll(companyId, pagination);
+  findAll(
+    @CurrentCompanyId() companyId: string,
+    @Query() pagination: PaginationDto,
+    @Query("state") state?: string,
+  ) {
+    const isActive = state !== undefined ? state === "true" : undefined;
+    return this.brandsService.findAll(companyId, pagination, isActive);
   }
 
   @Patch("active/:id")

@@ -32,13 +32,18 @@ export class CategoriesController {
     return this.categoriesService.create(createCategoryDto, companyId);
   }
 
-  @Get()
+  @Get(":state")
   @RequirePermissions("inventory:categories:read")
-  findAll(@CurrentCompanyId() companyId: string, @Query() pagination: PaginationDto) {
-    return this.categoriesService.findAll(companyId, pagination);
+  findAll(
+    @CurrentCompanyId() companyId: string,
+    @Query() pagination: PaginationDto,
+    @Query("state") state?: string,
+  ) {
+    const isActive = state !== undefined ? state === "true" : undefined;
+    return this.categoriesService.findAll(companyId, pagination, isActive);
   }
 
-  @Patch('active/:id')
+  @Patch("active/:id")
   @RequirePermissions("inventory:categories:state")
   isActive(@Param("id") id: string, @CurrentCompanyId() companyId: string) {
     return this.categoriesService.toggleActive(id, companyId);

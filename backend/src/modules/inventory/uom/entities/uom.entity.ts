@@ -1,7 +1,7 @@
 import { BaseTenantEntity } from "@/infrastructure/database/base-tenant.entity";
 import { Column, Entity } from "typeorm";
 
-@Entity("uom")
+@Entity("inventory_uom")
 export class Uom extends BaseTenantEntity {
   @Column()
   name: string;

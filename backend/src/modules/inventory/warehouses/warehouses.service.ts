@@ -25,9 +25,9 @@ export class WarehousesService {
     return this.repoService.save(data);
   }
 
-  async findAll(companyId: string, pagination: PaginationDto) {
+  async findAll(companyId: string, pagination: PaginationDto, state: boolean) {
     const [data, total] = await this.repoService.findAndCount({
-      where: { companyId },
+      where: { companyId, ...(state !== undefined ? { isActive: state } : {}) },
       order: { createdAt: "DESC" },
       ...paginate(pagination),
     });
@@ -49,18 +49,12 @@ export class WarehousesService {
     companyId: string,
   ) {
     const warehouse = await this.findOne(id, companyId);
-    if (!warehouse) {
-      throw new NotFoundException(`Warehouse ${id} not found`);
-    }
     Object.assign(warehouse, updateWarehouseDto);
     return this.repoService.save(warehouse);
   }
 
   async toggleActive(id: string, companyId: string) {
     const warehouse = await this.findOne(id, companyId);
-    if (!warehouse) {
-      throw new NotFoundException(`Warehouse ${id} not found`);
-    }
     warehouse.isActive = !warehouse.isActive;
     return this.repoService.save(warehouse);
   }
