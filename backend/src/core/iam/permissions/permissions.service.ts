@@ -46,11 +46,6 @@ export class PermissionsService {
     return this.repo.save(perm);
   }
 
-  async remove(id: string, companyId: string) {
-    const perm = await this.findOne(id, companyId);
-    return this.repo.softRemove(perm);
-  }
-
   private getAllPermissionNames(): string[] {
     return [
      ...new Set(

@@ -7,7 +7,7 @@ import { CreateBrandDto } from "./dto/create-brand.dto";
 import { UpdateBrandDto } from "./dto/update-brand.dto";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Brand } from "./entities/brand.entity";
-import { Repository } from "typeorm";
+import { ILike, Repository } from "typeorm";
 import { PaginationDto } from "@/common/dto/pagination.dto";
 import {
   paginate,
@@ -27,19 +27,10 @@ export class BrandsService {
     if (exists)
       throw new ConflictException(`Marca ${createBrandDto.name} ya existe`);
     const data = this.repoService.create({
-      name: createBrandDto.name,
+      ...createBrandDto,
       companyId,
     });
     return await this.repoService.save(data);
-  }
-
-  async findAll(companyId: string, pagination: PaginationDto, state?: boolean) {
-    const [data, total] = await this.repoService.findAndCount({
-      where: { companyId, ...(state !== undefined ? { isActive: state } : {}) },
-      order: { createdAt: "DESC" },
-      ...paginate(pagination),
-    });
-    return paginatedResponse(data, total, pagination);
   }
 
   async findOne(id: string, companyId: string) {
@@ -64,5 +55,42 @@ export class BrandsService {
     const brand = await this.findOne(id, companyId);
     brand.isActive = !brand.isActive;
     return await this.repoService.save(brand);
+  }
+
+  async findAll(
+    companyId: string,
+    pagination: PaginationDto,
+    state?: boolean,
+    search?: string,
+  ) {
+    if (!search) {
+      const [data, total] = await this.repoService.findAndCount({
+        where: {
+          companyId,
+          ...(state !== undefined ? { isActive: state } : {}),
+        },
+        order: { createdAt: "DESC" },
+        ...paginate(pagination),
+      });
+      return paginatedResponse(data, total, pagination);
+    }
+
+    const [data, total] = await this.repoService.findAndCount({
+      where: [
+        {
+          companyId,
+          ...(state !== undefined ? { isActive: state } : {}),
+          name: ILike(`%${search}%`),
+        },
+        {
+          companyId,
+          ...(state !== undefined ? { isActive: state } : {}),
+          description: ILike(`%${search}%`),
+        },
+      ],
+      order: { createdAt: "DESC" },
+      ...paginate(pagination),
+    });
+    return paginatedResponse(data, total, pagination);
   }
 }

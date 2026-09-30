@@ -1,6 +1,7 @@
 <script setup>
+import { ref } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import { ref, onMounted } from 'vue'
+import AppDataTable from '@/components/common/AppDataTable.vue'
 import { usersService } from '@/services'
 import { Plus, Pencil, X, Power, ShieldCheck } from 'lucide-vue-next'
 import CreateComponent from './create/index.vue'
@@ -8,53 +9,48 @@ import { usePermissions } from '@/composables/usePermissions'
 
 const { can } = usePermissions()
 
-const items = ref([])
-const search = ref('')
-const loading = ref(false)
 const mode = ref('list')
 const selectedItem = ref(null)
-
-const traer = async () => {
-  loading.value = true
-  try {
-    const data = await usersService.list()
-    items.value = Array.isArray(data) ? data : data.data || []
-  } catch (e) {
-    console.error(e)
-  } finally {
-    loading.value = false
-  }
-}
-
-const openCreate = () => {
-  selectedItem.value = null
-  mode.value = 'create'
-}
-const openEdit = (item) => {
-  selectedItem.value = item
-  mode.value = 'edit'
-}
-const close = () => {
-  mode.value = 'list'
-  selectedItem.value = null
-}
-const porConfirmar = (val) => val || 'por confirmar'
-const onSaved = async () => {
-  close()
-  await traer()
-}
+const tableRef = ref(null)
 
 const headers = [
   { title: 'Numero de documento', key: 'document_number', minWidth: '180px' },
-  { title: 'Nombre', key: 'fullName', minWidth: '220px' },
-  { title: 'Rol', key: 'role.name', minWidth: '180px' },
+  { title: 'Nombre', key: 'fullName', minWidth: '220px', sortable: false },
+  { title: 'Rol', key: 'role.name', minWidth: '180px', sortable: false },
   { title: 'Estado', key: 'isActive', minWidth: '110px', align: 'center' },
   { title: 'Opciones', key: 'actions', minWidth: '120px', align: 'end', sortable: false },
 ]
 
-onMounted(() => {
-  traer()
-})
+function openCreate() {
+  selectedItem.value = null
+  mode.value = 'create'
+}
+
+function openEdit(item) {
+  selectedItem.value = item
+  mode.value = 'edit'
+}
+
+function close() {
+  mode.value = 'list'
+  selectedItem.value = null
+}
+
+const porConfirmar = (val) => val || 'por confirmar'
+
+async function onSaved() {
+  close()
+  tableRef.value?.reload()
+}
+
+async function toggleActive(item) {
+  try {
+    await usersService.toggleActive(item.id, !item.isActive)
+    tableRef.value?.reload()
+  } catch (e) {
+    alert(e.message || 'No se pudo cambiar el estado')
+  }
+}
 </script>
 
 <template>
@@ -69,66 +65,46 @@ onMounted(() => {
         </v-btn>
       </div>
 
-      <div class="rounded-2xl border bg-white p-4">
-        <v-text-field
-          v-model="search"
-          placeholder="Buscar..."
-          variant="outlined"
-          density="compact"
-          hide-details
-          class="mb-6 w-full sm:max-w-sm"
-        />
-        <div class="w-full overflow-x-auto rounded-xl border">
-          <v-data-table
-            :headers="headers"
-            :items="items"
-            :search="search"
-            :loading="loading"
-            :items-per-page="10"
-            density="comfortable"
-            class="bg-transparent"
-            item-value="id"
-          >
-            <template #item.fullName="{ item }">
-              {{ item.first_name }} {{ item.last_name }}
-            </template>
+      <AppDataTable ref="tableRef" :headers="headers" :fetch-fn="usersService.list" search-placeholder="Buscar por nombre, documento...">
+        <template #item.fullName="{ item }">
+          {{ item.first_name }} {{ item.last_name }}
+        </template>
 
-            <template #item.isActive="{ item }">
-              <v-chip :color="item.isActive ? 'success' : 'error'" size="small" variant="tonal">
-                {{ item.isActive ? 'Activo' : 'Inactivo' }}
-              </v-chip>
-            </template>
+        <template #item.isActive="{ item }">
+          <v-chip :color="item.isActive ? 'success' : 'error'" size="small" variant="tonal">
+            {{ item.isActive ? 'Activo' : 'Inactivo' }}
+          </v-chip>
+        </template>
 
-            <template #item.document_number="{ item }">
-              {{ porConfirmar(item.document_number) }}
-            </template>
+        <template #item.document_number="{ item }">
+          {{ porConfirmar(item.document_number) }}
+        </template>
 
-            <template #item.actions="{ item }">
-              <div class="flex justify-end gap-1">
-                <v-btn
-                  v-if="can('iam:users:update')"
-                  icon
-                  size="x-small"
-                  variant="text"
-                  color="warning"
-                  @click="openEdit(item)"
-                >
-                  <Pencil class="h-4 w-4" />
-                </v-btn>
-                <v-btn
-                  v-if="can('iam:users:inactive')"
-                  icon
-                  size="x-small"
-                  variant="text"
-                  :color="item.isActive ? 'success' : 'error'"
-                >
-                  <Power class="h-4 w-4" />
-                </v-btn>
-              </div>
-            </template>
-          </v-data-table>
-        </div>
-      </div>
+        <template #item.actions="{ item }">
+          <div class="flex justify-end gap-1">
+            <v-btn
+              v-if="can('iam:users:update')"
+              icon
+              size="x-small"
+              variant="text"
+              color="warning"
+              @click="openEdit(item)"
+            >
+              <Pencil class="h-4 w-4" />
+            </v-btn>
+            <v-btn
+              v-if="can('iam:users:state')"
+              icon
+              size="x-small"
+              variant="text"
+              :color="item.isActive ? 'success' : 'error'"
+              @click="toggleActive(item)"
+            >
+              <Power class="h-4 w-4" />
+            </v-btn>
+          </div>
+        </template>
+      </AppDataTable>
     </div>
 
     <div v-else-if="mode === 'create' || mode === 'edit'">

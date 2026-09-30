@@ -52,7 +52,7 @@
               </div>
 
               <div>
-                <v-btn type="submit" color="primary" block size="large" :loading="loading" @click="handleSubmit">
+                <v-btn color="primary" block size="large" :loading="loading" @click="handleSubmit">
                   Sign In
                 </v-btn>
               </div>
@@ -99,8 +99,6 @@ const handleSubmit = async () => {
   loading.value = true
   error.value = {}
   try {
-    sessionStorage.clear()
-
     const data = await authService.login({
       document_number: document_number.value,
       password: password.value,

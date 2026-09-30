@@ -26,7 +26,7 @@ import { SeedsModule } from "./infrastructure/database/seeds/seeds.module";
         max: config.get<number>("config.cache.max"),
       }),
     }),
-    ThrottlerModule.forRoot([{ ttl: 60000, limit: 20 }]),
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 500 }]),
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],

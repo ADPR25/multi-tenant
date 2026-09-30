@@ -16,7 +16,6 @@ import {
 } from "@/common/decorators/current-company.decorator";
 import { JwtAuthGuard } from "@/common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "@/common/guards/permissions.guard";
-import { RequirePermissions } from "@/common/decorators/permissions.decorator";
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller("role-permissions")
@@ -26,7 +25,6 @@ export class RolePermissionsController {
   ) {}
 
   @Post()
-  @RequirePermissions("iam:role-permissions:create")
   create(
     @Body() dto: CreateRolePermissionDto,
     @CurrentCompanyId() companyId: string,
@@ -35,7 +33,6 @@ export class RolePermissionsController {
   }
 
   @Get()
-  @RequirePermissions("iam:role-permissions:read")
   findAll(
     @OptionalCompanyId() companyId: string | null,
     @Query("roleId") roleId?: string,
@@ -44,7 +41,6 @@ export class RolePermissionsController {
   }
 
   @Get("role/:roleId")
-  @RequirePermissions("iam:role-permissions:read")
   findByRole(
     @Param("roleId") roleId: string,
     @OptionalCompanyId() companyId: string | null,
@@ -53,7 +49,6 @@ export class RolePermissionsController {
   }
 
   @Get(":id")
-  @RequirePermissions("iam:role-permissions:read")
   findOne(
     @Param("id") id: string,
     @OptionalCompanyId() companyId: string | null,
@@ -61,14 +56,7 @@ export class RolePermissionsController {
     return this.rolePermissionsService.findOneCompat(id, companyId as any);
   }
 
-  @Delete(":id")
-  @RequirePermissions("iam:role-permissions:delete")
-  remove(@Param("id") id: string, @CurrentCompanyId() companyId: string) {
-    return this.rolePermissionsService.remove(id, companyId);
-  }
-
   @Post("sync")
-  @RequirePermissions("iam:role-permissions:update")
   async sync(
     @Body() body: { roleId: string; permissionIds: string[] },
     @OptionalCompanyId() companyId: string | null,

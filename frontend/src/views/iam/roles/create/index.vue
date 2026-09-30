@@ -14,6 +14,8 @@ const emit = defineEmits(['close', 'created', 'updated'])
 const user = get.useAuth('user')
 const companies = ref([])
 
+const isSuper = computed(() => user?.roleCode === 'SUPER_ADMIN')
+
 const form = ref({
   name: '',
   description: '',
@@ -21,7 +23,7 @@ const form = ref({
   companyId: '',
 })
 
-if (user?.roleCode !== 'SUPER_ADMIN' && user?.companyId) {
+if (!isSuper.value && user?.companyId) {
   form.value.companyId = user.companyId
 }
 
@@ -46,7 +48,7 @@ watch(
         name: '',
         description: '',
         isPrincipal: false,
-        companyId: user?.roleCode !== 'SUPER_ADMIN' ? user?.companyId || '' : '',
+        companyId: !isSuper.value ? user?.companyId || '' : '',
       }
     }
   },
@@ -60,7 +62,7 @@ const validate = () => {
   } else if (form.value.name.trim().length < 3) {
     errors.value.name = 'Mínimo 3 caracteres'
   }
-  if (user?.roleCode === 'SUPER_ADMIN' && !form.value.companyId) {
+  if (isSuper.value && !form.value.companyId) {
     errors.value.companyId = 'Debes seleccionar una empresa'
   }
   return Object.keys(errors.value).length === 0
@@ -99,7 +101,7 @@ const submit = async () => {
 }
 
 onMounted(async () => {
-  if (user?.roleCode === 'SUPER_ADMIN') {
+  if (isSuper.value) {
     try {
       const data = await companiesService.list()
       companies.value = Array.isArray(data) ? data : data.data || []
@@ -138,7 +140,7 @@ onMounted(async () => {
     </v-alert>
 
     <v-row>
-      <v-col cols="12" md="6">
+      <v-col cols="12" :md="isSuper ? 6 : 12">
         <v-label> Nombre del rol <span class="text-red-500">*</span> </v-label>
         <v-text-field
           v-model="form.name"
@@ -154,7 +156,7 @@ onMounted(async () => {
           Usa mayúsculas sin espacios si es un código interno
         </p>
       </v-col>
-      <v-col v-if="user?.roleCode === 'SUPER_ADMIN'" cols="12" md="6">
+      <v-col v-if="isSuper" cols="12" md="6">
         <v-label> Empresa <span class="text-red-500">*</span> </v-label>
         <v-autocomplete
           v-model="form.companyId"
@@ -186,7 +188,7 @@ onMounted(async () => {
           class="rounded-xl"
         />
       </v-col>
-      <v-col cols="12" v-if="user?.roleCode === 'SUPER_ADMIN'">
+      <v-col cols="12" v-if="isSuper">
         <div
           class="rounded-xl border border-amber-200 bg-amber-50/50 p-4 dark:border-amber-800/30 dark:bg-amber-900/10"
         >

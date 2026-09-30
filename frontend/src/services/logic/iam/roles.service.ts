@@ -1,6 +1,7 @@
 import { api } from "@/services/api/api";
 export const rolesService = {
-  list() {
+  list(active?: boolean) {
+    console.log(active)
     return api.request<any>('/roles')
   },
   getById(id: string) {

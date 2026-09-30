@@ -26,7 +26,6 @@ export class WarehousesService {
     await queryRunner.startTransaction();
     try {
       const savedWh = await queryRunner.manager.save(data);
-      // FIX: crear stock 0 para productos existentes
       const products = await queryRunner.manager.find(Product, { where: { companyId, isActive: true } });
       if (products.length > 0) {
         const stocks = products.map(p => queryRunner.manager.create(Stock, {

@@ -57,7 +57,6 @@
 
             <ul class="flex flex-col gap-4">
               <li v-for="(item, index) in menuGroup.items" :key="item.name">
-                <!-- CON SUBITEMS = MODULO -->
                 <button
                   v-if="item.subItems"
                   @click="toggleSubmenu(groupIndex, index)"
@@ -91,7 +90,6 @@
                   />
                 </button>
 
-                <!-- VISTA UNICA -->
                 <router-link
                   v-else-if="item.path"
                   :to="item.path"

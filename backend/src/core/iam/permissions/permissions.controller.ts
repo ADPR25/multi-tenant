@@ -53,14 +53,7 @@ export class PermissionsController {
     return this.permissionsService.update(id, companyId, dto);
   }
 
-  @Delete(":id")
-  @RequirePermissions("iam:permissions:delete")
-  remove(@Param("id") id: string, @CurrentCompanyId() companyId: string) {
-    return this.permissionsService.remove(id, companyId);
-  }
-
   @Post("sync")
-  @RequirePermissions("iam:permissions:create")
   sync(
     @OptionalCompanyId() companyId: string | null,
     @Body() body?: { companyId?: string }
@@ -73,7 +66,6 @@ export class PermissionsController {
   }
 
   @Get("sync-all")
-  @RequirePermissions("iam:permissions:create")
   async syncAll(@CurrentUser() user: any) {
     const isSuper = user?.roleCode === "SUPER_ADMIN" || user?.code === "SUPER_ADMIN";
     if (!isSuper) throw new ForbiddenException('Solo SUPER_ADMIN puede sincronizar todas');

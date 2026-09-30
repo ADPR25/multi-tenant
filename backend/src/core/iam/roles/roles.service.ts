@@ -11,7 +11,10 @@ import { UpdateRoleDto } from "./dto/update-role.dto";
 import { User } from "../users/entities/user.entity";
 import { normalizeRoleCode } from "./utils/role-code.util";
 import { PaginationDto } from "@/common/dto/pagination.dto";
-import { paginate, paginatedResponse } from "@/common/helpers/pagination.helper";
+import {
+  paginate,
+  paginatedResponse,
+} from "@/common/helpers/pagination.helper";
 
 @Injectable()
 export class RolesService {
@@ -60,9 +63,9 @@ export class RolesService {
     const [data, total] = await this.repo.findAndCount({
       where: { companyId },
       order: { createdAt: "DESC" },
-      ...paginate(pagination)
+      ...paginate(pagination),
     });
-    return paginatedResponse(data, total, pagination)
+    return paginatedResponse(data, total, pagination);
   }
 
   async findOne(id: string, companyId: string) {
@@ -106,23 +109,6 @@ export class RolesService {
     });
   }
 
-  async remove(id: string, companyId: string) {
-    const role = await this.findOne(id, companyId);
-    if (role.isPrincipal)
-      throw new ConflictException("No puedes borrar el rol principal");
-    if (role.code === "SUPER_ADMIN") {
-      throw new ConflictException("No puedes borrar el rol SUPER_ADMIN");
-    }
-    const usersWithRole = await this.dataSource
-      .getRepository(User)
-      .count({ where: { companyId, roleId: id } });
-    if (usersWithRole > 0)
-      throw new ConflictException(
-        `No puedes borrar el rol, ${usersWithRole} usuarios lo usan`,
-      );
-    return this.repo.softRemove(role);
-  }
-
   async ensureSuperAdminRole(companyId: string): Promise<Role> {
     return this.dataSource.transaction(async (manager) => {
       const existing = await manager.findOne(Role, {
@@ -146,5 +132,11 @@ export class RolesService {
       });
       return manager.save(superAdmin);
     });
+  }
+
+  async toggleActive(id: string, companyId: string) {
+    const role = await this.findOne(id, companyId);
+    role.isActive = !role.isActive;
+    return this.repo.save(role);
   }
 }

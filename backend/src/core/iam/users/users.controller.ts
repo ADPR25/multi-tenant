@@ -72,7 +72,7 @@ export class UsersController {
   }
 
   @Patch("active/:id")
-  @RequirePermissions("documents:categories:state")
+  @RequirePermissions("iam:users:state")
   isActive(@Param("id") id: string, @CurrentCompanyId() companyId: string) {
     return this.usersService.toggleActive(id, companyId);
   }

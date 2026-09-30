@@ -7,6 +7,9 @@ export class Brand extends BaseTenantEntity {
   @Column({ length: 100 })
   name: string;
 
+  @Column({ default: "" })
+  description: string;
+
   @Column({ default: true })
   isActive: boolean;
 }

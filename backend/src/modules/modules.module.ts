@@ -1,19 +1,11 @@
 import { Module } from "@nestjs/common";
-import { RouterModule } from "@nestjs/core";
 import { InventoryModule } from "./inventory/inventory.module";
 import { FrontendModule } from "./frontend/frontend.module";
 import { DocumentsModule } from "./documents/document.module";
+import { UploadsModule } from "./uploads/uploads.module";
 
 @Module({
-  imports: [
-    InventoryModule,
-    FrontendModule,
-    DocumentsModule,
-    RouterModule.register([
-      { path: "inventory", module: InventoryModule },
-      { path: "document_management", module: DocumentsModule }, 
-    ]),
-  ],
-  exports: [InventoryModule, FrontendModule, DocumentsModule],
+  imports: [FrontendModule, InventoryModule, DocumentsModule, UploadsModule],
+  exports: [InventoryModule, FrontendModule, DocumentsModule, UploadsModule],
 })
 export class Modules {}

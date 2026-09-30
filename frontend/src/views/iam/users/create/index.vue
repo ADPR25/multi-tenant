@@ -96,7 +96,7 @@ const submit = async () => {
 
 const traerRoles = async () => {
   try {
-    const data = await rolesService.list()
+    const data = await rolesService.list(true)
     roles.value = Array.isArray(data) ? data : data.data || []
   } catch (e) {
     console.error(e)

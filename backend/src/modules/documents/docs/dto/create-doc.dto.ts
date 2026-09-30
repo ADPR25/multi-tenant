@@ -1,4 +1,10 @@
-import { IsNotEmpty, IsOptional, IsString, IsUUID, IsUrl } from "class-validator";
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  IsDateString,
+} from "class-validator";
 
 export class CreateDocDto {
   @IsNotEmpty()
@@ -9,10 +15,9 @@ export class CreateDocDto {
   @IsString()
   description?: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  @IsUrl()
-  fileUrl: string;
+  content?: string;
 
   @IsNotEmpty()
   @IsUUID()
@@ -25,4 +30,20 @@ export class CreateDocDto {
   @IsNotEmpty()
   @IsUUID()
   categoryId: string;
+
+  @IsOptional()
+  @IsDateString()
+  expiresAt?: string;
+
+  @IsOptional()
+  storageKey?: string;
+
+  @IsOptional()
+  mimeType?: string;
+
+  @IsOptional()
+  size?: number;
+
+  @IsOptional()
+  fileName?: string;
 }

@@ -2,25 +2,28 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  ConflictException,
 } from "@nestjs/common";
 import { CreateFolderDto } from "./dto/create-folder.dto";
 import { UpdateFolderDto } from "./dto/update-folder.dto";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Folder } from "./entities/folder.entity";
-import { Repository } from "typeorm";
+import { Repository, IsNull } from "typeorm";
 import {
   paginate,
   paginatedResponse,
 } from "@/common/helpers/pagination.helper";
 import { PaginationDto } from "@/common/dto/pagination.dto";
+import { UsersService } from "@/core/iam/users/users.service";
 
 @Injectable()
 export class FoldersService {
   constructor(
     @InjectRepository(Folder) private readonly repo: Repository<Folder>,
+    private readonly userService: UsersService,
   ) {}
 
-  async create(dto: CreateFolderDto, companyId: string) {
+  async create(dto: CreateFolderDto, companyId: string, userId?: string) {
     if (dto.parentId) {
       const parent = await this.repo.findOne({
         where: { id: dto.parentId, companyId, isActive: true },
@@ -28,17 +31,76 @@ export class FoldersService {
       if (!parent)
         throw new NotFoundException(`Carpeta padre ${dto.parentId} no existe`);
     }
-    const data = this.repo.create({ ...dto, companyId });
+    const data = this.repo.create({
+      ...dto,
+      companyId,
+      createdBy: userId,
+    } as any);
     return this.repo.save(data);
   }
 
-  async findAll(companyId: string, pagination: PaginationDto, state?: boolean) {
+  async createPersonal(parentId: string, companyId: string, user: any) {
+    const UserSelected = await this.userService.findOne(
+      user.id || user.sub || user.userId,
+      companyId,
+    );
+
+    const fullName =
+      `${UserSelected.first_name} ${UserSelected.last_name}`.trim();
+
+    const exists = await this.repo.findOne({
+      where: { companyId, parentId, name: fullName },
+    });
+    if (exists) throw new ConflictException(`Ya tienes tu carpeta ${fullName}`);
+
+    const data = this.repo.create({
+      name: fullName,
+      description: `Documentos de ${fullName}`,
+      parentId,
+      companyId,
+      ownerFolderName: fullName,
+      createdBy: UserSelected.id,
+    });
+    return this.repo.save(data);
+  }
+
+  async findAll(
+    companyId: string,
+    pagination: PaginationDto & { parentId?: string },
+    state?: boolean,
+  ) {
+    const where: any = {
+      companyId,
+      ...(state !== undefined ? { isActive: state } : {}),
+    };
+    if (pagination.parentId !== undefined) {
+      where.parentId =
+        pagination.parentId === null ||
+        pagination.parentId === "null" ||
+        pagination.parentId === ""
+          ? IsNull()
+          : pagination.parentId;
+    }
     const [data, total] = await this.repo.findAndCount({
-      where: { companyId, ...(state !== undefined ? { isActive: state } : {}) },
+      where,
+      relations: { parent: true },
       order: { createdAt: "DESC" },
       ...paginate(pagination),
     });
-    return paginatedResponse(data, total, pagination);
+    const mapped = data.map((f: any) => ({
+      id: f.id,
+      createdAt: f.createdAt,
+      updatedAt: f.updatedAt,
+      companyId: f.companyId,
+      name: f.name,
+      description: f.description,
+      isActive: f.isActive,
+      parentId: f.parentId,
+      parentName: f.parent?.name || null,
+      ownerFolderName: f.ownerFolderName,
+      createdBy: f.createdBy,
+    }));
+    return paginatedResponse(mapped, total, pagination);
   }
 
   async findOne(id: string, companyId: string) {
@@ -54,7 +116,6 @@ export class FoldersService {
   ): Promise<boolean> {
     let currentId = potentialParentId;
     for (let i = 0; i < 20; i++) {
-      // limite de profundidad para evitar loop infinito
       if (!currentId) return false;
       if (currentId === childId) return true;
       const parent = await this.repo.findOne({
@@ -73,11 +134,7 @@ export class FoldersService {
           "Una carpeta no puede ser su propio padre",
         );
       const willBeCycle = await this.isDescendant(dto.parentId, id, companyId);
-      if (willBeCycle)
-        throw new BadRequestException(
-          "Ciclo detectado: no puedes mover una carpeta dentro de su propio hijo",
-        );
-
+      if (willBeCycle) throw new BadRequestException("Ciclo detectado");
       const parent = await this.repo.findOne({
         where: { id: dto.parentId, companyId },
       });

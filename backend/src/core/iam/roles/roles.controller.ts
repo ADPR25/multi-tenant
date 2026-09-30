@@ -81,9 +81,9 @@ export class RolesController {
     return this.rolesService.update(id, effectiveCompanyId as string, dto);
   }
 
-  @Delete(":id")
-  @RequirePermissions("iam:roles:delete")
-  remove(@Param("id") id: string, @CurrentCompanyId() companyId: string) {
-    return this.rolesService.remove(id, companyId);
+  @Patch("active/:id")
+  @RequirePermissions("iam:roles:state")
+  isActive(@Param("id") id: string, @CurrentCompanyId() companyId: string) {
+    return this.rolesService.toggleActive(id, companyId);
   }
 }

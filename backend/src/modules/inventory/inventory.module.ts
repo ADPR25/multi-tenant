@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { RouterModule } from "@nestjs/core";
 import { BrandsModule } from "./brands/brands.module";
 import { CategoriesModule } from "./categories/categories.module";
 import { ProductsModule } from "./products/products.module";
@@ -16,6 +17,15 @@ import { WarehousesModule } from "./warehouses/warehouses.module";
     ProductsModule,
     StocksModule,
     StockMovementsModule,
+    RouterModule.register([
+      { path: "inventory", module: BrandsModule },
+      { path: "inventory", module: CategoriesModule },
+      { path: "inventory", module: WarehousesModule },
+      { path: "inventory", module: UomModule },
+      { path: "inventory", module: ProductsModule },
+      { path: "inventory", module: StocksModule },
+      { path: "inventory", module: StockMovementsModule },
+    ]),
   ],
   exports: [
     BrandsModule,

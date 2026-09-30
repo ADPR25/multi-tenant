@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from "@nestjs/common";
 import { CreateDocDto } from "./dto/create-doc.dto";
 import { UpdateDocDto } from "./dto/update-doc.dto";
@@ -16,6 +17,7 @@ import {
   paginate,
   paginatedResponse,
 } from "@/common/helpers/pagination.helper";
+import { UploadsService } from "@/modules/uploads/uploads.service";
 
 @Injectable()
 export class DocsService {
@@ -25,6 +27,7 @@ export class DocsService {
     @InjectRepository(Category)
     private readonly categoryRepo: Repository<Category>,
     @InjectRepository(Type) private readonly typeRepo: Repository<Type>,
+    private readonly uploadsService: UploadsService,
   ) {}
 
   private async validateRelations(
@@ -60,19 +63,80 @@ export class DocsService {
     }
   }
 
-  async create(createDocDto: CreateDocDto, companyId: string) {
+  async create(createDocDto: CreateDocDto, companyId: string, userId?: string) {
     await this.validateRelations(createDocDto, companyId);
-    const data = this.repoService.create({ ...createDocDto, companyId });
+    const data = this.repoService.create({
+      ...createDocDto,
+      companyId,
+      createdBy: userId,
+    } as any);
     return this.repoService.save(data);
   }
 
-  async findAll(companyId: string, pagination: PaginationDto, state?: boolean) {
-    const [data, total] = await this.repoService.findAndCount({
-      where: { companyId, ...(state !== undefined ? { isActive: state } : {}) },
-      relations: ["folder", "category", "type"],
-      order: { createdAt: "DESC" },
-      ...paginate(pagination),
+  async createWithFile(
+    dto: CreateDocDto,
+    companyId: string,
+    user: any,
+    file?: any,
+  ) {
+    await this.validateRelations(dto, companyId);
+    const folder = await this.folderRepo.findOne({
+      where: { id: dto.folderId, companyId },
     });
+    if (!folder) {
+      throw new NotFoundException("Carpeta no encontrada");
+    }
+    const effectiveUserId = user.id || user.sub || user.userId || user._id;
+    if (folder.ownerFolderName) {
+      if (folder.createdBy && folder.createdBy !== effectiveUserId) {
+        throw new ForbiddenException(
+          "No puedes subir en carpeta de otro compañero",
+        );
+      }
+    }
+
+    let fileData: any = {};
+    if (file) {
+      fileData = this.uploadsService.saveFile(companyId, dto.folderId, file);
+    }
+
+    const dataToCreate = {
+      ...dto,
+      companyId,
+      createdBy: effectiveUserId,
+      fileName: fileData.originalName || file?.originalname,
+      storageKey: fileData.storageKey || fileData.key,
+      mimeType: fileData.mimeType || file?.mimetype,
+      size: fileData.size,
+      ownerFolderName:
+        folder.ownerFolderName || `${user.first_name} ${user.last_name}`.trim(),
+    };
+    const data = this.repoService.create(dataToCreate as any);
+    const saved = await this.repoService.save(data);
+    return saved;
+  }
+
+  async findAll(
+    companyId: string,
+    pagination: PaginationDto & any,
+    state?: boolean,
+    search?: string,
+  ) {
+    const { skip, take } = paginate(pagination);
+    const qb = this.repoService
+      .createQueryBuilder("d")
+      .leftJoinAndSelect("d.folder", "folder")
+      .leftJoinAndSelect("d.category", "category")
+      .leftJoinAndSelect("d.type", "type")
+      .where("d.companyId = :companyId", { companyId });
+
+    if (state !== undefined) qb.andWhere("d.isActive = :state", { state });
+    if (search) qb.andWhere("d.title ILIKE :search", { search: `%${search}%` });
+    if (pagination.folderId)
+      qb.andWhere("d.folderId = :fid", { fid: pagination.folderId });
+
+    qb.orderBy("d.createdAt", "DESC").skip(skip).take(take);
+    const [data, total] = await qb.getManyAndCount();
     return paginatedResponse(data, total, pagination);
   }
 

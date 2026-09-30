@@ -92,14 +92,6 @@ export class RolePermissionsService {
     return this.findAll(companyId, id);
   }
 
-  async remove(id: string, companyId: string) {
-    const rp = await this.findOne(id, companyId);
-    const roleId = rp.roleId;
-    const result = await this.repo.softRemove(rp);
-    await this.clearCache(companyId, roleId);
-    return result;
-  }
-
   async syncRolePermissions(
     companyId: string | null,
     roleId: string,

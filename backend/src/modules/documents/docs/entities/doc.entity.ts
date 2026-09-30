@@ -1,14 +1,14 @@
 import { BaseTenantEntity } from "@/infrastructure/database/base-tenant.entity";
 import {
-  Column,
   Entity,
   Index,
-  JoinColumn,
-  ManyToOne,
+  Column,
   DeleteDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from "typeorm";
-import { Folder } from "../../folders/entities/folder.entity";
 import { Category } from "../../categories/entities/category.entity";
+import { Folder } from "../../folders/entities/folder.entity";
 import { Type } from "../../types/entities/type.entity";
 
 @Entity("documents_docs")
@@ -17,11 +17,11 @@ export class Doc extends BaseTenantEntity {
   @Column({ length: 200 })
   title: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, type: "text" })
   description: string;
 
-  @Column({ type: "text" })
-  fileUrl: string;
+  @Column({ nullable: true, type: "text" })
+  content: string;
 
   @Column({ nullable: true })
   mimeType: string;
@@ -37,9 +37,6 @@ export class Doc extends BaseTenantEntity {
 
   @Column({ type: "timestamptz", nullable: true })
   expiresAt: Date;
-
-  @DeleteDateColumn()
-  deletedAt: Date;
 
   @Index()
   @Column({ name: "folder_id", type: "uuid" })
@@ -64,4 +61,13 @@ export class Doc extends BaseTenantEntity {
   @ManyToOne(() => Category, { onDelete: "RESTRICT" })
   @JoinColumn({ name: "category_id" })
   category: Category;
+
+  @Column({ name: "created_by", type: "uuid", nullable: true })
+  createdBy: string;
+
+  @Column({ name: "file_name", nullable: true })
+  fileName: string;
+
+  @Column({ name: "owner_folder_name", nullable: true })
+  ownerFolderName: string;
 }

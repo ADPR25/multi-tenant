@@ -62,7 +62,7 @@ export class FrontendController {
   }
 
   @Get("roles/:roleId/assignment-data")
-  @RequirePermissions("iam:roles:read", "iam:role-permissions:read")
+  @RequirePermissions("iam:roles:read")
   getAssignment(
     @Param("roleId", ParseUUIDPipe) id: string,
     @CurrentUser() user: any,
@@ -71,7 +71,7 @@ export class FrontendController {
   }
 
   @Put("roles/:roleId/menus")
-  @RequirePermissions("iam:roles:update", "iam:role-permissions:update")
+  @RequirePermissions("iam:roles:update")
   save(
     @Param("roleId", ParseUUIDPipe) id: string,
     @Body() body: SaveRoleMenusDto,
