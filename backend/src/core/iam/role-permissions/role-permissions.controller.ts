@@ -3,7 +3,6 @@ import {
   Get,
   Post,
   Body,
-  Patch,
   Param,
   Delete,
   UseGuards,
@@ -11,8 +10,10 @@ import {
 } from "@nestjs/common";
 import { RolePermissionsService } from "./role-permissions.service";
 import { CreateRolePermissionDto } from "./dto/create-role-permission.dto";
-import { UpdateRolePermissionDto } from "./dto/update-role-permission.dto";
-import { CurrentCompanyId } from "@/common/decorators/current-company.decorator";
+import {
+  CurrentCompanyId,
+  OptionalCompanyId,
+} from "@/common/decorators/current-company.decorator";
 import { JwtAuthGuard } from "@/common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "@/common/guards/permissions.guard";
 import { RequirePermissions } from "@/common/decorators/permissions.decorator";
@@ -25,42 +26,57 @@ export class RolePermissionsController {
   ) {}
 
   @Post()
-  @RequirePermissions('iam:role-permissions:create')
+  @RequirePermissions("iam:role-permissions:create")
   create(
     @Body() dto: CreateRolePermissionDto,
     @CurrentCompanyId() companyId: string,
   ) {
-    return this.rolePermissionsService.create({...dto, companyId });
+    return this.rolePermissionsService.create({ ...dto, companyId });
   }
 
   @Get()
-  @RequirePermissions('iam:role-permissions:read')
+  @RequirePermissions("iam:role-permissions:read")
   findAll(
-    @CurrentCompanyId() companyId: string,
+    @OptionalCompanyId() companyId: string | null,
     @Query("roleId") roleId?: string,
   ) {
-    return this.rolePermissionsService.findAll(companyId, roleId);
+    return this.rolePermissionsService.findAll(companyId as any, roleId);
+  }
+
+  @Get("role/:roleId")
+  @RequirePermissions("iam:role-permissions:read")
+  findByRole(
+    @Param("roleId") roleId: string,
+    @OptionalCompanyId() companyId: string | null,
+  ) {
+    return this.rolePermissionsService.findAll(companyId as any, roleId);
   }
 
   @Get(":id")
-  @RequirePermissions('iam:role-permissions:read')
-  findOne(@Param("id") id: string, @CurrentCompanyId() companyId: string) {
-    return this.rolePermissionsService.findOne(id, companyId);
-  }
-
-  @Patch(":id")
-  @RequirePermissions('iam:role-permissions:update')
-  update(
+  @RequirePermissions("iam:role-permissions:read")
+  findOne(
     @Param("id") id: string,
-    @CurrentCompanyId() companyId: string,
-    @Body() dto: UpdateRolePermissionDto,
+    @OptionalCompanyId() companyId: string | null,
   ) {
-    return this.rolePermissionsService.update(id, companyId, dto);
+    return this.rolePermissionsService.findOneCompat(id, companyId as any);
   }
 
   @Delete(":id")
-  @RequirePermissions('iam:role-permissions:delete')
+  @RequirePermissions("iam:role-permissions:delete")
   remove(@Param("id") id: string, @CurrentCompanyId() companyId: string) {
     return this.rolePermissionsService.remove(id, companyId);
+  }
+
+  @Post("sync")
+  @RequirePermissions("iam:role-permissions:update")
+  async sync(
+    @Body() body: { roleId: string; permissionIds: string[] },
+    @OptionalCompanyId() companyId: string | null,
+  ) {
+    return this.rolePermissionsService.syncRolePermissions(
+      companyId as any,
+      body.roleId,
+      body.permissionIds,
+    );
   }
 }

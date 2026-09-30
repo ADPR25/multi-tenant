@@ -16,8 +16,8 @@ const roles = ref([])
 const empresas = ref([])
 
 const form = ref({
-  firstName: '',
-  lastName: '',
+  first_name: '',
+  last_name: '',
   document_number: '',
   email: '',
   phone: '',
@@ -39,8 +39,8 @@ watch(
   (val) => {
     if (val) {
       form.value = {
-        firstName: val.firstName || '',
-        lastName: val.lastName || '',
+        first_name: val.first_name || '',
+        last_name: val.last_name || '',
         document_number: val.document_number || '',
         email: val.email || '',
         phone: val.phone || '',
@@ -50,8 +50,8 @@ watch(
       }
     } else {
       form.value = {
-        firstName: '',
-        lastName: '',
+        first_name: '',
+        last_name: '',
         document_number: '',
         email: '',
         phone: '',
@@ -68,13 +68,13 @@ const submit = async () => {
   loading.value = true
   try {
     const payload = {
-      firstName: form.value.firstName,
-      lastName: form.value.lastName,
+      first_name: form.value.first_name,
+      last_name: form.value.last_name,
       document_number: form.value.document_number,
       email: form.value.email,
       phone: form.value.phone,
       roleId: form.value.roleId,
-      companyId: user.roleName === 'SUPER_ADMIN' ? form.value.companyId : user.companyId,
+      companyId: user.roleCode === 'SUPER_ADMIN' ? form.value.companyId : user.companyId,
     }
 
     if (!isEditMode.value || form.value.password) {
@@ -114,7 +114,7 @@ const traerEmpresas = async () => {
 
 onMounted(() => {
   traerRoles()
-  if (user.roleName === 'SUPER_ADMIN') traerEmpresas()
+  if (user.roleCode === 'SUPER_ADMIN') traerEmpresas()
 })
 </script>
 
@@ -125,11 +125,11 @@ onMounted(() => {
     <v-row>
       <v-col cols="12" sm="6" md="6">
         <v-label>Nombres</v-label>
-        <v-text-field v-model="form.firstName" density="comfortable" variant="outlined" />
+        <v-text-field v-model="form.first_name" density="comfortable" variant="outlined" />
       </v-col>
       <v-col cols="12" sm="6" md="6">
         <v-label>Apellidos</v-label>
-        <v-text-field v-model="form.lastName" density="comfortable" variant="outlined" />
+        <v-text-field v-model="form.last_name" density="comfortable" variant="outlined" />
       </v-col>
       <v-col cols="12" sm="6" md="4">
         <v-label>Numero de documento</v-label>
@@ -155,7 +155,7 @@ onMounted(() => {
         />
       </v-col>
 
-      <v-col v-if="!isEditMode" cols="12" :md="user.roleName === 'SUPER_ADMIN' ? 6 : 12" sm="12">
+      <v-col v-if="!isEditMode" cols="12" :md="user.roleCode === 'SUPER_ADMIN' ? 6 : 12" sm="12">
         <v-label>Contraseña</v-label>
         <v-text-field
           v-model="form.password"
@@ -168,7 +168,7 @@ onMounted(() => {
         />
       </v-col>
 
-      <v-col v-if="user.roleName === 'SUPER_ADMIN'" cols="12" :md="!isEditMode ? 6 : 12">
+      <v-col v-if="user.roleCode === 'SUPER_ADMIN'" cols="12" :md="!isEditMode ? 6 : 12">
         <v-label>Empresa</v-label>
         <v-autocomplete
           v-model="form.companyId"

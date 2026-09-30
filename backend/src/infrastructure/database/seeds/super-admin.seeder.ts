@@ -1,165 +1,68 @@
-import "dotenv/config";
-import { DataSource } from "typeorm";
+import { Injectable, Logger, OnApplicationBootstrap } from "@nestjs/common";
+import { DataSource, IsNull } from "typeorm";
 import * as bcrypt from "bcrypt";
-import { Company } from "@/core/tenant/company/entities/company.entity";
-import { CompanySetting } from "@/core/tenant/company-settings/entities/company-setting.entity";
+import { ConfigService } from "@nestjs/config";
 import { Role } from "@/core/iam/roles/entities/role.entity";
 import { User } from "@/core/iam/users/entities/user.entity";
-import { Permission } from "@/core/iam/permissions/entities/permission.entity";
-import { RolePermission } from "@/core/iam/role-permissions/entities/role-permission.entity";
-import { Session } from "@/core/auth/entities/session.entity";
-import { AuditLog } from "../../audit/entities/audit-log.entity";
-import { ACCESS_CATALOG } from "@/modules/frontend/data/access.catalog";
 
-const dataSource = new DataSource({
-  type: "postgres",
-  host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT || "5432", 10),
-  username: process.env.DB_USERNAME,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_DATABASE,
-  synchronize: false,
-  logging: false,
-  entities: [
-    Company,
-    CompanySetting,
-    Role,
-    User,
-    Permission,
-    RolePermission,
-    Session,
-    AuditLog,
-  ],
-});
+@Injectable()
+export class SuperAdminSeeder implements OnApplicationBootstrap {
+  private readonly logger = new Logger(SuperAdminSeeder.name);
 
-async function seed() {
-  await dataSource.initialize();
-  console.log("🌱 Seedeando...");
+  constructor(
+    private dataSource: DataSource,
+    private configService: ConfigService,
+  ) {}
 
-  await dataSource.transaction(async (manager) => {
-    let company = await manager.findOne(Company, {
-      where: { tax_id: "900000001" },
-    });
-    if (!company) {
-      company = manager.create(Company, {
-        name: "Admin Corp",
-        legal_name: "Admin Corp SAS",
-        document_type: 1,
-        tax_id: "900000001",
-        email: "admin@system.com",
-        phone: "3000000000",
-        address: "Montería, Córdoba",
-        isActive: true,
-      });
-      company = await manager.save(company);
-      console.log(`✅ Empresa creada: ${company.id}`);
-    }
+  async onApplicationBootstrap() {
+    await this.seed();
+  }
 
-    let setting = await manager.findOne(CompanySetting, {
-      where: { companyId: company.id },
-    });
-    if (!setting) {
-      setting = manager.create(CompanySetting, {
-        companyId: company.id,
-        language: "es",
-        currency: "COP",
-        logoUrl: "",
-      });
-      await manager.save(setting);
-      console.log(`✅ CompanySetting creado`);
-    }
-
-    let superRole = await manager.findOne(Role, {
-      where: { companyId: company.id, code: "SUPER_ADMIN" },
-    });
-    if (!superRole) {
-      await manager.update(
-        Role,
-        { companyId: company.id, isPrincipal: true },
-        { isPrincipal: false },
-      );
-      superRole = manager.create(Role, {
-        companyId: company.id,
-        name: "SUPER ADMIN",
-        code: "SUPER_ADMIN",
-        description: "Rol con acceso total",
-        isPrincipal: true,
-        isActive: true,
-      });
-      superRole = await manager.save(superRole);
-      console.log(`✅ Rol SUPER_ADMIN creado`);
-    }
-
-    const allPermissionNames = [
-      ...new Set(
-        ACCESS_CATALOG.flatMap((mod) =>
-          mod.children
-            ? mod.children.flatMap((c) => c.permissions ?? [])
-            : (mod.permissions ?? []),
-        ),
-      ),
-    ];
-
-    console.log(`🔐 Seedeando ${allPermissionNames.length} permisos...`);
-
-    for (const permName of allPermissionNames) {
-      let perm = await manager.findOne(Permission, {
-        where: { companyId: company.id, name: permName },
-      });
-      if (!perm) {
-        perm = manager.create(Permission, {
-          companyId: company.id,
-          name: permName,
-          description: permName,
-          module: permName.split(":")[0],
+  async seed() {
+    try {
+      await this.dataSource.transaction(async (manager) => {
+        let superRole = await manager.findOne(Role, {
+          where: { code: "SUPER_ADMIN", companyId: IsNull() } as any,
         });
-        perm = await manager.save(perm);
-      }
-      const exists = await manager.findOne(RolePermission, {
-        where: {
-          companyId: company.id,
-          roleId: superRole.id,
-          permissionId: perm.id,
-        },
-      });
-      if (!exists) {
-        const rp = manager.create(RolePermission, {
-          companyId: company.id,
-          roleId: superRole.id,
-          permissionId: perm.id,
+
+        if (!superRole) {
+          superRole = manager.create(Role, {
+            companyId: null as any,
+            name: "SUPER ADMIN",
+            code: "SUPER_ADMIN",
+            description: "Rol global sin empresa",
+            isPrincipal: true,
+            isActive: true,
+          });
+          superRole = await manager.save(superRole);
+          this.logger.log(`✅ Rol SUPER_ADMIN global creado`);
+        }
+
+        const docNumber = "00000000";
+        let superUser = await manager.findOne(User, {
+          where: { document_number: docNumber, companyId: IsNull() } as any,
         });
-        await manager.save(rp);
-      }
-    }
 
-    const docNumber = "00000000";
-    let superUser = await manager.findOne(User, {
-      where: { companyId: company.id, document_number: docNumber },
-    });
-    if (!superUser) {
-      const rounds = parseInt(process.env.BCRYPT_ROUNDS || "10", 10);
-      superUser = manager.create(User, {
-        companyId: company.id,
-        email: "superadmin@system.com",
-        document_number: docNumber,
-        first_name: "Super",
-        last_name: "Admin",
-        password: await bcrypt.hash("Admin123*", rounds),
-        roleId: superRole.id,
-        isActive: true,
+        if (!superUser) {
+          const rounds = this.configService.get<number>("config.bcrypt.rounds") || 10;
+          superUser = manager.create(User, {
+            companyId: null as any,
+            email: "superadmin@system.com",
+            document_number: docNumber,
+            first_name: "Super",
+            last_name: "Admin",
+            password: await bcrypt.hash("Admin123*", rounds),
+            roleId: superRole.id,
+            isActive: true,
+          });
+          await manager.save(superUser);
+          this.logger.log(`✅ Usuario superadmin@system.com / Admin123* creado`);
+        } else {
+          this.logger.log(`ℹ️ Super admin ya existe, no se crea`);
+        }
       });
-      await manager.save(superUser);
-      console.log(
-        `✅ Usuario: superadmin@system.com / Admin123* / doc: ${docNumber}`,
-      );
+    } catch (e) {
+      this.logger.error("Error seedeando super admin", e);
     }
-  });
-
-  console.log("🎉 Seed completado");
-  await dataSource.destroy();
+  }
 }
-
-seed().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});

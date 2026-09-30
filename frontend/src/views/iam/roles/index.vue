@@ -180,7 +180,7 @@ onMounted(() => {
             <template v-slot:item.actions="{ item }">
               <div class="flex justify-end gap-1">
                 <v-btn
-                  v-if="can('iam:roles:assign-permissions') && (user.roleName === 'SUPER_ADMIN' || item.isPrincipal === false)"
+                  v-if="can('iam:roles:assign-permissions') && (user.roleCode === 'SUPER_ADMIN' || item.isPrincipal === false)"
                   icon
                   size="x-small"
                   variant="text"
@@ -193,7 +193,7 @@ onMounted(() => {
                 <v-btn
                   v-if="
                     can('iam:roles:update') &&
-                    (user.roleName === 'SUPER_ADMIN' || item.isPrincipal === false)
+                    (user.roleCode === 'SUPER_ADMIN' || item.isPrincipal === false)
                   "
                   icon
                   size="x-small"
@@ -205,7 +205,7 @@ onMounted(() => {
                 </v-btn>
                 <v-btn
                   v-if="
-                    can('iam:roles:inactive') && (user.roleName === 'SUPER_ADMIN' ||
+                    can('iam:roles:inactive') && (user.roleCode === 'SUPER_ADMIN' ||
                     item.isPrincipal === false)
                   "
                   icon

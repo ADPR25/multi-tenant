@@ -6,18 +6,17 @@ import {
   Logger,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, DataSource } from "typeorm";
+import { Repository, DataSource, IsNull } from "typeorm";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
 import { Cache } from "cache-manager";
 import { RolePermission } from "./entities/role-permission.entity";
+import { Role } from "../roles/entities/role.entity";
 import { CreateRolePermissionDto } from "./dto/create-role-permission.dto";
-import { UpdateRolePermissionDto } from "./dto/update-role-permission.dto";
 import { User } from "@/core/iam/users/entities/user.entity";
 
 @Injectable()
 export class RolePermissionsService {
   private readonly logger = new Logger(RolePermissionsService.name);
-
   constructor(
     @InjectRepository(RolePermission)
     private readonly repo: Repository<RolePermission>,
@@ -27,25 +26,22 @@ export class RolePermissionsService {
 
   private async clearCache(companyId: string, roleId: string) {
     await this.cacheManager.del(`perms:${companyId}:${roleId}`);
+  }
 
-    try {
-      const users = await this.repo.manager.find(User, {
-        where: { companyId, roleId },
-        select: {id: true},
-      });
-
-      if (users.length > 0) {
-        await Promise.all(
-          users.map((u) => this.cacheManager.del(`auth:${u.id}:${companyId}`))
-        );
-      }
-
-      this.logger.log(
-        `Cache invalidado perms:${companyId}:${roleId} + ${users.length} auth keys`
+  private async resolveCompanyId(
+    companyId: string | null,
+    roleId: string,
+  ): Promise<string> {
+    if (companyId) return companyId;
+    // Si viene de SUPER_ADMIN, obtener companyId del rol
+    const role = await this.dataSource
+      .getRepository(Role)
+      .findOne({ where: { id: roleId } });
+    if (!role?.companyId)
+      throw new NotFoundException(
+        "No se pudo resolver companyId para rol global",
       );
-    } catch (e) {
-      this.logger.warn(`Fallo al invalidar cache de auth para rol ${roleId}`, e);
-    }
+    return role.companyId;
   }
 
   async create(dto: CreateRolePermissionDto & { companyId: string }) {
@@ -56,19 +52,24 @@ export class RolePermissionsService {
         permissionId: dto.permissionId,
       },
     });
-    if (exists)
-      throw new ConflictException("Ese permiso ya está asignado a ese rol");
+    if (exists) throw new ConflictException("Ese permiso ya está asignado");
     const rp = this.repo.create(dto);
     const saved = await this.repo.save(rp);
     await this.clearCache(dto.companyId, dto.roleId);
     return saved;
   }
 
-  findAll(companyId: string, roleId?: string) {
-    return this.repo.find({
-      where: { companyId,...(roleId && { roleId }) },
-      relations: { permission: true },
-    });
+  async findAll(companyId: string | null, roleId?: string) {
+    let effectiveCompanyId = companyId;
+    if (!effectiveCompanyId && roleId) {
+      effectiveCompanyId = await this.resolveCompanyId(null, roleId).catch(
+        () => null as any,
+      );
+    }
+    const where: any = {};
+    if (effectiveCompanyId) where.companyId = effectiveCompanyId;
+    if (roleId) where.roleId = roleId;
+    return this.repo.find({ where, relations: { permission: true } });
   }
 
   async findOne(id: string, companyId: string) {
@@ -80,12 +81,15 @@ export class RolePermissionsService {
     return rp;
   }
 
-  async update(id: string, companyId: string, dto: UpdateRolePermissionDto) {
-    const rp = await this.findOne(id, companyId);
-    Object.assign(rp, dto);
-    const saved = await this.repo.save(rp);
-    await this.clearCache(companyId, rp.roleId);
-    return saved;
+  async findOneCompat(id: string, companyId: string | null) {
+    if (companyId) {
+      const rp = await this.repo.findOne({
+        where: { id, companyId } as any,
+        relations: { permission: true, role: true },
+      });
+      if (rp) return rp;
+    }
+    return this.findAll(companyId, id);
   }
 
   async remove(id: string, companyId: string) {
@@ -97,23 +101,33 @@ export class RolePermissionsService {
   }
 
   async syncRolePermissions(
-    companyId: string,
+    companyId: string | null,
     roleId: string,
-    permissions: CreateRolePermissionDto[],
+    permissionIds: string[],
   ) {
+    const effectiveCompanyId = await this.resolveCompanyId(companyId, roleId);
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
     try {
-      await queryRunner.manager.delete(RolePermission, { companyId, roleId });
-      const toCreate = queryRunner.manager.create(
-        RolePermission,
-        permissions.map((p) => ({...p, companyId, roleId })),
-      );
-      const saved = await queryRunner.manager.save(toCreate);
+      await queryRunner.manager.delete(RolePermission, {
+        companyId: effectiveCompanyId,
+        roleId,
+      } as any);
+      if (permissionIds.length) {
+        const toCreate = queryRunner.manager.create(
+          RolePermission,
+          permissionIds.map((pid) => ({
+            companyId: effectiveCompanyId,
+            roleId,
+            permissionId: pid,
+          })),
+        );
+        await queryRunner.manager.save(toCreate);
+      }
       await queryRunner.commitTransaction();
-      await this.clearCache(companyId, roleId);
-      return saved;
+      await this.clearCache(effectiveCompanyId, roleId);
+      return this.findAll(effectiveCompanyId, roleId);
     } catch (e) {
       await queryRunner.rollbackTransaction();
       throw e;

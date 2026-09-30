@@ -17,8 +17,8 @@ const isEdit = computed(() => !!props.company)
 
 const form = ref({
   name: '',
-  legalName: '',
-  taxId: '',
+  legal_name: '',
+  tax_id: '',
   email: '',
   phone: '',
   address: '',
@@ -28,8 +28,8 @@ const loadFormData = () => {
   if (props.company) {
     form.value = {
       name: props.company.name || '',
-      legalName: props.company.legalName || '',
-      taxId: props.company.taxId || '',
+      legal_name: props.company.legal_name || '',
+      tax_id: props.company.tax_id || '',
       email: props.company.email || '',
       phone: props.company.phone || '',
       address: props.company.address || '',
@@ -37,8 +37,8 @@ const loadFormData = () => {
   } else {
     form.value = {
       name: '',
-      legalName: '',
-      taxId: '',
+      legal_name: '',
+      tax_id: '',
       email: '',
       phone: '',
       address: '',
@@ -89,7 +89,7 @@ const submit = async () => {
       <v-col cols="12" md="6">
         <v-label>Razón social</v-label>
         <v-text-field
-          v-model="form.legalName"
+          v-model="form.legal_name"
           placeholder="Ej: Acme S.A.S. BIC"
           variant="outlined"
           density="comfortable"
@@ -98,7 +98,7 @@ const submit = async () => {
       <v-col cols="12" md="6">
         <v-label>NIT</v-label>
         <v-text-field
-          v-model="form.taxId"
+          v-model="form.tax_id"
           placeholder="900123456-1"
           variant="outlined"
           density="comfortable"

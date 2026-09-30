@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException, Inject } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcrypt";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, DataSource } from "typeorm";
+import { Repository, DataSource, IsNull } from "typeorm";
 import { ConfigService } from "@nestjs/config";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
 import { Cache } from "cache-manager";
@@ -11,6 +11,7 @@ import { LoginDto } from "./dto/login.dto";
 import { Role } from "../iam/roles/entities/role.entity";
 import { Session } from "./entities/session.entity";
 import { Company } from "../tenant/company/entities/company.entity";
+import { User } from "../iam/users/entities/user.entity";
 import * as crypto from "crypto";
 import {
   LoginResponseDto,
@@ -58,23 +59,33 @@ export class AuthService {
     if (!user.isActive) throw new UnauthorizedException("Usuario inactivo");
     if (!user.roleId)
       throw new UnauthorizedException("Usuario sin rol asignado");
-    const company = await this.companyRepo.findOne({
-      where: { id: user.companyId },
-    });
-    if (!company || !company.isActive)
-      throw new UnauthorizedException("Empresa inactiva");
+
     const isValid = await bcrypt.compare(dto.password, user.password);
     if (!isValid) throw new UnauthorizedException("Credenciales inválidas");
+
     const role = await this.roleRepo.findOne({ where: { id: user.roleId } });
     if (!role || !role.isActive)
       throw new UnauthorizedException("Rol inactivo");
+
+    const isSuperAdmin = role.code === "SUPER_ADMIN";
+
+    if (!isSuperAdmin) {
+      if (!user.companyId) {
+        throw new UnauthorizedException("Usuario sin empresa asignada");
+      }
+      const company = await this.companyRepo.findOne({
+        where: { id: user.companyId },
+      });
+      if (!company || !company.isActive)
+        throw new UnauthorizedException("Empresa inactiva");
+    }
 
     const jti = crypto.randomUUID();
     const payload = {
       sub: user.id,
       email: user.email,
       document_number: user.document_number,
-      companyId: user.companyId,
+      companyId: user.companyId || null,
       roleId: user.roleId,
       roleCode: role.code,
       jti,
@@ -84,12 +95,12 @@ export class AuthService {
     const familyId = crypto.randomUUID();
     const session = this.sessionRepo.create({
       id,
-      companyId: user.companyId,
+      companyId: user.companyId || (null as any),
       userId: user.id,
       familyId,
       refreshTokenHash: await bcrypt.hash(secret, this.getBcryptRounds()),
       expiresAt: new Date(Date.now() + this.getRefreshExpiresMs()),
-    });
+    } as any);
     await this.sessionRepo.save(session);
     return {
       access_token,
@@ -98,7 +109,7 @@ export class AuthService {
         id: user.id,
         email: user.email,
         document_number: user.document_number,
-        companyId: user.companyId,
+        companyId: user.companyId as any,
         roleId: user.roleId,
         roleCode: role.code,
         isPrincipal: role.isPrincipal,
@@ -129,24 +140,37 @@ export class AuthService {
     if (!isValid) throw new UnauthorizedException("Refresh inválido");
 
     return this.dataSource.transaction(async (manager) => {
-      const user = await this.usersService.findOne(
-        session.userId,
-        session.companyId,
-      );
-      if (!user.isActive) throw new UnauthorizedException("Usuario inactivo");
-      const company = await manager.findOne(Company, {
-        where: { id: session.companyId },
-      });
-      if (!company?.isActive)
-        throw new UnauthorizedException("Empresa inactiva");
+      let user: User | null;
+      if (session.companyId) {
+        user = await manager.findOne(User, {
+          where: { id: session.userId, companyId: session.companyId } as any,
+        });
+      } else {
+        user = await manager.findOne(User, {
+          where: { id: session.userId, companyId: IsNull() } as any,
+        });
+      }
+
+      if (!user || !user.isActive)
+        throw new UnauthorizedException("Usuario inactivo");
+
+      if (session.companyId) {
+        const company = await manager.findOne(Company, {
+          where: { id: session.companyId },
+        });
+        if (!company?.isActive)
+          throw new UnauthorizedException("Empresa inactiva");
+      }
+
       const role = await manager.findOne(Role, { where: { id: user.roleId! } });
       if (!role?.isActive) throw new UnauthorizedException("Rol inactivo");
+
       const jti = crypto.randomUUID();
       const payload = {
         sub: user.id,
         email: user.email,
         document_number: user.document_number,
-        companyId: user.companyId,
+        companyId: user.companyId || null,
         roleId: user.roleId,
         roleCode: role?.code,
         jti,
@@ -158,12 +182,12 @@ export class AuthService {
       } = this.generateRefreshToken();
       const newSession = manager.create(Session, {
         id,
-        companyId: session.companyId,
+        companyId: session.companyId || (null as any),
         userId: session.userId,
         familyId: session.familyId,
         refreshTokenHash: await bcrypt.hash(newSecret, this.getBcryptRounds()),
         expiresAt: new Date(Date.now() + this.getRefreshExpiresMs()),
-      });
+      } as any);
       await manager.save(newSession);
       session.revoked = true;
       session.replacedById = newSession.id;

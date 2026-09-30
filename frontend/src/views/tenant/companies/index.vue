@@ -17,7 +17,7 @@ const dialogActive = ref(false)
 const toggling = ref(false)
 
 const isSuperAdmin = computed(() => {
-  return user?.roleName === 'SUPER_ADMIN' || user?.role === 'SUPER_ADMIN'
+  return user?.roleCode === 'SUPER_ADMIN' || user?.role === 'SUPER_ADMIN'
 })
 
 const isSelectedActive = computed(() => !!selectedCompany.value?.isActive)
@@ -107,7 +107,7 @@ const onSaved = async () => {
 
 const headers = [
   { title: 'Nombre', key: 'name', minWidth: '160px' },
-  { title: 'NIT', key: 'taxId', minWidth: '130px' },
+  { title: 'NIT', key: 'tax_id', minWidth: '130px' },
   { title: 'Teléfono', key: 'phone', minWidth: '140px' },
   { title: 'Estado', key: 'isActive', minWidth: '110px', align: 'center' },
   { title: 'Creado', key: 'createdAt', minWidth: '130px' },

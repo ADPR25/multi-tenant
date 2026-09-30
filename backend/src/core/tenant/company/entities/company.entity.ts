@@ -9,9 +9,6 @@ export class Company extends BaseEntity {
   @Column({ length: 50 })
   legal_name: string;
 
-  @Column({ type: "smallint" })
-  document_type: number;
-
   @Column({ length: 30, unique: true })
   tax_id: string;
 

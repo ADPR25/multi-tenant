@@ -38,7 +38,7 @@ const initial = computed(() => props.company?.name?.charAt(0)?.toUpperCase() || 
           <div>
             <h2 class="text-2xl font-bold">{{ company.name || 'Sin nombre' }}</h2>
             <p class="text-white/80 flex items-center gap-2 mt-1">
-              <FileText class="h-4 w-4" /> {{ company.legalName || 'Sin razón social' }}
+              <FileText class="h-4 w-4" /> {{ company.legal_name || 'Sin razón social' }}
             </p>
           </div>
         </div>
@@ -66,11 +66,11 @@ const initial = computed(() => props.company?.name?.charAt(0)?.toUpperCase() || 
             </div>
             <div class="flex gap-3">
               <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-50 dark:bg-violet-500/10"><FileText class="h-4 w-4 text-violet-500" /></div>
-              <div><p class="text-xs text-gray-500">Razón Social</p><p class="font-medium text-gray-900 dark:text-white">{{ company.legalName || '-' }}</p></div>
+              <div><p class="text-xs text-gray-500">Razón Social</p><p class="font-medium text-gray-900 dark:text-white">{{ company.legal_name || '-' }}</p></div>
             </div>
             <div class="flex gap-3">
               <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-500/10"><Hash class="h-4 w-4 text-blue-500" /></div>
-              <div><p class="text-xs text-gray-500">NIT</p><p class="font-medium text-gray-900 dark:text-white">{{ company.taxId || '-' }}</p></div>
+              <div><p class="text-xs text-gray-500">NIT</p><p class="font-medium text-gray-900 dark:text-white">{{ company.tax_id || '-' }}</p></div>
             </div>
           </div>
         </div>

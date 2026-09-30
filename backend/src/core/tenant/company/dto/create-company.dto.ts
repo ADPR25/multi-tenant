@@ -10,10 +10,6 @@ export class CreateCompanyDto {
   legal_name: string;
 
   @IsNotEmpty()
-  @IsNumber()
-  document_type: number;
-
-  @IsNotEmpty()
   @IsString()
   tax_id: string;
 

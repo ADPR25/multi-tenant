@@ -1,8 +1,21 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from "@nestjs/common";
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Query,
+} from "@nestjs/common";
 import { UsersService } from "./users.service";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
-import { CurrentCompanyId, CurrentUser } from "@/common/decorators/current-company.decorator";
+import {
+  CurrentCompanyId,
+  CurrentUser,
+} from "@/common/decorators/current-company.decorator";
 import { JwtAuthGuard } from "@/common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "@/common/guards/permissions.guard";
 import { RequirePermissions } from "@/common/decorators/permissions.decorator";
@@ -14,32 +27,53 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  @RequirePermissions('iam:users:create')
-  create(@Body() dto: CreateUserDto, @CurrentCompanyId() companyId: string) {
-    return this.usersService.create({...dto, companyId });
+  @RequirePermissions("iam:users:create")
+  create(
+    @Body() dto: CreateUserDto & { companyId?: string },
+    @CurrentCompanyId() companyId: string | null,
+    @CurrentUser() user: any,
+  ) {
+    const isSuper =
+      user?.roleCode === "SUPER_ADMIN" || user?.code === "SUPER_ADMIN";
+    const effectiveCompanyId = isSuper ? dto.companyId || companyId : companyId;
+
+    return this.usersService.create({
+      ...dto,
+      companyId: effectiveCompanyId as string,
+    });
   }
 
   @Get()
-  @RequirePermissions('iam:users:read')
-  findAll(@CurrentCompanyId() companyId: string, @Query() pagination: PaginationDto) {
+  @RequirePermissions("iam:users:read")
+  findAll(
+    @CurrentCompanyId() companyId: string,
+    @Query() pagination: PaginationDto,
+  ) {
     return this.usersService.findAll(companyId, pagination);
   }
 
   @Get(":id")
-  @RequirePermissions('iam:users:read')
+  @RequirePermissions("iam:users:read")
   findOne(@Param("id") id: string, @CurrentCompanyId() companyId: string) {
     return this.usersService.findOne(id, companyId);
   }
 
   @Patch(":id")
-  @RequirePermissions('iam:users:update')
-  update(@Param("id") id: string, @CurrentCompanyId() companyId: string, @Body() dto: UpdateUserDto) {
-    return this.usersService.update(id, companyId, dto);
+  @RequirePermissions("iam:users:update")
+  update(
+    @Param("id") id: string,
+    @CurrentCompanyId() companyId: string | null,
+    @Body() dto: UpdateUserDto & { companyId?: string },
+    @CurrentUser() user: any,
+  ) {
+    const isSuper = user?.roleCode === "SUPER_ADMIN";
+    const effectiveCompanyId = isSuper ? dto.companyId || companyId : companyId;
+    return this.usersService.update(id, effectiveCompanyId as string, dto);
   }
 
-  @Delete(":id")
-  @RequirePermissions('iam:users:delete')
-  remove(@Param("id") id: string, @CurrentCompanyId() companyId: string) {
-    return this.usersService.remove(id, companyId);
+  @Patch("active/:id")
+  @RequirePermissions("documents:categories:state")
+  isActive(@Param("id") id: string, @CurrentCompanyId() companyId: string) {
+    return this.usersService.toggleActive(id, companyId);
   }
 }

@@ -135,8 +135,9 @@ export class UsersService {
     return result;
   }
 
-  async remove(id: string, companyId: string) {
-    const user = await this.findOne(id, companyId);
-    return this.repo.softRemove(user);
+  async toggleActive(id: string, companyId: string) {
+    const category = await this.findOne(id, companyId);
+    category.isActive = !category.isActive;
+    return this.repo.save(category);
   }
 }

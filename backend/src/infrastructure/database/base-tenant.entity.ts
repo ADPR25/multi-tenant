@@ -4,7 +4,7 @@ import { BaseEntity } from "./base.entity";
 
 export abstract class BaseTenantEntity extends BaseEntity {
   @Index()
-  @Column({ name: "company_id", type: "uuid" })
+  @Column({ name: "company_id", type: "uuid", nullable: true })
   companyId: string;
 
   @ManyToOne(() => Company, { onDelete: "RESTRICT" })

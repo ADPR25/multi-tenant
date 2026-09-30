@@ -22,6 +22,15 @@ export class PermissionsGuard implements CanActivate {
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
+  private isSuperAdmin(user: any, role?: Role | null): boolean {
+    return (
+      user?.roleCode === "SUPER_ADMIN" ||
+      user?.code === "SUPER_ADMIN" ||
+      user?.role?.code === "SUPER_ADMIN" ||
+      role?.code === "SUPER_ADMIN"
+    );
+  }
+
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
@@ -38,8 +47,12 @@ export class PermissionsGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
     if (!user?.roleId) throw new ForbiddenException("Sin rol asignado");
-    if (user.roleCode === "SUPER_ADMIN" || user.code === "SUPER_ADMIN")
-      return true;
+
+    if (this.isSuperAdmin(user)) return true;
+
+    if (!user.companyId) {
+      throw new ForbiddenException("Usuario sin empresa asignada");
+    }
 
     const cacheKey = `perms:${user.companyId}:${user.roleId}`;
     let perms: RolePermission[] | undefined =
@@ -49,7 +62,8 @@ export class PermissionsGuard implements CanActivate {
       const role = await this.dataSource
         .getRepository(Role)
         .findOne({ where: { id: user.roleId } });
-      if (role?.code === "SUPER_ADMIN") return true;
+
+      if (this.isSuperAdmin(user, role)) return true;
 
       perms = await this.dataSource.getRepository(RolePermission).find({
         where: { companyId: user.companyId, roleId: user.roleId },

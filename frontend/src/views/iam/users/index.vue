@@ -45,8 +45,8 @@ const onSaved = async () => {
 }
 
 const headers = [
-  { title: 'Numero de documento', key: 'documentNumber', minWidth: '180px' },
-  { title: 'Nombre', key: 'name', minWidth: '180px' },
+  { title: 'Numero de documento', key: 'document_number', minWidth: '180px' },
+  { title: 'Nombre', key: 'fullName', minWidth: '220px' },
   { title: 'Rol', key: 'role.name', minWidth: '180px' },
   { title: 'Estado', key: 'isActive', minWidth: '110px', align: 'center' },
   { title: 'Opciones', key: 'actions', minWidth: '120px', align: 'end', sortable: false },
@@ -89,18 +89,21 @@ onMounted(() => {
             class="bg-transparent"
             item-value="id"
           >
-            <template v-slot:item.isActive="{ item }">
-              <v-chip :color="item.isActive ? 'success' : 'error'" size="small" variant="tonal">{{
-                item.isActive ? 'Activo' : 'Inactivo'
-              }}</v-chip>
+            <template #item.fullName="{ item }">
+              {{ item.first_name }} {{ item.last_name }}
             </template>
-            <template v-slot:item.name="{ item }"
-              >{{ item.firstName }} {{ item.lastName }}</template
-            >
-            <template v-slot:item.document_number="{ item }">{{
-              porConfirmar(item.document_number)
-            }}</template>
-            <template v-slot:item.actions="{ item }">
+
+            <template #item.isActive="{ item }">
+              <v-chip :color="item.isActive ? 'success' : 'error'" size="small" variant="tonal">
+                {{ item.isActive ? 'Activo' : 'Inactivo' }}
+              </v-chip>
+            </template>
+
+            <template #item.document_number="{ item }">
+              {{ porConfirmar(item.document_number) }}
+            </template>
+
+            <template #item.actions="{ item }">
               <div class="flex justify-end gap-1">
                 <v-btn
                   v-if="can('iam:users:update')"

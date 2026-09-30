@@ -2,16 +2,16 @@ import { api } from "@/services/api/api";
 
 export const companiesService = {
   list() {
-    return api.request<any>('/companies')
+    return api.request<any>('/company')
   },
   getById(id: string) {
-    return api.request<any>(`/companies/${id}`)
+    return api.request<any>(`/company/${id}`)
   },
   create(payload: any) {
-    return api.request<any>('/companies', { method: 'POST', body: JSON.stringify(payload) })
+    return api.request<any>('/company', { method: 'POST', body: JSON.stringify(payload) })
   },
   update(id: string, payload: any) {
-    return api.request<any>(`/companies/${id}`, { method: 'PATCH', body: JSON.stringify(payload) })
+    return api.request<any>(`/company/${id}`, { method: 'PATCH', body: JSON.stringify(payload) })
   },
   toggleActive(id: string, isActive: boolean) {
     return this.update(id, { isActive })

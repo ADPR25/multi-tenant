@@ -1,9 +1,14 @@
-import { Injectable, ForbiddenException } from "@nestjs/common";
+import {
+  Injectable,
+  ForbiddenException,
+  NotFoundException,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository, DataSource } from "typeorm";
+import { In, Repository, DataSource, IsNull } from "typeorm";
 import { RoleMenu } from "./entities/role-menu.entity";
 import { Permission } from "@/core/iam/permissions/entities/permission.entity";
 import { RolePermission } from "@/core/iam/role-permissions/entities/role-permission.entity";
+import { Role } from "@/core/iam/roles/entities/role.entity";
 import {
   ACCESS_CATALOG,
   DEFAULT_SIDEBAR,
@@ -23,6 +28,8 @@ export class FrontendService {
     private readonly permRepo: Repository<Permission>,
     @InjectRepository(RolePermission)
     private readonly rolePermRepo: Repository<RolePermission>,
+    @InjectRepository(Role)
+    private readonly roleRepo: Repository<Role>,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -79,6 +86,7 @@ export class FrontendService {
   }
 
   private async ensurePermissionsSeeded(companyId: string): Promise<void> {
+    if (!companyId) return;
     const allNames = [
       ...new Set(
         ACCESS_CATALOG.flatMap((mod: CatalogModule) => {
@@ -109,11 +117,14 @@ export class FrontendService {
     }
   }
 
-  async getForRole(roleId: string, roleCode: string, companyId: string) {
+  async getForRole(roleId: string, roleCode: string, companyId: string | null) {
     if (this.isSuper(roleCode)) return SUPER_ADMIN_SIDEBAR;
-    const custom = await this.roleMenuRepo.findOne({
-      where: { roleId, companyId },
-    });
+
+    const where: any = { roleId };
+    if (companyId) where.companyId = companyId;
+    else where.companyId = IsNull();
+
+    const custom = await this.roleMenuRepo.findOne({ where });
     if (!custom?.sidebar?.length) return [];
     const allowedPaths = new Set(
       this.flattenSidebar(custom.sidebar as any).map((s) => s.path),
@@ -121,17 +132,28 @@ export class FrontendService {
     return this.filterSidebarByPaths(allowedPaths);
   }
 
-  async getRoutesForRole(roleId: string, roleCode: string, companyId: string) {
+  async getRoutesForRole(
+    roleId: string,
+    roleCode: string,
+    companyId: string | null,
+  ) {
     if (this.isSuper(roleCode)) return SUPER_ADMIN_ROUTES;
-    const custom = await this.roleMenuRepo.findOne({
-      where: { roleId, companyId },
-    });
+
+    const where: any = { roleId };
+    if (companyId) where.companyId = companyId;
+    else where.companyId = IsNull();
+
+    const custom = await this.roleMenuRepo.findOne({ where });
     return custom?.routes ?? [];
   }
 
-  async getRawForRole(roleId: string, companyId: string) {
+  async getRawForRole(roleId: string, companyId: string | null) {
+    const where: any = { roleId };
+    if (companyId) where.companyId = companyId;
+    else where.companyId = IsNull();
+
     return (
-      (await this.roleMenuRepo.findOne({ where: { roleId, companyId } })) ?? {
+      (await this.roleMenuRepo.findOne({ where })) ?? {
         sidebar: [],
         routes: [],
         roleId,
@@ -140,20 +162,38 @@ export class FrontendService {
   }
 
   async getAssignmentData(roleId: string, currentUser: any) {
-    const companyId = currentUser.companyId;
-    const roleCode = currentUser.roleCode || currentUser.code;
-    await this.ensurePermissionsSeeded(companyId);
+    const currentRoleCode = currentUser.roleCode || currentUser.code;
+    const isCurrentSuper = this.isSuper(currentRoleCode);
 
-    const target = await this.roleMenuRepo.findOne({
-      where: { roleId, companyId },
-    });
+    const targetRole = await this.roleRepo.findOne({ where: { id: roleId } });
+    if (!targetRole) throw new NotFoundException("Rol no encontrado");
+
+    const targetCompanyId = targetRole.companyId;
+
+    if (targetRole.code === "SUPER_ADMIN" && !targetCompanyId) {
+      return {
+        catalog: [...ACCESS_CATALOG],
+        allSidebar: DEFAULT_SIDEBAR,
+        assignedSidebar: SUPER_ADMIN_SIDEBAR,
+        allRoutes: DEFAULT_ROUTES,
+        assignedRoutes: SUPER_ADMIN_ROUTES,
+        allPermissions: [],
+        assignedPermissions: [],
+        roleId,
+      };
+    }
+
+    await this.ensurePermissionsSeeded(targetCompanyId as string);
+
+    const targetWhere: any = { roleId, companyId: targetCompanyId || IsNull() };
+    const target = await this.roleMenuRepo.findOne({ where: targetWhere });
     const rolePermissions = await this.rolePermRepo.find({
-      where: { roleId, companyId },
+      where: { roleId, companyId: targetCompanyId } as any,
     });
 
-    if (this.isSuper(roleCode)) {
+    if (isCurrentSuper) {
       const allPermissions = await this.permRepo.find({
-        where: { companyId },
+        where: { companyId: targetCompanyId } as any,
         order: { name: "ASC" },
       });
       return {
@@ -168,8 +208,9 @@ export class FrontendService {
       };
     }
 
+    const myCompanyId = currentUser.companyId;
     const myRoleMenu = await this.roleMenuRepo.findOne({
-      where: { roleId: currentUser.roleId, companyId },
+      where: { roleId: currentUser.roleId, companyId: myCompanyId },
     });
     if (!myRoleMenu?.sidebar?.length) {
       return {
@@ -200,11 +241,11 @@ export class FrontendService {
     }).filter((m): m is CatalogModule => m !== null);
 
     const myPerms = await this.rolePermRepo.find({
-      where: { roleId: currentUser.roleId, companyId },
+      where: { roleId: currentUser.roleId, companyId: myCompanyId },
     });
     const allowedPermissionIds = new Set(myPerms.map((p) => p.permissionId));
     let allPermissions = await this.permRepo.find({
-      where: { companyId },
+      where: { companyId: myCompanyId },
       order: { name: "ASC" },
     });
     allPermissions = allPermissions.filter((p) =>
@@ -234,22 +275,31 @@ export class FrontendService {
     currentUser: any,
     permissions?: string[],
   ) {
-    const companyId = currentUser.companyId;
-    const roleCode = currentUser.roleCode || currentUser.code;
+    const currentRoleCode = currentUser.roleCode || currentUser.code;
+    const isCurrentSuper = this.isSuper(currentRoleCode);
 
-    await this.ensurePermissionsSeeded(companyId);
+    const targetRole = await this.roleRepo.findOne({ where: { id: roleId } });
+    if (!targetRole) throw new NotFoundException("Rol no encontrado");
+    const targetCompanyId = targetRole.companyId;
 
-    if (!this.isSuper(roleCode)) {
+    if (targetRole.code === "SUPER_ADMIN" && !targetCompanyId) {
+      throw new ForbiddenException(
+        "No puedes modificar el rol SUPER_ADMIN global",
+      );
+    }
+
+    await this.ensurePermissionsSeeded(targetCompanyId as string);
+
+    if (!isCurrentSuper) {
       const myRoleMenu = await this.roleMenuRepo.findOne({
-        where: { roleId: currentUser.roleId, companyId },
+        where: { roleId: currentUser.roleId, companyId: currentUser.companyId },
       });
       const allowedMyPaths = new Set(
         this.flattenSidebar((myRoleMenu?.sidebar as any) ?? []).map(
           (s) => s.path,
         ),
       );
-      if (sidebar.length === 0 && allowedMyPaths.size === 0) {
-      } else if (
+      if (
         this.flattenSidebar(sidebar).some((s) => !allowedMyPaths.has(s.path))
       ) {
         throw new ForbiddenException(
@@ -258,7 +308,10 @@ export class FrontendService {
       }
       if (permissions?.length) {
         const myPerms = await this.rolePermRepo.find({
-          where: { roleId: currentUser.roleId, companyId },
+          where: {
+            roleId: currentUser.roleId,
+            companyId: currentUser.companyId,
+          },
         });
         const allowedIds = new Set(myPerms.map((p) => p.permissionId));
         if (permissions.some((id) => !allowedIds.has(id))) {
@@ -272,15 +325,15 @@ export class FrontendService {
     const autoRoutes = this.resolveRoutesFromSidebar(sidebar);
 
     return await this.dataSource.transaction(async (manager) => {
-      let existing = await manager.findOne(RoleMenu, {
-        where: { roleId, companyId },
-      });
+      const where: any = { roleId, companyId: targetCompanyId || IsNull() };
+      let existing = await manager.findOne(RoleMenu, { where });
+
       if (!existing) {
         existing = manager.create(RoleMenu, {
           roleId,
           sidebar,
           routes: autoRoutes,
-          companyId,
+          companyId: targetCompanyId,
         } as any);
       } else {
         existing.sidebar = sidebar as any;
@@ -289,14 +342,17 @@ export class FrontendService {
       await manager.save(existing);
 
       if (permissions !== undefined) {
-        await manager.delete(RolePermission, { roleId, companyId });
+        await manager.delete(RolePermission, {
+          roleId,
+          companyId: targetCompanyId,
+        } as any);
         if (permissions.length > 0) {
           const entities = manager.create(
             RolePermission,
             permissions.map((permissionId) => ({
               roleId,
               permissionId,
-              companyId,
+              companyId: targetCompanyId,
             })),
           );
           await manager.save(entities);

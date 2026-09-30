@@ -123,10 +123,6 @@ const assignedSet = computed(() => new Set(assignment.value.assignedSidebar.map(
 const isAssigned = (item) => assignedSet.value.has(item.path)
 const isGroupAssigned = (g) => (g.children ? g.children.every((c) => isAssigned(c)) : isAssigned(g))
 const isGroupPartial = (g) => g.children?.some((c) => isAssigned(c)) && !isGroupAssigned(g)
-const clean = (item) => {
-  const { __parent, ...rest } = item
-  return rest
-}
 const toggleItem = (item) => {
   const idx = assignment.value.assignedSidebar.findIndex((s) => s.path === item.path)
   if (idx !== -1) assignment.value.assignedSidebar.splice(idx, 1)
@@ -231,15 +227,32 @@ const fetchAssignment = async () => {
   }
 }
 
+const clean = (item) => {
+  return {
+    name: item.name,
+    title: item.title || item.name,
+    path: item.path,
+    icon: item.icon || 'LayoutDashboard',
+    ...(item.children
+      ? {
+          children: item.children.map((c) => ({
+            name: c.name,
+            title: c.title || c.name,
+            path: c.path,
+            icon: c.icon || 'LayoutDashboard',
+          })),
+        }
+      : {}),
+  }
+}
+
 const save = async () => {
   saving.value = true
   try {
     const sidebarToSave = assignment.value.assignedSidebar.map(clean)
-    const routesToSave = assignment.value.assignedSidebar.map((s) => s.path)
 
     await menusService.saveAssignment(props.role.id, {
       sidebar: sidebarToSave,
-      routes: routesToSave,
       permissions: assignment.value.assignedPermissions,
     })
     emit('saved')

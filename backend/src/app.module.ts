@@ -13,6 +13,7 @@ import { AuditInterceptor } from "@/infrastructure/audit/interceptors/audit.inte
 import { AuditModule } from "@/infrastructure/audit/audit.module";
 import { Modules } from "./modules/modules.module";
 import { CoreModule } from "./core/core.module";
+import { SeedsModule } from "./infrastructure/database/seeds/seeds.module";
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { CoreModule } from "./core/core.module";
     AuditModule,
     CoreModule,
     Modules,
+    SeedsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

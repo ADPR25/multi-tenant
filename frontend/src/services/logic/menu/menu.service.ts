@@ -1,5 +1,4 @@
 import { api } from '../../api/api'
-
 export interface SidebarItem {
   title: string
   path: string
@@ -7,8 +6,8 @@ export interface SidebarItem {
   children?: SidebarItem[]
   permission?: string
   meta?: Record<string, unknown>
+  name?: string
 }
-
 export interface RouteItem {
   path: string
   name: string
@@ -17,35 +16,31 @@ export interface RouteItem {
   componentPath?: string
   meta?: Record<string, unknown>
 }
-
 export const menuService = {
   getSidebar() {
-    return api.request<SidebarItem[]>('/menus/sidebar')
+    return api.request<SidebarItem[]>('/frontend/sidebar')
   },
   getRoutes() {
-    return api.request<RouteItem[]>('/menus/routes')
+    return api.request<RouteItem[]>('/frontend/routes')
   },
   getSidebarRaw() {
-    return api.request<SidebarItem[]>('/menus/sidebar/raw')
+    return api.request<SidebarItem[]>('/frontend/sidebar/raw')
   },
   getRoutesRaw() {
-    return api.request<RouteItem[]>('/menus/routes/raw')
+    return api.request<RouteItem[]>('/frontend/routes/raw')
   },
   getRawForRole(roleId: string) {
-    return api.request<{ sidebar: SidebarItem[]; routes: RouteItem[] }>(`/menus/roles/${roleId}/raw`)
+    return api.request<{ sidebar: SidebarItem[]; routes: RouteItem[] }>(
+      `/frontend/roles/${roleId}/raw`,
+    )
   },
   getAssignmentData(roleId: string) {
-    return api.request<{ 
-      allPermissions: string[]
-      rolePermissions: string[]
-      sidebar: SidebarItem[]
-      routes: RouteItem[]
-    }>(`/menus/roles/${roleId}/assignment-data`)
+    return api.request<any>(`/frontend/roles/${roleId}/assignment-data`)
   },
-  saveForRole(roleId: string, payload: { sidebar: SidebarItem[]; routes: RouteItem[]; permissions?: string[] }) {
-    return api.request(`/menus/roles/${roleId}/menus`, {
+  saveForRole(roleId: string, payload: any) {
+    return api.request(`/frontend/roles/${roleId}/menus`, {
       method: 'PUT',
       body: JSON.stringify(payload),
     })
-  }
+  },
 }

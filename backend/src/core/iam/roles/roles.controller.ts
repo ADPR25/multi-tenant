@@ -8,11 +8,15 @@ import {
   Delete,
   UseGuards,
   Query,
+  ConflictException,
 } from "@nestjs/common";
 import { RolesService } from "./roles.service";
 import { CreateRoleDto } from "./dto/create-role.dto";
 import { UpdateRoleDto } from "./dto/update-role.dto";
-import { CurrentCompanyId } from "@/common/decorators/current-company.decorator";
+import {
+  CurrentCompanyId,
+  CurrentUser,
+} from "@/common/decorators/current-company.decorator";
 import { JwtAuthGuard } from "@/common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "@/common/guards/permissions.guard";
 import { RequirePermissions } from "@/common/decorators/permissions.decorator";
@@ -25,8 +29,28 @@ export class RolesController {
 
   @Post()
   @RequirePermissions("iam:roles:create")
-  create(@Body() dto: CreateRoleDto, @CurrentCompanyId() companyId: string) {
-    return this.rolesService.create({ ...dto, companyId });
+  create(
+    @Body() dto: CreateRoleDto & { companyId?: string },
+    @CurrentCompanyId() companyId: string | null,
+    @CurrentUser() user: any,
+  ) {
+    const isSuper =
+      user?.roleCode === "SUPER_ADMIN" || user?.code === "SUPER_ADMIN";
+    const effectiveCompanyId = isSuper ? dto.companyId : companyId;
+
+    console.log(
+      dto,
+      "tokenCompany:",
+      companyId,
+      "effective:",
+      effectiveCompanyId,
+    );
+
+    if (!effectiveCompanyId) {
+      throw new ConflictException("companyId es requerido");
+    }
+
+    return this.rolesService.create({ ...dto, companyId: effectiveCompanyId });
   }
 
   @Get()
@@ -48,10 +72,13 @@ export class RolesController {
   @RequirePermissions("iam:roles:update")
   update(
     @Param("id") id: string,
-    @CurrentCompanyId() companyId: string,
-    @Body() dto: UpdateRoleDto,
+    @CurrentCompanyId() companyId: string | null,
+    @Body() dto: UpdateRoleDto & { companyId?: string },
+    @CurrentUser() user: any,
   ) {
-    return this.rolesService.update(id, companyId, dto);
+    const isSuper = user?.roleCode === "SUPER_ADMIN";
+    const effectiveCompanyId = isSuper ? dto.companyId || companyId : companyId;
+    return this.rolesService.update(id, effectiveCompanyId as string, dto);
   }
 
   @Delete(":id")

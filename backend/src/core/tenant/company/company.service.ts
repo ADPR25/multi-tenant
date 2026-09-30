@@ -13,7 +13,10 @@ import { Permission } from "@/core/iam/permissions/entities/permission.entity";
 import { RolePermission } from "@/core/iam/role-permissions/entities/role-permission.entity";
 import { CompanySetting } from "../company-settings/entities/company-setting.entity";
 import { PaginationDto } from "@/common/dto/pagination.dto";
-import { paginate, paginatedResponse } from "@/common/helpers/pagination.helper";
+import {
+  paginate,
+  paginatedResponse,
+} from "@/common/helpers/pagination.helper";
 import { ACCESS_CATALOG } from "@/modules/frontend/data/access.catalog";
 
 @Injectable()
@@ -34,49 +37,6 @@ export class CompanyService {
     return this.dataSource.transaction(async (manager) => {
       const company = manager.create(Company, dto);
       const savedCompany = await manager.save(company);
-
-      let superRole = manager.create(Role, {
-        companyId: savedCompany.id,
-        name: "SUPER ADMIN",
-        code: "SUPER_ADMIN",
-        description: "Rol con acceso total al sistema",
-        isPrincipal: true,
-        isActive: true,
-      });
-      superRole = await manager.save(superRole);
-
-      // FIX: Se alimenta 100% del ACCESS_CATALOG, no hardcodeado
-      const allPermissionNames = [
-        ...new Set(
-          ACCESS_CATALOG.flatMap((mod) =>
-            mod.children
-              ? mod.children.flatMap((c) => c.permissions ?? [])
-              : mod.permissions ?? []
-          )
-        ),
-      ];
-
-      for (const permName of allPermissionNames) {
-        let perm = await manager.findOne(Permission, {
-          where: { companyId: savedCompany.id, name: permName },
-        });
-        if (!perm) {
-          perm = manager.create(Permission, {
-            companyId: savedCompany.id,
-            name: permName,
-            description: permName,
-            module: permName.split(":")[0],
-          });
-          perm = await manager.save(perm);
-        }
-        const rp = manager.create(RolePermission, {
-          companyId: savedCompany.id,
-          roleId: superRole.id,
-          permissionId: perm.id,
-        });
-        await manager.save(rp);
-      }
-
       const settings = manager.create(CompanySetting, {
         companyId: savedCompany.id,
         language: "es",

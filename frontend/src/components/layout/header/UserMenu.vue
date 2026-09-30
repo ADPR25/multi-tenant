@@ -27,7 +27,7 @@
         </span>
 
         <span class="mt-0.5 block text-theme-xs text-gray-500 dark:text-gray-400">
-          {{ user.roleName }}
+          {{ user.roleCode }}
         </span>
       </div>
 

@@ -17,12 +17,11 @@ const companies = ref([])
 const form = ref({
   name: '',
   description: '',
-  companyId: null,
-  isActive: true,
-  isPrincipal: false
+  isPrincipal: false,
+  companyId: '',
 })
 
-if (user.roleName!== 'SUPER_ADMIN') {
+if (user?.roleCode !== 'SUPER_ADMIN' && user?.companyId) {
   form.value.companyId = user.companyId
 }
 
@@ -30,7 +29,7 @@ const loading = ref(false)
 const error = ref('')
 const errors = ref({})
 
-const isEditMode = computed(() => props.isEdit ||!!props.role?.id)
+const isEditMode = computed(() => props.isEdit || !!props.role?.id)
 
 watch(
   () => props.role,
@@ -39,17 +38,15 @@ watch(
       form.value = {
         name: val.name || '',
         description: val.description || '',
-        companyId: val.companyId || null,
-        isActive: val.isActive?? true,
-        isPrincipal: val.isPrincipal?? false
+        isPrincipal: val.isPrincipal ?? false,
+        companyId: val.companyId || user?.companyId || '',
       }
     } else {
       form.value = {
         name: '',
         description: '',
-        companyId: user.roleName!== 'SUPER_ADMIN'? user.companyId : null,
-        isActive: true,
-        isPrincipal: false
+        isPrincipal: false,
+        companyId: user?.roleCode !== 'SUPER_ADMIN' ? user?.companyId || '' : '',
       }
     }
   },
@@ -63,6 +60,9 @@ const validate = () => {
   } else if (form.value.name.trim().length < 3) {
     errors.value.name = 'Mínimo 3 caracteres'
   }
+  if (user?.roleCode === 'SUPER_ADMIN' && !form.value.companyId) {
+    errors.value.companyId = 'Debes seleccionar una empresa'
+  }
   return Object.keys(errors.value).length === 0
 }
 
@@ -75,15 +75,14 @@ const submit = async () => {
     const payload = {
       name: form.value.name.trim(),
       description: form.value.description?.trim() || undefined,
-      isActive: form.value.isActive,
       isPrincipal: form.value.isPrincipal,
-      companyId: form.value.companyId
+      companyId: form.value.companyId,
     }
 
     Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k])
 
     const data = isEditMode.value
-     ? await rolesService.update(props.role.id, payload)
+      ? await rolesService.update(props.role.id, payload)
       : await rolesService.create(payload)
 
     if (isEditMode.value) {
@@ -93,19 +92,19 @@ const submit = async () => {
     }
   } catch (e) {
     console.error(e)
-    error.value = e.message
+    error.value = e.message || 'Error al guardar el rol'
   } finally {
     loading.value = false
   }
 }
 
 onMounted(async () => {
-  if (user.roleName === 'SUPER_ADMIN') {
+  if (user?.roleCode === 'SUPER_ADMIN') {
     try {
       const data = await companiesService.list()
-      companies.value = Array.isArray(data)? data : data.data || []
+      companies.value = Array.isArray(data) ? data : data.data || []
     } catch (e) {
-      console.error(e)
+      console.error('Error cargando empresas', e)
     }
   }
 })
@@ -121,7 +120,7 @@ onMounted(async () => {
       </div>
       <div>
         <h2 class="text-lg font-bold text-gray-800 dark:text-white/90">
-          {{ isEditMode? 'Editar rol' : 'Nuevo rol' }}
+          {{ isEditMode ? 'Editar rol' : 'Nuevo rol' }}
         </h2>
         <p class="text-sm text-gray-500">Define el nombre y descripción del rol</p>
       </div>
@@ -139,7 +138,7 @@ onMounted(async () => {
     </v-alert>
 
     <v-row>
-      <v-col>
+      <v-col cols="12" md="6">
         <v-label> Nombre del rol <span class="text-red-500">*</span> </v-label>
         <v-text-field
           v-model="form.name"
@@ -155,8 +154,8 @@ onMounted(async () => {
           Usa mayúsculas sin espacios si es un código interno
         </p>
       </v-col>
-      <v-col v-if="user.roleName === 'SUPER_ADMIN'" cols="6" md="6" sm="12">
-        <v-label> Empresa </v-label>
+      <v-col v-if="user?.roleCode === 'SUPER_ADMIN'" cols="12" md="6">
+        <v-label> Empresa <span class="text-red-500">*</span> </v-label>
         <v-autocomplete
           v-model="form.companyId"
           variant="outlined"
@@ -164,7 +163,12 @@ onMounted(async () => {
           :items="companies"
           item-title="name"
           item-value="id"
+          placeholder="Selecciona empresa"
+          :error="!!errors.companyId"
+          hide-details
+          class="rounded-xl"
         />
+        <p v-if="errors.companyId" class="text-xs text-red-500 mt-1.5">{{ errors.companyId }}</p>
       </v-col>
       <v-col cols="12">
         <v-label>
@@ -182,7 +186,7 @@ onMounted(async () => {
           class="rounded-xl"
         />
       </v-col>
-      <v-col cols="12" v-if="user.roleName === 'SUPER_ADMIN'">
+      <v-col cols="12" v-if="user?.roleCode === 'SUPER_ADMIN'">
         <div
           class="rounded-xl border border-amber-200 bg-amber-50/50 p-4 dark:border-amber-800/30 dark:bg-amber-900/10"
         >
@@ -230,7 +234,7 @@ onMounted(async () => {
         <v-btn @click="submit" color="primary" :loading="loading" :disabled="loading">
           <Loader2 v-if="loading" class="h-4 w-4 mr-2 animate-spin" />
           <Save v-else class="h-4 w-4 mr-2" />
-          {{ isEditMode? 'Actualizar' : 'Crear rol' }}
+          {{ isEditMode ? 'Actualizar' : 'Crear rol' }}
         </v-btn>
       </v-col>
     </v-row>

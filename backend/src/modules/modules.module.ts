@@ -8,6 +8,7 @@ import { DocumentsModule } from "./documents/document.module";
   imports: [
     InventoryModule,
     FrontendModule,
+    DocumentsModule,
     RouterModule.register([
       { path: "inventory", module: InventoryModule },
       { path: "document_management", module: DocumentsModule }, 
