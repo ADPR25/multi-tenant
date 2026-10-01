@@ -1,20 +1,32 @@
-import { IsOptional, IsInt, Min, Max } from "class-validator";
-import { Type } from "class-transformer";
+import { IsOptional, IsInt, Min } from "class-validator";
+import { Transform } from "class-transformer";
+import { ValidateIf } from "class-validator";
 
 export class PaginationDto {
-  @IsOptional({ message: "La página es opcional" })
-  @Type(() => Number)
-  @IsInt({ message: "La página debe ser un número entero" })
-  @Min(1, { message: "La página mínima es 1" })
+  @IsOptional()
+  @Transform(({ value }) => Number(value))
+  @IsInt()
+  @Min(1)
   page: number = 1;
 
-  @IsOptional({ message: "El límite es opcional" })
-  @Type(() => Number)
-  @IsInt({ message: "El límite debe ser un número entero" })
-  @Min(1, { message: "El límite mínimo es 1" })
-  limit: number = 20;
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === 'all') return 'all';
+    return Number(value);
+  })
+  @ValidateIf(o => o.limit !== 'all')
+  @IsInt({ message: "El límite debe ser un número entero o 'all'" })
+  @Min(1)
+  limit: number | 'all' = 20;
 
-  get skip() { return (this.page - 1) * this.limit; }
+  get skip() { 
+    if (this.limit === 'all') return 0;
+    return (this.page - 1) * (this.limit as number); 
+  }
+
+  get isAll() {
+    return this.limit === 'all';
+  }
 }
 
 export class PaginatedResponseDto<T> {

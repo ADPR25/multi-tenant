@@ -17,6 +17,7 @@ import { PermissionsGuard } from "@/common/guards/permissions.guard";
 import { RequirePermissions } from "@/common/decorators/permissions.decorator";
 import { CurrentCompanyId } from "@/common/decorators/current-company.decorator";
 import { PaginationDto } from "@/common/dto/pagination.dto";
+import { FilterDto } from "@/common/filters/filter.dto";
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller("categories")
@@ -36,11 +37,17 @@ export class CategoriesController {
   @RequirePermissions("inventory:categories:read")
   findAll(
     @CurrentCompanyId() companyId: string,
-    @Query() pagination: PaginationDto,
-    @Query("state") state?: string,
+    @Query() filter: FilterDto,
   ) {
-    const isActive = state !== undefined ? state === "true" : undefined;
-    return this.categoriesService.findAll(companyId, pagination, isActive);
+    const isActive =
+      filter.state !== undefined ? filter.state === "true" : undefined;
+    return this.categoriesService.findAll(
+      companyId,
+      filter,
+      isActive,
+      filter.search?.trim(),
+      filter.find,
+    );
   }
 
   @Patch("active/:id")

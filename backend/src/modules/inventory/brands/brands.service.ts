@@ -62,13 +62,17 @@ export class BrandsService {
     pagination: PaginationDto,
     state?: boolean,
     search?: string,
+    find?: string,
   ) {
+    const isSelect = find === "select" || find?.includes("select");
+
     if (!search) {
       const [data, total] = await this.repoService.findAndCount({
         where: {
           companyId,
           ...(state !== undefined ? { isActive: state } : {}),
         },
+        ...(isSelect ? { select: ["id", "name"] as const } : {}),
         order: { createdAt: "DESC" },
         ...paginate(pagination),
       });

@@ -1,28 +1,46 @@
-import { Injectable, NotFoundException, ConflictException } from "@nestjs/common";
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from "@nestjs/common";
 import { CreateUomDto } from "./dto/create-uom.dto";
 import { UpdateUomDto } from "./dto/update-uom.dto";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Uom } from "./entities/uom.entity";
 import { Repository } from "typeorm";
-import { paginate, paginatedResponse } from "@/common/helpers/pagination.helper";
+import {
+  paginate,
+  paginatedResponse,
+} from "@/common/helpers/pagination.helper";
 import { PaginationDto } from "@/common/dto/pagination.dto";
 
 @Injectable()
 export class UomService {
-  constructor(@InjectRepository(Uom) private readonly repoService: Repository<Uom>) {}
+  constructor(
+    @InjectRepository(Uom) private readonly repoService: Repository<Uom>,
+  ) {}
 
   async create(dto: CreateUomDto, companyId: string) {
-    const exists = await this.repoService.findOne({ where: { companyId, name: dto.name } });
+    const exists = await this.repoService.findOne({
+      where: { companyId, name: dto.name },
+    });
     if (exists) throw new ConflictException(`UoM ${dto.name} ya existe`);
-    const create = this.repoService.create({...dto, companyId });
+    const create = this.repoService.create({ ...dto, companyId });
     return this.repoService.save(create);
   }
 
-  async findAll(companyId: string, pagination: PaginationDto, state?: boolean) {
+  async findAll(
+    companyId: string,
+    pagination: PaginationDto,
+    state?: boolean,
+    find?: string,
+  ) {
+    const isSelect = find === "select" || find?.includes("select");
     const [data, total] = await this.repoService.findAndCount({
-      where: { companyId,...(state!== undefined? { isActive: state } : {}) },
+      where: { companyId, ...(state !== undefined ? { isActive: state } : {}) },
       order: { createdAt: "DESC" },
-     ...paginate(pagination),
+      ...(isSelect ? { select: ["id", "name"] as const } : {}),
+      ...paginate(pagination),
     });
     return paginatedResponse(data, total, pagination);
   }
@@ -41,7 +59,7 @@ export class UomService {
 
   async toggleActive(id: string, companyId: string) {
     const uom = await this.findOne(id, companyId);
-    uom.isActive =!uom.isActive;
+    uom.isActive = !uom.isActive;
     return this.repoService.save(uom);
   }
 }

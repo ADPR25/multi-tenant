@@ -9,4 +9,12 @@ export class FilterDto extends PaginationDto {
   @IsOptional()
   @IsString()
   state?: string;
+
+  @IsOptional()
+  @IsString()
+  find?: string;
+
+  @IsOptional()
+  @IsString()
+  parentId?: string | null;
 }

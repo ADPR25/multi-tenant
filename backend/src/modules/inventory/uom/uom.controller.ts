@@ -17,6 +17,7 @@ import { PermissionsGuard } from "@/common/guards/permissions.guard";
 import { RequirePermissions } from "@/common/decorators/permissions.decorator";
 import { CurrentCompanyId } from "@/common/decorators/current-company.decorator";
 import { PaginationDto } from "@/common/dto/pagination.dto";
+import { FilterDto } from "@/common/filters/filter.dto";
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller("uom")
@@ -34,13 +35,15 @@ export class UomController {
 
   @Get()
   @RequirePermissions("inventory:uom:read")
-  findAll(
-    @CurrentCompanyId() companyId: string,
-    @Query() pagination: PaginationDto,
-    @Query("state") state?: string,
-  ) {
-    const isActive = state !== undefined ? state === "true" : undefined;
-    return this.uomService.findAll(companyId, pagination, isActive);
+  findAll(@CurrentCompanyId() companyId: string, @Query() filter: FilterDto) {
+    const isActive =
+      filter.state !== undefined ? filter.state === "true" : undefined;
+    return this.uomService.findAll(
+      companyId,
+      filter,
+      isActive,
+      filter.find,
+    );
   }
 
   @Get(":id")

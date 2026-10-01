@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "rootDir": "./src",
+    "rootDir": "src",
     "baseUrl": "./",
     "module": "commonjs",
     "target": "ES2021",

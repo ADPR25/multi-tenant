@@ -35,7 +35,10 @@ export class BrandsController {
 
   @Get()
   @RequirePermissions("inventory:brands:read")
-  findAll(@CurrentCompanyId() companyId: string, @Query() filter: FilterDto) {
+  findAll(
+    @CurrentCompanyId() companyId: string,
+    @Query() filter: FilterDto,
+  ) {
     const isActive =
       filter.state !== undefined ? filter.state === "true" : undefined;
     return this.brandsService.findAll(
@@ -43,6 +46,7 @@ export class BrandsController {
       filter,
       isActive,
       filter.search?.trim(),
+      filter.find,
     );
   }
 

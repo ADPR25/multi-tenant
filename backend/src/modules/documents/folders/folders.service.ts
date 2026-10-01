@@ -8,13 +8,14 @@ import { CreateFolderDto } from "./dto/create-folder.dto";
 import { UpdateFolderDto } from "./dto/update-folder.dto";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Folder } from "./entities/folder.entity";
-import { Repository, IsNull } from "typeorm";
+import { Repository, IsNull, Raw } from "typeorm";
 import {
   paginate,
   paginatedResponse,
 } from "@/common/helpers/pagination.helper";
 import { PaginationDto } from "@/common/dto/pagination.dto";
 import { UsersService } from "@/core/iam/users/users.service";
+import { FilterDto } from "@/common/filters/filter.dto";
 
 @Injectable()
 export class FoldersService {
@@ -66,13 +67,23 @@ export class FoldersService {
 
   async findAll(
     companyId: string,
-    pagination: PaginationDto & { parentId?: string },
+    pagination: FilterDto,
     state?: boolean,
+    find?: string,
   ) {
+    const isList = find === "list" || find?.includes("list");
+
     const where: any = {
       companyId,
       ...(state !== undefined ? { isActive: state } : {}),
     };
+
+    if (isList) {
+      where.ownerFolderName = Raw(
+        (alias) => `(${alias} IS NULL OR ${alias} = '')`,
+      );
+    }
+
     if (pagination.parentId !== undefined) {
       where.parentId =
         pagination.parentId === null ||
@@ -81,12 +92,14 @@ export class FoldersService {
           ? IsNull()
           : pagination.parentId;
     }
+
     const [data, total] = await this.repo.findAndCount({
       where,
       relations: { parent: true },
       order: { createdAt: "DESC" },
       ...paginate(pagination),
     });
+
     const mapped = data.map((f: any) => ({
       id: f.id,
       createdAt: f.createdAt,
@@ -100,6 +113,7 @@ export class FoldersService {
       ownerFolderName: f.ownerFolderName,
       createdBy: f.createdBy,
     }));
+
     return paginatedResponse(mapped, total, pagination);
   }
 

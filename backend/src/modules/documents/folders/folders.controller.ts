@@ -12,11 +12,11 @@ import { FoldersService } from "./folders.service";
 import { CreateFolderDto } from "./dto/create-folder.dto";
 import { UpdateFolderDto } from "./dto/update-folder.dto";
 import { RequirePermissions } from "@/common/decorators/permissions.decorator";
-import { CurrentCompanyId } from "@/common/decorators/current-company.decorator";
-import { CurrentUser } from "@/common/decorators/current-user.decorator";
+import { CurrentCompanyId, CurrentUser } from "@/common/decorators/current-company.decorator";
 import { PaginationDto } from "@/common/dto/pagination.dto";
 import { JwtAuthGuard } from "@/common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "@/common/guards/permissions.guard";
+import { FilterDto } from "@/common/filters/filter.dto";
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller("folders")
@@ -45,13 +45,15 @@ export class FoldersController {
 
   @Get()
   @RequirePermissions("documents:folders:read")
-  findAll(
-    @CurrentCompanyId() companyId: string,
-    @Query() pagination: PaginationDto & any,
-    @Query("state") state?: string,
-  ) {
-    const isActive = state !== undefined ? state === "true" : undefined;
-    return this.foldersService.findAll(companyId, pagination, isActive);
+  findAll(@CurrentCompanyId() companyId: string, @Query() filter: FilterDto) {
+    const isActive =
+      filter.state !== undefined ? filter.state === "true" : undefined;
+    return this.foldersService.findAll(
+      companyId,
+      filter,
+      isActive,
+      filter.find,
+    );
   }
 
   @Get(":id")
