@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import type { Ref } from 'vue'
 import { foldersService, documentsService } from '@/services'
 import { get } from '@/store/authstore'
 import {
@@ -15,6 +16,8 @@ import {
   HardDrive,
   Shield,
   Users,
+  X,
+  TrashIcon,
 } from 'lucide-vue-next'
 
 const breadcrumb = ref<any[]>([])
@@ -26,10 +29,17 @@ const uploading = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const parentRequirement = ref<any>(null)
 const searchQuery = ref('')
+const isDragging = ref(false)
+
+// preview con tipado correcto
 const previewDoc = ref<any>(null)
 const showPreview = ref(false)
-const previewUrl = ref<string | null>(null)
-const isDragging = ref(false)
+const previewBlobUrl = ref(null) as Ref<string | null>
+const previewLoading = ref(false)
+
+// delete
+const showDelete = ref(false)
+const deleteDoc = ref<any>(null)
 
 const storedUser = computed(() => {
   try {
@@ -64,19 +74,15 @@ const currentUserId = computed(
 
 const currentFolder = computed(() => breadcrumb.value[breadcrumb.value.length - 1] || null)
 const isRoot = computed(() => !currentFolder.value)
-
 const isInsideMyPersonalFolder = computed(
   () =>
     !!currentFolder.value?.ownerFolderName &&
     currentFolder.value?.createdBy === currentUserId.value,
 )
-
 const hasMyPersonalFolder = computed(() =>
   folders.value.some((f: any) => f.createdBy === currentUserId.value && !!f.ownerFolderName),
 )
-
 const hasStructuralChild = computed(() => folders.value.some((f: any) => !f.ownerFolderName))
-
 const canCreatePersonal = computed(() => {
   if (isRoot.value) return false
   if (isInsideMyPersonalFolder.value) return false
@@ -85,7 +91,6 @@ const canCreatePersonal = computed(() => {
   if (hasStructuralChild.value) return false
   return !!currentFolder.value
 })
-
 const canUploadHere = computed(() => isInsideMyPersonalFolder.value)
 
 const requiredDocs = computed(() => docs.value.filter((d: any) => !d.storageKey))
@@ -102,6 +107,10 @@ const filteredDocs = computed(() => {
 function getFileUrl(k: string) {
   return documentsService.downloadUrl(k, true)
 }
+function isPdf(doc: any) {
+  return doc.mimeType?.includes('pdf') || doc.fileName?.toLowerCase().endsWith('.pdf')
+}
+
 async function load(id: string | null) {
   loading.value = true
   try {
@@ -172,7 +181,10 @@ async function uploadFile(file: File) {
   const fd = new FormData()
   fd.append('file', file)
   fd.append('title', currentFolder.value?.name || 'doc')
-  fd.append('description', '')
+  fd.append(
+    'description',
+    `Archivo de ${currentFolder.value?.name} - ${new Date().toLocaleDateString()}`,
+  )
   fd.append('folderId', currentFolderId.value)
   fd.append('categoryId', template.categoryId)
   fd.append('typeId', template.typeId)
@@ -208,26 +220,57 @@ function onDrop(e: DragEvent) {
   const f = e.dataTransfer?.files?.[0]
   if (f) uploadFile(f)
 }
+
 async function openPreview(doc: any) {
   previewDoc.value = doc
   showPreview.value = true
+  previewLoading.value = true
+  if (previewBlobUrl.value) {
+    URL.revokeObjectURL(previewBlobUrl.value)
+    previewBlobUrl.value = null
+  }
   try {
     const url = getFileUrl(doc.storageKey)
     const res = await fetch(url)
     if (!res.ok) throw new Error(`Error ${res.status}`)
     const blob = await res.blob()
-    if (previewUrl.value?.startsWith('blob:')) URL.revokeObjectURL(previewUrl.value)
-    previewUrl.value = URL.createObjectURL(blob)
+    previewBlobUrl.value = URL.createObjectURL(blob)
   } catch (e: any) {
     alert('No se pudo abrir: ' + e.message)
     showPreview.value = false
+  } finally {
+    previewLoading.value = false
   }
 }
 function closePreview() {
   showPreview.value = false
-  if (previewUrl.value?.startsWith('blob:')) URL.revokeObjectURL(previewUrl.value)
-  previewUrl.value = null
+  if (previewBlobUrl.value) {
+    URL.revokeObjectURL(previewBlobUrl.value)
+    previewBlobUrl.value = null
+  }
 }
+
+function openDelete(doc: any) {
+  deleteDoc.value = doc
+  showDelete.value = true
+}
+function cancelDelete() {
+  showDelete.value = false
+  deleteDoc.value = null
+}
+const confirmDelete = async () => {
+  if (!deleteDoc.value?.id) return
+  try {
+    await documentsService.delete(deleteDoc.value.id)
+    load(currentFolderId.value)
+  } catch (e: any) {
+    alert(e.message)
+  } finally {
+    showDelete.value = false
+    deleteDoc.value = null
+  }
+}
+
 onMounted(() => load(null))
 
 function folderGradient(i: number) {
@@ -268,7 +311,13 @@ function folderIconColor(i: number) {
     </div>
 
     <div class="max-w- mx-auto px-8 py-8">
-      <input ref="fileInputRef" type="file" class="hidden" @change="onFilePicked" />
+      <input
+        ref="fileInputRef"
+        type="file"
+        class="hidden"
+        accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx,.doc,.xls"
+        @change="onFilePicked"
+      />
 
       <div class="flex items-center justify-between mb-8">
         <div class="flex items-center gap-2.5 text-">
@@ -299,7 +348,7 @@ function folderIconColor(i: number) {
         class="rounded- bg-white border shadow-[0_20px_60px_-20px_rgba(124,58,237,0.15)] p-8 mb-8 relative overflow-hidden"
       >
         <div
-          class="absolute top-0 right-0 w- h- bg-gradient-to-br from-violet-100 via-fuchsia-50 to-transparent rounded-full blur- -translate-y-1/2 translate-x-1/3"
+          class="absolute top-0 right-0 w- h- bg-gradient-to-br from-violet-100 via-fuchsia-50 to-transparent rounded-full blur-2xl -translate-y-1/2 translate-x-1/3"
         />
         <div class="relative flex items-center justify-between gap-6">
           <div class="flex gap-5">
@@ -319,13 +368,14 @@ function folderIconColor(i: number) {
                   v-if="!currentFolder"
                   class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-600 text-white text- font-bold tracking-widest"
                   ><Sparkles class="h-3 w-3" /> NUEVO</span
-                ><span
+                >
+                <span
                   v-if="isInsideMyPersonalFolder"
                   class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500 text-white text- font-bold tracking-widest"
                   ><Shield class="h-3 w-3" /> PRIVADO</span
                 >
               </div>
-              <p class="mt-3 text- text-zinc-500 max-w- leading-relaxed">
+              <p class="mt-3 text-[13.5px] text-zinc-500 max-w- leading-relaxed">
                 Organiza todo en un lugar colorido, buscable y seguro. Arrastra archivos,
                 previsualiza y comparte en segundos.
               </p>
@@ -342,9 +392,10 @@ function folderIconColor(i: number) {
             <button
               v-if="canUploadHere"
               @click="triggerUpload"
-              class="h-12 px-7 rounded-full bg-violet-600 text-white text- font-semibold shadow-[0_10px_20px_rgba(124,58,237,0.3)] hover:bg-violet-700 transition flex items-center"
+              :disabled="uploading"
+              class="h-12 px-7 rounded-full bg-violet-600 text-white text- font-semibold shadow-[0_10px_20px_rgba(124,58,237,0.3)] hover:bg-violet-700 transition flex items-center disabled:opacity-60"
             >
-              <Upload class="h-4 w-4 mr-2" /> Subir
+              <Upload class="h-4 w-4 mr-2" /> {{ uploading ? 'Subiendo...' : 'Subir' }}
             </button>
           </div>
         </div>
@@ -396,9 +447,8 @@ function folderIconColor(i: number) {
             <h3 class="text- font-bold tracking-wide flex items-center gap-2">
               <span
                 class="h-6 w-6 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center"
-                ><FileText class="h-3.5 w-3.5"
-              /></span>
-              ARCHIVOS EN {{ currentFolder?.name?.toUpperCase() }} · {{ filteredDocs.length }}
+                ><FileText class="h-3.5 w-3.5" /></span
+              >ARCHIVOS EN {{ currentFolder?.name?.toUpperCase() }} · {{ filteredDocs.length }}
             </h3>
             <div class="relative">
               <Search
@@ -414,7 +464,7 @@ function folderIconColor(i: number) {
             <div
               v-for="doc in filteredDocs"
               :key="doc.id"
-              class="group p-5 flex items-center gap-4 hover:bg-violet-50/50 transition border-b md:border-r border-zinc-100 last:border-0"
+              class="group p-5 flex items-center gap-4 hover:bg-violet-50/50 transition border-b md:border-r border-zinc-100"
             >
               <div
                 class="h-12 w-12 rounded- bg-gradient-to-br from-zinc-50 to-zinc-100 border flex items-center justify-center"
@@ -423,20 +473,32 @@ function folderIconColor(i: number) {
               </div>
               <div class="flex-1 min-w-0">
                 <p class="font-semibold text-[13.5px] truncate">{{ doc.fileName }}</p>
-                <p class="text- text-zinc-500 mt-0.5">{{ doc.mimeType }}</p>
+                <p class="text- text-zinc-500 mt-0.5 truncate">{{ doc.mimeType }}</p>
               </div>
               <div class="flex gap-1.5">
                 <button
+                  v-if="isPdf(doc)"
                   @click="openPreview(doc)"
-                  class="h-8 w-8 rounded-full bg-zinc-900 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                  class="h-7 w-7 rounded-full bg-zinc-900 text-white flex items-center justify-center hover:bg-black"
+                  title="Vista previa"
                 >
-                  <Eye class="h-4 w-4" /></button
-                ><a
+                  <Eye class="h-3 w-3" />
+                </button>
+                <a
+                  v-if="!isPdf(doc)"
                   :href="getFileUrl(doc.storageKey)"
                   target="_blank"
-                  class="h-8 w-8 rounded-full bg-white border flex items-center justify-center hover:bg-zinc-900 hover:text-white transition"
-                  ><Download class="h-4 w-4"
-                /></a>
+                  class="h-7 w-7 rounded-full border border-zinc-200 flex items-center justify-center hover:border-zinc-900 transition"
+                >
+                  <Download class="h-3 w-3" />
+                </a>
+                <button
+                  @click="openDelete(doc)"
+                  class="h-7 w-7 rounded-full border border-zinc-200 flex items-center justify-center hover:border-red-300 hover:text-red-500 transition"
+                  title="Eliminar"
+                >
+                  <TrashIcon class="h-3 w-3" />
+                </button>
               </div>
             </div>
           </div>
@@ -452,23 +514,90 @@ function folderIconColor(i: number) {
         </div>
       </template>
     </div>
-    <div
-      v-if="showPreview"
-      class="fixed inset-0 z-[9999] bg-[#0a0a0a]/80 backdrop-blur-xl flex flex-col"
-    >
-      <div class="h-14 bg-white border-b flex items-center justify-between px-6">
-        <span class="text- font-semibold">{{ previewDoc?.fileName }}</span
-        ><button @click="closePreview" class="h-8 px-4 rounded-full bg-zinc-900 text-white text-">
-          Cerrar
-        </button>
-      </div>
-      <div class="flex-1 p-6 flex items-center justify-center">
-        <iframe
-          v-if="previewUrl"
-          :src="previewUrl"
-          class="w-full max-w- h-full rounded- bg-white shadow-2xl border-0"
-        />
-      </div>
-    </div>
   </div>
+
+  <Teleport to="body">
+    <Transition name="fade">
+      <div
+        v-if="showPreview"
+        class="fixed inset-0 z-[99999] bg-[#0a0a0a]/80 backdrop-blur-xl flex flex-col"
+      >
+        <div
+          class="h- shrink-0 bg-white/95 backdrop-blur border-b flex items-center justify-between px-6"
+        >
+          <div class="flex items-center gap-3 min-w-0">
+            <div
+              class="h-9 w-9 rounded-full bg-zinc-900 text-white flex items-center justify-center"
+            >
+              <FileText class="h-4 w-4" />
+            </div>
+            <div class="min-w-0">
+              <p class="font-semibold text- truncate">{{ previewDoc?.fileName }}</p>
+              <p class="text- text-zinc-500 truncate uppercase tracking-widest">
+                {{ previewDoc?.title }}
+              </p>
+            </div>
+          </div>
+          <button
+            @click="closePreview"
+            class="h-9 w-9 rounded-full bg-zinc-900 text-white flex items-center justify-center hover:bg-black transition"
+          >
+            <X class="h-4 w-4" />
+          </button>
+        </div>
+        <div class="flex-1 overflow-hidden flex items-center justify-center p-4 sm:p-8">
+          <div
+            v-if="previewLoading"
+            class="h-6 w-6 border-2 border-white/20 border-t-white rounded-full animate-spin"
+          />
+          <iframe
+            v-else-if="previewBlobUrl"
+            :src="previewBlobUrl"
+            class="w-full h-full max-w- bg-white rounded- shadow-[0_30px_90px_rgba(0,0,0,0.5)] border-0"
+          />
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
+
+  <!-- DELETE CON V-DIALOG -->
+  <v-dialog v-model="showDelete" max-width="450" persistent>
+    <v-card class="rounded-2xl">
+      <v-card-title class="flex items-center gap-3 pt-6 px-6">
+        <div
+          class="h-10 w-10 rounded-full bg-red-50 border border-red-100 flex items-center justify-center"
+        >
+          <TrashIcon class="h-5 w-5 text-red-500" />
+        </div>
+        <h3 class="text-lg font-semibold text-zinc-900">Eliminar documento</h3>
+      </v-card-title>
+      <v-card-text class="px-6 pb-2 text-gray-600">
+        <p class="text-">
+          ¿Eliminar <span class="font-semibold text-zinc-900">{{ deleteDoc?.fileName }}</span
+          >?
+        </p>
+        <p class="mt-2 text- tracking-widest uppercase text-zinc-400">
+          Esta acción no se puede deshacer
+        </p>
+      </v-card-text>
+      <v-card-actions class="p-6 pt-4">
+        <v-btn variant="text" @click="cancelDelete">Cancelar</v-btn>
+        <v-spacer />
+        <v-btn color="red" variant="flat" class="rounded-full" @click="confirmDelete"
+          >Confirmar</v-btn
+        >
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>

@@ -1,2 +1,10 @@
 node_modules
 dist
+
+# uploads/docs
+uploads/docs/*
+!uploads/docs/.gitkeep
+
+# uploads/img
+uploads/img/*
+!uploads/img/.gitkeep

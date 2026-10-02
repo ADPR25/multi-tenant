@@ -161,4 +161,28 @@ export class DocsService {
     doc.isActive = !doc.isActive;
     return this.repoService.save(doc);
   }
+
+  async remove(id: string, companyId: string, user?: any) {
+    const doc = await this.repoService.findOne({
+      where: { id, companyId },
+      relations: ["folder"],
+    });
+    if (!doc) throw new NotFoundException(`doc ${id} not found`);
+
+    if (user && doc.folder?.ownerFolderName) {
+      const effectiveUserId = user.id || user.sub || user.userId || user._id;
+      if (doc.createdBy && doc.createdBy !== effectiveUserId) {
+        throw new ForbiddenException(
+          "No puedes eliminar documentos de otro compañero",
+        );
+      }
+    }
+
+    if (doc.storageKey) {
+      this.uploadsService.deleteFile(doc.storageKey);
+    }
+    await this.repoService.remove(doc);
+
+    return { deleted: true, id };
+  }
 }

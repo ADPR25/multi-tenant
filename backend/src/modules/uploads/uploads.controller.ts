@@ -6,12 +6,14 @@ import {
   Req,
   Query,
   UnauthorizedException,
+  Delete,
 } from "@nestjs/common";
 import { UploadsService } from "./uploads.service";
 import { JwtService } from "@nestjs/jwt";
 import { Request, Response } from "express";
 import * as fs from "fs";
 import { Public } from "@/common/decorators/public.decorator";
+import { CurrentCompanyId, CurrentUser } from "@/common/decorators/current-company.decorator";
 
 @Controller("uploads")
 export class UploadsController {

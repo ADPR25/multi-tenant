@@ -42,9 +42,9 @@ async function submit() {
 }
 onMounted(async () => {
   const [f, c, t] = await Promise.all([
-    foldersService.list({ limit: 100 }).catch(() => []),
-    documentCategoriesService.list({ limit: 100 }).catch(() => []),
-    documentTypesService.list({ limit: 100 }).catch(() => []),
+    foldersService.list({ limit: 'all', find: 'list' }).catch(() => []),
+    documentCategoriesService.list({ limit: 'all' }).catch(() => []),
+    documentTypesService.list({ limit: 'all' }).catch(() => []),
   ])
   folders.value = (f as any).data || f || []
   categories.value = (c as any).data || c || []
@@ -65,10 +65,7 @@ onMounted(async () => {
         /></v-col>
         <v-col cols="12" md="4"
           ><v-label>Expira</v-label
-          ><v-date-input
-            v-model="form.expiresAt"
-            variant="outlined"
-            density="comfortable"
+          ><v-date-input v-model="form.expiresAt" variant="outlined" density="comfortable"
         /></v-col>
         <v-col cols="12" md="4"
           ><v-label>Carpeta *</v-label

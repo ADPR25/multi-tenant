@@ -29,7 +29,7 @@ async function submit() {
   }
 }
 onMounted(async () => {
-  const res: any = await foldersService.list({ limit: 100 }).catch(() => [])
+  const res: any = await foldersService.list({ limit: 'all', find: 'list' }).catch(() => [])
   parents.value = res.data || res || []
 })
 </script>

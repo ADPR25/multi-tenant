@@ -197,6 +197,7 @@ export const ACCESS_CATALOG: CatalogModule[] = [
           "documents:docs:read",
           "documents:docs:update",
           "documents:docs:state",
+          "documents:docs:delete"
         ],
       },
       {
@@ -211,6 +212,7 @@ export const ACCESS_CATALOG: CatalogModule[] = [
           "documents:docs:create",
           "documents:docs:read",
           "documents:docs:update",
+          "documents:docs:delete"
         ],
       },
     ],

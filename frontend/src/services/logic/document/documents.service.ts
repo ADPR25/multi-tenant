@@ -30,6 +30,11 @@ export const documentsService = {
   toggleActive(id: string) {
     return api.request<any>(`/document_management/documents/docs/active/${id}`, { method: 'PATCH' })
   },
+  delete(id: string) {
+    return api.request<any>(`/document_management/documents/docs/${id}`, {
+      method: 'DELETE',
+    })
+  },
   downloadUrl(storageKey: string, withToken = true) {
     const backend =
       get.useAuth('backend_api') ||

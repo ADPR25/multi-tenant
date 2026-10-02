@@ -11,4 +11,7 @@ export class CompanySetting extends BaseTenantEntity {
 
   @Column({ length: 50 })
   currency: string;
+
+  @Column({ nullable: true })
+  driveType: number;
 }

@@ -19,6 +19,7 @@ import {
   Sparkles,
   Users,
   HardDrive,
+  TrashIcon,
 } from 'lucide-vue-next'
 
 const breadcrumb = ref<any[]>([])
@@ -29,7 +30,8 @@ const loading = ref(false)
 const uploading = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const parentRequirement = ref<any>(null)
-
+const showDelete = ref(false)
+const deleteDoc = ref<any>(null)
 const showPreview = ref(false)
 const previewDoc = ref<any>(null)
 const previewBlobUrl = ref<string | null>(null)
@@ -114,6 +116,12 @@ async function openPreview(doc: any) {
     previewLoading.value = false
   }
 }
+
+async function openDelete(doc: any) {
+  deleteDoc.value = doc
+  showDelete.value = true
+}
+
 function closePreview() {
   showPreview.value = false
   if (previewBlobUrl.value?.startsWith('blob:')) URL.revokeObjectURL(previewBlobUrl.value)
@@ -167,6 +175,20 @@ function goTo(i: number) {
   currentFolderId.value = breadcrumb.value[i].id
   load(currentFolderId.value)
 }
+
+const confirmDelete = async () => {
+  if (!deleteDoc.value?.id) return
+  try {
+    await documentsService.delete(deleteDoc.value.id)
+    load(currentFolderId.value)
+  } catch (e: any) {
+    alert(e.message)
+  } finally {
+    showDelete.value = false
+    deleteDoc.value = null
+  }
+}
+
 async function createPersonal() {
   if (!currentFolderId.value) return
   try {
@@ -470,11 +492,19 @@ onMounted(() => load(null))
                   <Eye class="h-4 w-4" />
                 </button>
                 <a
+                  v-if="!isPdf(doc)"
                   :href="getFileUrl(doc.storageKey)"
                   target="_blank"
                   class="h-9 w-9 rounded-full bg-white border border-zinc-200 flex items-center justify-center hover:border-zinc-900 hover:text-zinc-900 transition"
                   ><Download class="h-4 w-4"
                 /></a>
+                <button
+                  @click="openDelete(doc)"
+                  target="_blank"
+                  class="h-9 w-9 rounded-full bg-white border border-zinc-200 flex items-center justify-center hover:border-zinc-900 hover:text-zinc-900 transition"
+                >
+                  <TrashIcon class="h-4 w-4" />
+                </button>
               </div>
             </div>
           </div>
@@ -524,6 +554,28 @@ onMounted(() => load(null))
       </div>
     </Transition>
   </Teleport>
+
+  <v-dialog v-model="showDelete" max-width="450" persistent>
+    <v-card class="rounded-2xl">
+      <v-card-title class="flex items-center gap-3 pt-6 px-6">
+        <div
+          class="h-10 w-10 rounded-full bg-red-50 border border-red-100 flex items-center justify-center"
+        >
+          <TrashIcon class="h-5 w-5 text-red-500" />
+        </div>
+        <h3 class="text-lg font-semibold text-zinc-900">Eliminar documento</h3>
+      </v-card-title>
+      <v-card-text class="px-6 pb-2 text-gray-600">
+        <p>Eliminar documento: {{ deleteDoc?.fileName }}</p>
+        <p class="mt-3 text-sm">¿Deseas continuar?</p>
+      </v-card-text>
+      <v-card-actions class="p-6 pt-4">
+        <v-btn variant="text" @click="((showDelete = false), (deleteDoc = null))">Cancelar</v-btn>
+        <v-spacer />
+        <v-btn @click="confirmDelete"> Confirmar </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <style scoped>
