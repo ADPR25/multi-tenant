@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Query } from "@nestjs/common";
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  UseGuards,
+  Query,
+} from "@nestjs/common";
 import { StocksService } from "./stocks.service";
 import { CreateStockDto } from "./dto/create-stock.dto";
 import { CurrentCompanyId } from "@/common/decorators/current-company.decorator";
@@ -26,14 +34,24 @@ export class StocksController {
     @Query("productId") productId?: string,
     @Query("warehouseId") warehouseId?: string,
     @Query("search") search?: string,
-    @Query("status") status?: 'low' | 'out' | 'ok',
+    @Query("status") status?: "low" | "out" | "ok",
   ) {
-    return this.stocksService.findAll(companyId, pagination, productId, warehouseId, search, status);
+    return this.stocksService.findAll(
+      companyId,
+      pagination,
+      productId,
+      warehouseId,
+      search,
+      status,
+    );
   }
 
   @Get("alerts/low")
   @RequirePermissions("inventory:stocks:read")
-  findLow(@CurrentCompanyId() companyId: string, @Query() pagination: PaginationDto) {
+  findLow(
+    @CurrentCompanyId() companyId: string,
+    @Query() pagination: PaginationDto,
+  ) {
     return this.stocksService.findLowStock(companyId, pagination);
   }
 

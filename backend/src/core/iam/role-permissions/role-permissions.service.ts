@@ -3,20 +3,17 @@ import {
   NotFoundException,
   ConflictException,
   Inject,
-  Logger,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, DataSource, IsNull } from "typeorm";
+import { Repository, DataSource, FindOptionsWhere } from "typeorm";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
 import { Cache } from "cache-manager";
 import { RolePermission } from "./entities/role-permission.entity";
 import { Role } from "../roles/entities/role.entity";
 import { CreateRolePermissionDto } from "./dto/create-role-permission.dto";
-import { User } from "@/core/iam/users/entities/user.entity";
 
 @Injectable()
 export class RolePermissionsService {
-  private readonly logger = new Logger(RolePermissionsService.name);
   constructor(
     @InjectRepository(RolePermission)
     private readonly repo: Repository<RolePermission>,
@@ -33,7 +30,6 @@ export class RolePermissionsService {
     roleId: string,
   ): Promise<string> {
     if (companyId) return companyId;
-    // Si viene de SUPER_ADMIN, obtener companyId del rol
     const role = await this.dataSource
       .getRepository(Role)
       .findOne({ where: { id: roleId } });
@@ -60,13 +56,15 @@ export class RolePermissionsService {
   }
 
   async findAll(companyId: string | null, roleId?: string) {
-    let effectiveCompanyId = companyId;
+    let effectiveCompanyId: string | null = companyId;
     if (!effectiveCompanyId && roleId) {
-      effectiveCompanyId = await this.resolveCompanyId(null, roleId).catch(
-        () => null as any,
-      );
+      try {
+        effectiveCompanyId = await this.resolveCompanyId(null, roleId);
+      } catch {
+        effectiveCompanyId = null;
+      }
     }
-    const where: any = {};
+    const where: FindOptionsWhere<RolePermission> = {};
     if (effectiveCompanyId) where.companyId = effectiveCompanyId;
     if (roleId) where.roleId = roleId;
     return this.repo.find({ where, relations: { permission: true } });
@@ -84,7 +82,7 @@ export class RolePermissionsService {
   async findOneCompat(id: string, companyId: string | null) {
     if (companyId) {
       const rp = await this.repo.findOne({
-        where: { id, companyId } as any,
+        where: { id, companyId },
         relations: { permission: true, role: true },
       });
       if (rp) return rp;
@@ -105,7 +103,8 @@ export class RolePermissionsService {
       await queryRunner.manager.delete(RolePermission, {
         companyId: effectiveCompanyId,
         roleId,
-      } as any);
+      });
+
       if (permissionIds.length) {
         const toCreate = queryRunner.manager.create(
           RolePermission,

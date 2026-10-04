@@ -51,9 +51,9 @@ onMounted(async () => {
     categoriesService.list({ find: 'select', state: true, limit: 'all' }).catch(() => []),
     uomService.list({ find: 'select', state: true, limit: 'all' }).catch(() => []),
   ])
-  brands.value = (b as any).data || b || []
-  categories.value = (c as any).data || c || []
-  uoms.value = (u as any).data || u || []
+  brands.value = b.data || b || []
+  categories.value = c.data || c || []
+  uoms.value = u.data || u || []
 })
 </script>
 

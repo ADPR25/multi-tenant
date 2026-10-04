@@ -9,7 +9,10 @@ import { Type } from "../types/entities/type.entity";
 import { UploadsModule } from "@/modules/uploads/uploads.module";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Doc, Folder, Category, Type]), UploadsModule],
+  imports: [
+    TypeOrmModule.forFeature([Doc, Folder, Category, Type]),
+    UploadsModule,
+  ],
   controllers: [DocsController],
   providers: [DocsService],
   exports: [DocsService],

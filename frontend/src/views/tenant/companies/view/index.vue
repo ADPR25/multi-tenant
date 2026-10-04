@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import {
   Building2,
@@ -16,15 +16,17 @@ import {
   IdCard,
 } from 'lucide-vue-next'
 
-import { get } from '@/store/authstore'
+defineOptions({
+  name: 'CompanyDetailView',
+})
+
 const props = defineProps({
   company: { type: Object, required: true },
 })
 
-const user = get.useAuth('user')
 const emit = defineEmits(['close', 'edit'])
 
-const formatDate = (dateStr, withTime = false) => {
+const formatDate = (dateStr: string | number | Date, withTime = false) => {
   if (!dateStr) return '-'
   return new Date(dateStr).toLocaleString('es-CO', {
     year: 'numeric',
@@ -39,9 +41,9 @@ const initial = computed(() => props.company?.name?.charAt(0)?.toUpperCase() || 
 
 <template>
   <div
-    class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] overflow-hidden"
+    class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/3 overflow-hidden"
   >
-    <div class="bg-gradient-to-r from-indigo-500 to-violet-600 p-6 sm:p-8 text-white">
+    <div class="bg-linear-to-r from-indigo-500 to-violet-600 p-6 sm:p-8 text-white">
       <div class="flex items-start justify-between gap-4">
         <div class="flex items-center gap-4">
           <div
@@ -56,7 +58,7 @@ const initial = computed(() => props.company?.name?.charAt(0)?.toUpperCase() || 
             </p>
           </div>
         </div>
-        <v-chip :color="company.isActive ? 'success' : 'error'" variant="flat" class="!text-white">
+        <v-chip :color="company.isActive ? 'success' : 'error'" variant="flat" class="text-white!">
           <ShieldCheck v-if="company.isActive" class="h-4 w-4 mr-1" />
           <ShieldX v-else class="h-4 w-4 mr-1" />
           {{ company.isActive ? 'Activa' : 'Inactiva' }}
@@ -67,7 +69,7 @@ const initial = computed(() => props.company?.name?.charAt(0)?.toUpperCase() || 
     <div class="p-6 sm:p-8">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div
-          class="rounded-xl border border-gray-100 bg-gray-50/50 p-5 dark:border-gray-800 dark:bg-white/[0.02]"
+          class="rounded-xl border border-gray-100 bg-gray-50/50 p-5 dark:border-gray-800 dark:bg-white/2"
         >
           <h3 class="mb-4 flex items-center gap-2 font-semibold text-gray-700 dark:text-white/90">
             <Building2 class="h-5 w-5 text-indigo-500" /> Información General
@@ -112,7 +114,7 @@ const initial = computed(() => props.company?.name?.charAt(0)?.toUpperCase() || 
         </div>
 
         <div
-          class="rounded-xl border border-gray-100 bg-gray-50/50 p-5 dark:border-gray-800 dark:bg-white/[0.02]"
+          class="rounded-xl border border-gray-100 bg-gray-50/50 p-5 dark:border-gray-800 dark:bg-white/2"
         >
           <h3 class="mb-4 flex items-center gap-2 font-semibold text-gray-700 dark:text-white/90">
             <Phone class="h-5 w-5 text-emerald-500" /> Contacto

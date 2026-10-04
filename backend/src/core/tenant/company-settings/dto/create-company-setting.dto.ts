@@ -8,7 +8,7 @@ export class CreateCompanySettingDto {
   @IsNotEmpty()
   @IsString()
   logoUrl: string;
-  
+
   @IsNotEmpty()
   @IsString()
   currency: string;

@@ -13,4 +13,3 @@ export class Category extends BaseTenantEntity {
   @Column({ default: true })
   isActive: boolean;
 }
-  

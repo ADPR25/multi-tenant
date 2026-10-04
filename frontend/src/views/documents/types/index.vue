@@ -16,7 +16,7 @@ const tableRef = ref<InstanceType<typeof AppDataTable>>()
 const dialogActive = ref(false)
 const toggling = ref(false)
 const itemToToggle = ref<any>(null)
-const isSelectedActive = computed(() =>!!itemToToggle.value?.isActive)
+const isSelectedActive = computed(() => !!itemToToggle.value?.isActive)
 
 const headers = [
   { title: 'Nombre', key: 'name', minWidth: '200px' },
@@ -82,15 +82,19 @@ async function toggle() {
         search-placeholder="Buscar tipo..."
       >
         <template #item.description="{ item }">
-          <span class="text-sm text-gray-600 truncate block max-w-">{{ item.description || '-' }}</span>
+          <span class="text-sm text-gray-600 truncate block max-w-">{{
+            item.description || '-'
+          }}</span>
         </template>
         <template #item.isActive="{ item }">
-          <v-chip :color="item.isActive? 'success' : 'error'" size="small" variant="tonal">
-            {{ item.isActive? 'Activo' : 'Inactivo' }}
+          <v-chip :color="item.isActive ? 'success' : 'error'" size="small" variant="tonal">
+            {{ item.isActive ? 'Activo' : 'Inactivo' }}
           </v-chip>
         </template>
         <template #item.createdAt="{ item }">
-          <span class="text-sm text-gray-500">{{ new Date(item.createdAt).toLocaleDateString() }}</span>
+          <span class="text-sm text-gray-500">{{
+            new Date(item.createdAt).toLocaleDateString()
+          }}</span>
         </template>
         <template #item.actions="{ item }">
           <div class="flex justify-end gap-1">
@@ -109,7 +113,7 @@ async function toggle() {
               icon
               size="x-small"
               variant="text"
-              :color="item.isActive? 'success' : 'error'"
+              :color="item.isActive ? 'success' : 'error'"
               @click="confirmToggle(item)"
             >
               <Power class="h-4 w-4" />
@@ -122,7 +126,7 @@ async function toggle() {
     <div v-else>
       <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-bold text-gray-800 dark:text-white/90">
-          {{ mode === 'edit'? 'Editar' : 'Crear' }} Tipo de Documento
+          {{ mode === 'edit' ? 'Editar' : 'Crear' }} Tipo de Documento
         </h1>
         <v-btn variant="text" icon @click="closeList"><X class="h-5 w-5" /></v-btn>
       </div>
@@ -135,30 +139,36 @@ async function toggle() {
           <div
             :class="[
               'w-10 h-10 rounded-full flex items-center justify-center',
-              isSelectedActive? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600',
+              isSelectedActive ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600',
             ]"
           >
             <Power class="h-5 w-5" />
           </div>
           <span class="text-lg font-bold">
-            {{ isSelectedActive? '¿Inactivar tipo?' : '¿Activar tipo?' }}
+            {{ isSelectedActive ? '¿Inactivar tipo?' : '¿Activar tipo?' }}
           </span>
         </v-card-title>
         <v-card-text class="px-6 pb-2 text-gray-600">
           <p>
             Estás a punto de
-            <strong :class="isSelectedActive? 'text-red-600' : 'text-green-600'">
-              {{ isSelectedActive? 'inactivar' : 'activar' }}
+            <strong :class="isSelectedActive ? 'text-red-600' : 'text-green-600'">
+              {{ isSelectedActive ? 'inactivar' : 'activar' }}
             </strong>
-            el tipo <strong>{{ itemToToggle?.name }}</strong>.
+            el tipo <strong>{{ itemToToggle?.name }}</strong
+            >.
           </p>
           <p class="mt-3 text-sm">¿Deseas continuar?</p>
         </v-card-text>
         <v-card-actions class="p-6 pt-4">
           <v-btn variant="text" @click="dialogActive = false" :disabled="toggling">Cancelar</v-btn>
           <v-spacer />
-          <v-btn :color="isSelectedActive? 'error' : 'success'" variant="flat" :loading="toggling" @click="toggle">
-            {{ isSelectedActive? 'Sí, inactivar' : 'Sí, activar' }}
+          <v-btn
+            :color="isSelectedActive ? 'error' : 'success'"
+            variant="flat"
+            :loading="toggling"
+            @click="toggle"
+          >
+            {{ isSelectedActive ? 'Sí, inactivar' : 'Sí, activar' }}
           </v-btn>
         </v-card-actions>
       </v-card>

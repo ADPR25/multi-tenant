@@ -1,4 +1,13 @@
-import { IsEmail, IsNotEmpty, IsString, IsUUID, IsOptional, Matches, Length, MinLength } from "class-validator";
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsString,
+  IsUUID,
+  IsOptional,
+  Matches,
+  Length,
+  MinLength,
+} from "class-validator";
 
 export class CreateUserDto {
   @IsNotEmpty()
@@ -7,7 +16,9 @@ export class CreateUserDto {
 
   @IsNotEmpty()
   @IsString()
-  @Matches(/^-?\d+$/, { message: 'document_number debe ser numérico, se permite - al inicio' })
+  @Matches(/^-?\d+$/, {
+    message: "document_number debe ser numérico, se permite - al inicio",
+  })
   @Length(6, 25)
   document_number: string;
 
@@ -23,9 +34,9 @@ export class CreateUserDto {
 
   @IsNotEmpty()
   @IsString()
-  @MinLength(8, { message: 'La contraseña debe tener mínimo 8 caracteres' })
+  @MinLength(8, { message: "La contraseña debe tener mínimo 8 caracteres" })
   @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).+$/, {
-    message: 'Password debe tener mayúscula, minúscula, número y símbolo',
+    message: "Password debe tener mayúscula, minúscula, número y símbolo",
   })
   password: string;
 

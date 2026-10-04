@@ -1,8 +1,8 @@
 import { BaseTenantEntity } from "@/infrastructure/database/base-tenant.entity";
 import { Column, Entity, Index } from "typeorm";
 
-@Entity('inventory_warehouses')
-@Index(['companyId', 'code'], { unique: true })
+@Entity("inventory_warehouses")
+@Index(["companyId", "code"], { unique: true })
 export class Warehouse extends BaseTenantEntity {
   @Column()
   name: string;

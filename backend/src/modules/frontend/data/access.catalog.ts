@@ -24,7 +24,7 @@ export interface CatalogModule {
 
 export const ACCESS_CATALOG: CatalogModule[] = [
   {
-    name: "IAM",
+    name: "Seguridad",
     icon: "Shield",
     children: [
       {
@@ -197,7 +197,7 @@ export const ACCESS_CATALOG: CatalogModule[] = [
           "documents:docs:read",
           "documents:docs:update",
           "documents:docs:state",
-          "documents:docs:delete"
+          "documents:docs:delete",
         ],
       },
       {
@@ -212,7 +212,7 @@ export const ACCESS_CATALOG: CatalogModule[] = [
           "documents:docs:create",
           "documents:docs:read",
           "documents:docs:update",
-          "documents:docs:delete"
+          "documents:docs:delete",
         ],
       },
     ],
@@ -244,20 +244,33 @@ export const DEFAULT_ROUTES = ACCESS_CATALOG.flatMap((m) =>
       }))
     : [
         {
-          path: m.path!,
+          path: m.path,
           name: m.name.replace(/\s/g, ""),
           title: m.title || m.name,
-          componentPath: m.componentPath!,
+          componentPath: m.componentPath,
         },
       ],
 );
 
-export const ALL_PERMISSIONS_LIST = [
-  ...new Map(
+export const ALL_PERMISSIONS_LIST: CatalogPermission[] = [
+  ...new Map<string, CatalogPermission>(
     ACCESS_CATALOG.flatMap((m) => {
-      const routes = m.children || [m as any];
-      return routes.flatMap((r: any) =>
-        (r.permissions || []).map((name: string) => [
+      const routes: CatalogRoute[] = m.children
+        ? m.children
+        : m.path
+          ? [
+              {
+                path: m.path,
+                name: m.name,
+                title: m.title || m.name,
+                componentPath: m.componentPath || "",
+                permissions: m.permissions || [],
+              },
+            ]
+          : [];
+
+      return routes.flatMap((r) =>
+        (r.permissions || []).map((name): [string, CatalogPermission] => [
           name,
           { name, description: `${name} - ${r.title || r.name}` },
         ]),

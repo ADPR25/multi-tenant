@@ -18,6 +18,7 @@ import {
   CurrentCompanyId,
   OptionalCompanyId,
   CurrentUser,
+  CurrentUserPayload,
 } from "@/common/decorators/current-company.decorator";
 import { CreateCompanyDto } from "./dto/create-company.dto";
 import { PaginationDto } from "@/common/dto/pagination.dto";
@@ -27,13 +28,16 @@ import { PaginationDto } from "@/common/dto/pagination.dto";
 export class CompanyController {
   constructor(private readonly companyService: CompanyService) {}
 
-  private isSuper(user: any): boolean {
+  private isSuper(user: CurrentUserPayload): boolean {
     return user?.roleCode === "SUPER_ADMIN" || user?.code === "SUPER_ADMIN";
   }
 
   @Post()
   @RequirePermissions("companies:create")
-  create(@Body() createCompanyDto: CreateCompanyDto, @CurrentUser() user: any) {
+  create(
+    @Body() createCompanyDto: CreateCompanyDto,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
     if (!this.isSuper(user)) {
       throw new ForbiddenException("Solo SUPER_ADMIN puede crear empresas");
     }
@@ -43,9 +47,8 @@ export class CompanyController {
   @Get()
   @RequirePermissions("companies:read")
   findAll(
-    @CurrentUser() user: any,
+    @CurrentUser() _user: CurrentUserPayload,
     @Query() pagination: PaginationDto,
-    @OptionalCompanyId() companyId: string | null,
   ) {
     return this.companyService.findAll(pagination);
   }
@@ -64,7 +67,7 @@ export class CompanyController {
   findOne(
     @Param("id") id: string,
     @OptionalCompanyId() companyId: string | null,
-    @CurrentUser() user: any,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
     if (!this.isSuper(user) && companyId && id !== companyId) {
       throw new ForbiddenException("No puedes ver otra empresa");
@@ -78,7 +81,7 @@ export class CompanyController {
     @Param("id") id: string,
     @OptionalCompanyId() companyId: string | null,
     @Body() dto: UpdateCompanyDto,
-    @CurrentUser() user: any,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
     if (!this.isSuper(user) && companyId && id !== companyId) {
       throw new ForbiddenException("No puedes editar otra empresa");

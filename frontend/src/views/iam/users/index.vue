@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import AppDataTable from '@/components/common/AppDataTable.vue'
@@ -65,10 +65,13 @@ async function toggleActive(item) {
         </v-btn>
       </div>
 
-      <AppDataTable ref="tableRef" :headers="headers" :fetch-fn="usersService.list" search-placeholder="Buscar por nombre, documento...">
-        <template #item.fullName="{ item }">
-          {{ item.first_name }} {{ item.last_name }}
-        </template>
+      <AppDataTable
+        ref="tableRef"
+        :headers="headers"
+        :fetch-fn="usersService.list"
+        search-placeholder="Buscar por nombre, documento..."
+      >
+        <template #item.fullName="{ item }"> {{ item.first_name }} {{ item.last_name }} </template>
 
         <template #item.isActive="{ item }">
           <v-chip :color="item.isActive ? 'success' : 'error'" size="small" variant="tonal">

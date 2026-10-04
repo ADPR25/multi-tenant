@@ -1,7 +1,7 @@
 export const SUPER_ADMIN_SIDEBAR = [
   {
     icon: "Settings",
-    name: "IAM",
+    name: "Seguridad",
     children: [
       { icon: "User", name: "Usuarios", path: "/users" },
       { icon: "ShieldCheck", name: "Roles", path: "/roles" },

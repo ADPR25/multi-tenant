@@ -48,11 +48,11 @@ export class PermissionsService {
 
   private getAllPermissionNames(): string[] {
     return [
-     ...new Set(
+      ...new Set(
         ACCESS_CATALOG.flatMap((m) =>
           m.children
-           ? m.children.flatMap((c) => c.permissions?? [])
-            : (m.permissions?? []),
+            ? m.children.flatMap((c) => c.permissions ?? [])
+            : (m.permissions ?? []),
         ),
       ),
     ];
@@ -68,7 +68,7 @@ export class PermissionsService {
       where: { companyId, name: In(allNames) },
     });
     const existingNames = new Set(existing.map((p) => p.name));
-    const missing = allNames.filter((n) =>!existingNames.has(n));
+    const missing = allNames.filter((n) => !existingNames.has(n));
 
     if (missing.length) {
       const toCreate = missing.map((name) =>
@@ -92,7 +92,7 @@ export class PermissionsService {
   async syncAllCompanies() {
     const companyRepo = this.dataSource.getRepository(Company);
     const companies = await companyRepo.find({
-      select: ['id'],
+      select: ["id"],
     });
 
     const results = [];

@@ -106,7 +106,7 @@ const handleSubmit = async () => {
 
     set.useAuth('token', data.access_token)
     set.useAuth('user', data.user)
-    set.useAuth('company', (data.user as any).company || null)
+    set.useAuth('company', data.user.company || null)
     set.useAuth('IsSuperAdmin', data.user.roleCode === 'SUPER_ADMIN')
     set.useAuth('my_permissions', null)
 

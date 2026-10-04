@@ -1,4 +1,4 @@
-import { api } from "@/services/api/api";
+import { api } from '@/services/api/api'
 
 export const companiesService = {
   list() {
@@ -15,5 +15,5 @@ export const companiesService = {
   },
   toggleActive(id: string, isActive: boolean) {
     return this.update(id, { isActive })
-  }
+  },
 }

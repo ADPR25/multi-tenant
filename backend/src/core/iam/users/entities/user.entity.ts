@@ -7,31 +7,31 @@ import { BaseTenantEntity } from "@/infrastructure/database/base-tenant.entity";
 @Index(["companyId", "email"], { unique: true })
 export class User extends BaseTenantEntity {
   @Column()
-  email: string;
+  email!: string;
 
   @Column({ length: 25 })
-  document_number: string;
+  document_number!: string;
 
   @Column()
-  first_name: string;
+  first_name!: string;
 
   @Column()
-  last_name: string;
+  last_name!: string;
 
   @Column({ select: false })
-  password: string;
+  password!: string;
 
   @Column({ nullable: true })
   phone?: string;
 
   @Column({ default: true })
-  isActive: boolean;
+  isActive!: boolean;
 
   @Column({ nullable: true })
   avatar?: string;
 
   @Column({ name: "role_id", type: "uuid", nullable: true })
-  roleId: string | null;
+  roleId!: string | null;
 
   @ManyToOne(() => Role, { onDelete: "SET NULL" })
   @JoinColumn({ name: "role_id" })

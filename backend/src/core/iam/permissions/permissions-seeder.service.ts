@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Injectable, Logger, OnApplicationBootstrap } from "@nestjs/common";
 import { PermissionsService } from "./permissions.service";
 
@@ -9,16 +10,21 @@ export class PermissionsSeeder implements OnApplicationBootstrap {
 
   async onApplicationBootstrap() {
     try {
-      this.logger.log('🔄 Sincronizando permisos desde ACCESS_CATALOG...');
+      this.logger.log("🔄 Sincronizando permisos desde ACCESS_CATALOG...");
       const result = await this.permissionsService.syncAllCompanies();
-      this.logger.log(`✅ Permisos sincronizados: ${result.companiesProcessed} empresas`);
+
+      this.logger.log(
+        `✅ Permisos sincronizados: ${result.companiesProcessed} empresas`,
+      );
       for (const d of result.details) {
         if (d.created > 0) {
-          this.logger.log(` -> Empresa ${d.companyId}: +${d.created} nuevos permisos`);
+          this.logger.log(
+            ` -> Empresa ${d.companyId}: +${d.created} nuevos permisos`,
+          );
         }
       }
     } catch (e) {
-      this.logger.error('Error auto-sincronizando permisos', e);
+      this.logger.error("Error auto-sincronizando permisos", e as Error);
     }
   }
 }

@@ -47,10 +47,17 @@ function closeList() {
         </v-btn>
       </div>
 
-      <AppDataTable ref="tableRef" :headers="headers" :fetch-fn="stockMovementsService.list" search-placeholder="Buscar producto, bodega...">
+      <AppDataTable
+        ref="tableRef"
+        :headers="headers"
+        :fetch-fn="stockMovementsService.list"
+        search-placeholder="Buscar producto, bodega..."
+      >
         <template #item.product="{ item }">
           <div class="leading-tight">
-            <p class="font-medium text-gray-800 dark:text-white/90">{{ item.product?.name || '-' }}</p>
+            <p class="font-medium text-gray-800 dark:text-white/90">
+              {{ item.product?.name || '-' }}
+            </p>
             <p class="text-xs text-gray-500">{{ item.product?.sku || '' }}</p>
           </div>
         </template>
@@ -58,7 +65,11 @@ function closeList() {
           <span class="text-sm">{{ item.warehouse?.name || '-' }}</span>
         </template>
         <template #item.type="{ item }">
-          <v-chip size="small" :color="item.type === 'IN' ? 'success' : item.type === 'OUT' ? 'error' : 'info'" variant="tonal">
+          <v-chip
+            size="small"
+            :color="item.type === 'IN' ? 'success' : item.type === 'OUT' ? 'error' : 'info'"
+            variant="tonal"
+          >
             {{ item.type }}
           </v-chip>
         </template>
@@ -90,14 +101,18 @@ function closeList() {
           <span class="text-lg font-bold flex items-center gap-2">
             <ArrowLeftRight class="h-5 w-5" /> Detalle del Movimiento
           </span>
-          <v-btn variant="text" icon size="small" @click="detailOpen = false"><X class="h-4 w-4" /></v-btn>
+          <v-btn variant="text" icon size="small" @click="detailOpen = false"
+            ><X class="h-4 w-4"
+          /></v-btn>
         </v-card-title>
         <v-card-text class="p-6 pt-2">
           <div class="grid grid-cols-2 gap-4 text-sm">
             <div class="col-span-2 p-3 rounded-xl bg-gray-50 dark:bg-white/[0.05] border">
               <p class="text-xs text-gray-500 uppercase">Producto</p>
               <p class="font-semibold text-base">{{ detailItem.product?.name }}</p>
-              <p class="text-xs text-gray-500">SKU: {{ detailItem.product?.sku }} | {{ detailItem.product?.description }}</p>
+              <p class="text-xs text-gray-500">
+                SKU: {{ detailItem.product?.sku }} | {{ detailItem.product?.description }}
+              </p>
             </div>
             <div>
               <p class="text-xs text-gray-500 uppercase">Bodega</p>
@@ -106,7 +121,18 @@ function closeList() {
             </div>
             <div>
               <p class="text-xs text-gray-500 uppercase">Tipo</p>
-              <v-chip size="small" :color="detailItem.type === 'IN' ? 'success' : detailItem.type === 'OUT' ? 'error' : 'info'" class="mt-1">{{ detailItem.type }}</v-chip>
+              <v-chip
+                size="small"
+                :color="
+                  detailItem.type === 'IN'
+                    ? 'success'
+                    : detailItem.type === 'OUT'
+                      ? 'error'
+                      : 'info'
+                "
+                class="mt-1"
+                >{{ detailItem.type }}</v-chip
+              >
             </div>
             <div>
               <p class="text-xs text-gray-500 uppercase">Cantidad Movida</p>
@@ -116,7 +142,9 @@ function closeList() {
               <p class="text-xs text-gray-500 uppercase">Razón</p>
               <p class="font-medium">{{ detailItem.reason || '-' }}</p>
             </div>
-            <div class="col-span-2 grid grid-cols-3 gap-2 p-3 rounded-xl border bg-white dark:bg-transparent">
+            <div
+              class="col-span-2 grid grid-cols-3 gap-2 p-3 rounded-xl border bg-white dark:bg-transparent"
+            >
               <div>
                 <p class="text-xs text-gray-500">Anterior</p>
                 <p class="font-semibold">{{ detailItem.previousQuantity }}</p>

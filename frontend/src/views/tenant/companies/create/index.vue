@@ -1,21 +1,45 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { companiesService } from '@/services'
 
-const props = defineProps({
-  company: {
-    type: Object,
-    default: null,
-  },
+defineOptions({
+  name: 'CompanyForm',
 })
 
-const emit = defineEmits(['close', 'created', 'updated'])
+interface Company {
+  id: string
+  name: string
+  legal_name?: string
+  tax_id?: string
+  email?: string
+  phone?: string
+  address?: string
+}
 
-const errorMsg = ref(null)
+interface CompanyFormData {
+  name: string
+  legal_name: string
+  tax_id: string
+  email: string
+  phone: string
+  address: string
+}
+
+const props = defineProps<{
+  company?: Company | null
+}>()
+
+const emit = defineEmits<{
+  (e: 'close'): void
+  (e: 'created', data: Company): void
+  (e: 'updated', data: Company): void
+}>()
+
+const errorMsg = ref<string | null>(null)
 const loading = ref(false)
 const isEdit = computed(() => !!props.company)
 
-const form = ref({
+const form = ref<CompanyFormData>({
   name: '',
   legal_name: '',
   tax_id: '',
@@ -24,7 +48,7 @@ const form = ref({
   address: '',
 })
 
-const loadFormData = () => {
+const loadFormData = (): void => {
   if (props.company) {
     form.value = {
       name: props.company.name || '',
@@ -49,22 +73,24 @@ const loadFormData = () => {
 watch(() => props.company, loadFormData, { immediate: true })
 onMounted(loadFormData)
 
-const submit = async () => {
+const submit = async (): Promise<void> => {
   errorMsg.value = null
   loading.value = true
   try {
     const data = isEdit.value
-      ? await companiesService.update(props.company.id, form.value)
+      ? await companiesService.update(props.company!.id, form.value)
       : await companiesService.create(form.value)
 
+    const companyData = (data as { data: Company }).data || (data as Company)
+
     if (isEdit.value) {
-      emit('updated', data)
+      emit('updated', companyData)
     } else {
-      emit('created', data)
+      emit('created', companyData)
     }
     emit('close')
   } catch (e) {
-    errorMsg.value = e.message || 'Error de conexión'
+    errorMsg.value = e instanceof Error ? e.message : 'Error de conexión'
   } finally {
     loading.value = false
   }
@@ -138,7 +164,7 @@ const submit = async () => {
       <v-col class="flex justify-between">
         <v-btn color="error" @click="emit('close')"> Cancelar </v-btn>
         <v-spacer />
-        <v-btn color="primary" @click="submit" :loading="loading">
+        <v-btn color="primary" :loading="loading" @click="submit">
           {{ isEdit ? 'Actualizar' : 'Guardar' }}
         </v-btn>
       </v-col>

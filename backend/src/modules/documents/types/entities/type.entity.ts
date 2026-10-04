@@ -2,7 +2,7 @@ import { BaseTenantEntity } from "@/infrastructure/database/base-tenant.entity";
 import { Column, Entity, Index } from "typeorm";
 
 @Entity("documents_types")
-@Index(['companyId', 'name'], { unique: true })
+@Index(["companyId", "name"], { unique: true })
 export class Type extends BaseTenantEntity {
   @Column()
   name: string;

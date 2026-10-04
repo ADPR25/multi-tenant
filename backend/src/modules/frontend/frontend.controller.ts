@@ -14,6 +14,7 @@ import { RequirePermissions } from "@/common/decorators/permissions.decorator";
 import {
   CurrentCompanyId,
   CurrentUser,
+  CurrentUserPayload,
 } from "@/common/decorators/current-company.decorator";
 import { SaveRoleMenusDto } from "./dto/save-role-menus.dto";
 
@@ -23,20 +24,20 @@ export class FrontendController {
   constructor(private readonly service: FrontendService) {}
 
   @Get("sidebar")
-  getSidebar(@CurrentUser() user: any) {
+  getSidebar(@CurrentUser() user: CurrentUserPayload) {
     return this.service.getForRole(
       user.roleId,
-      user.roleCode || user.code,
-      user.companyId,
+      user.roleCode || user.code || "",
+      user.companyId ?? null,
     );
   }
 
   @Get("routes")
-  getRoutes(@CurrentUser() user: any) {
+  getRoutes(@CurrentUser() user: CurrentUserPayload) {
     return this.service.getRoutesForRole(
       user.roleId,
-      user.roleCode || user.code,
-      user.companyId,
+      user.roleCode || user.code || "",
+      user.companyId ?? null,
     );
   }
 
@@ -65,7 +66,7 @@ export class FrontendController {
   @RequirePermissions("iam:roles:read")
   getAssignment(
     @Param("roleId", ParseUUIDPipe) id: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
     return this.service.getAssignmentData(id, user);
   }
@@ -75,7 +76,7 @@ export class FrontendController {
   save(
     @Param("roleId", ParseUUIDPipe) id: string,
     @Body() body: SaveRoleMenusDto,
-    @CurrentUser() user: any,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
     return this.service.saveForRole(id, body.sidebar, user, body.permissions);
   }

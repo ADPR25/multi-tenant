@@ -1,1 +1,18 @@
-import { api } from '@/services/api/api'; import { buildQuery } from '@/services/api/buildQuery'; export const stockMovementsService = { list(p?:any){ return api.request<any>(`/inventory/stock-movements${buildQuery(p)}`) }, getById(id:string){ return api.request<any>(`/inventory/stock-movements/${id}`) }, create(payload:any){ return api.request<any>('/inventory/stock-movements',{method:'POST',body:JSON.stringify(payload)}) }, }; export const movementsService = stockMovementsService; export default stockMovementsService
+import { api } from '@/services/api/api'
+import { buildQuery } from '@/services/api/buildQuery'
+export const stockMovementsService = {
+  list(p?: any) {
+    return api.request<any>(`/inventory/stock-movements${buildQuery(p)}`)
+  },
+  getById(id: string) {
+    return api.request<any>(`/inventory/stock-movements/${id}`)
+  },
+  create(payload: any) {
+    return api.request<any>('/inventory/stock-movements', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  },
+}
+export const movementsService = stockMovementsService
+export default stockMovementsService

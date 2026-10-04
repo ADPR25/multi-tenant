@@ -23,12 +23,12 @@ const setValue = (key: string, value: any) => {
 export const get = {
   useAuth: (key: string) => {
     return getValue(key)
-  }
+  },
 }
 
 export const set = {
   useAuth: (key: string, value: any) => {
     setValue(key, value)
     return value
-  }
+  },
 }

@@ -13,7 +13,12 @@ import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { Role } from "../roles/entities/role.entity";
 import { PaginationDto } from "@/common/dto/pagination.dto";
-import { paginate, paginatedResponse } from "@/common/helpers/pagination.helper";
+import {
+  paginate,
+  paginatedResponse,
+} from "@/common/helpers/pagination.helper";
+
+type UserWithoutPassword = Omit<User, "password">;
 
 @Injectable()
 export class UsersService {
@@ -26,7 +31,9 @@ export class UsersService {
     return this.configService.getOrThrow<number>("config.bcrypt.rounds");
   }
 
-  async create(dto: CreateUserDto & { companyId: string }) {
+  async create(
+    dto: CreateUserDto & { companyId: string },
+  ): Promise<UserWithoutPassword> {
     const emailExists = await this.repo.findOne({
       where: { companyId: dto.companyId, email: dto.email },
     });
@@ -50,7 +57,8 @@ export class UsersService {
     const hashed = await bcrypt.hash(dto.password, this.getBcryptRounds());
     const user = this.repo.create({ ...dto, password: hashed });
     const saved = await this.repo.save(user);
-    const { password, ...result } = saved as any;
+    const { password, ...result } = saved;
+    void password;
     return result;
   }
 
@@ -58,9 +66,9 @@ export class UsersService {
     const [data, total] = await this.repo.findAndCount({
       where: { companyId },
       relations: { role: true },
-      ...paginate(pagination)
+      ...paginate(pagination),
     });
-    return paginatedResponse(data, total, pagination)
+    return paginatedResponse(data, total, pagination);
   }
 
   async findOne(id: string, companyId: string) {
@@ -72,72 +80,76 @@ export class UsersService {
     return user;
   }
 
-  async findByDocumentNumber(document_number: string) {
+  async findByDocumentNumber(document_number: string): Promise<User | null> {
     return this.repo.findOne({
       where: { document_number },
-      select: [
-        "id",
-        "email",
-        "password",
-        "document_number",
-        "companyId",
-        "roleId",
-        "isActive",
-      ] as any,
+      select: {
+        id: true,
+        email: true,
+        password: true,
+        document_number: true,
+        companyId: true,
+        roleId: true,
+        isActive: true,
+      },
     });
   }
 
-  async update(id: string, companyId: string, dto: UpdateUserDto) {
+  async update(
+    id: string,
+    companyId: string,
+    dto: UpdateUserDto,
+  ): Promise<UserWithoutPassword> {
     const user = await this.findOne(id, companyId);
 
-    if (
-      (dto as any).document_number &&
-      (dto as any).document_number !== user.document_number
-    ) {
+    if (dto.document_number && dto.document_number !== user.document_number) {
       const docExists = await this.repo.findOne({
-        where: { document_number: (dto as any).document_number },
+        where: { document_number: dto.document_number },
       });
       if (docExists && docExists.id !== id) {
         throw new ConflictException(
-          `Documento ${(dto as any).document_number} ya registrado en el sistema`,
+          `Documento ${dto.document_number} ya registrado en el sistema`,
         );
       }
     }
 
-    if ((dto as any).email && (dto as any).email !== user.email) {
+    if (dto.email && dto.email !== user.email) {
       const emailExists = await this.repo.findOne({
-        where: { companyId, email: (dto as any).email },
+        where: { companyId, email: dto.email },
       });
       if (emailExists && emailExists.id !== id) {
         throw new ConflictException("Email ya registrado en esta empresa");
       }
     }
 
-    if ((dto as any).roleId && (dto as any).roleId !== user.roleId) {
+    if (dto.roleId && dto.roleId !== user.roleId) {
       const role = await this.repo.manager.findOne(Role, {
-        where: { id: (dto as any).roleId, companyId },
+        where: { id: dto.roleId, companyId },
       });
       if (!role) {
         throw new BadRequestException("El rol no pertenece a esta empresa");
       }
     }
 
-    if ((dto as any).password) {
-      (dto as any).password = await bcrypt.hash(
-        (dto as any).password,
-        this.getBcryptRounds(),
-      );
+    let hashedPassword: string | undefined;
+    if (dto.password) {
+      hashedPassword = await bcrypt.hash(dto.password, this.getBcryptRounds());
     }
 
-    Object.assign(user, dto);
+    Object.assign(user, {
+      ...dto,
+      ...(hashedPassword ? { password: hashedPassword } : {}),
+    });
+
     const saved = await this.repo.save(user);
-    const { password, ...result } = saved as any;
+    const { password, ...result } = saved;
+    void password;
     return result;
   }
 
   async toggleActive(id: string, companyId: string) {
-    const category = await this.findOne(id, companyId);
-    category.isActive = !category.isActive;
-    return this.repo.save(category);
+    const user = await this.findOne(id, companyId);
+    user.isActive = !user.isActive;
+    return this.repo.save(user);
   }
 }

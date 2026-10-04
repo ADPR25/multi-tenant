@@ -1,5 +1,12 @@
 import { BaseTenantEntity } from "@/infrastructure/database/base-tenant.entity";
-import { Column, Entity, ManyToOne, OneToMany, JoinColumn, Index } from "typeorm";
+import {
+  Column,
+  Entity,
+  ManyToOne,
+  OneToMany,
+  JoinColumn,
+  Index,
+} from "typeorm";
 
 @Entity("documents_folders")
 @Index(["companyId", "name", "parentId"], { unique: true })
@@ -16,7 +23,10 @@ export class Folder extends BaseTenantEntity {
   @Column({ name: "parent_id", type: "uuid", nullable: true })
   parentId: string | null;
 
-  @ManyToOne(() => Folder, (folder) => folder.children, { nullable: true, onDelete: "RESTRICT" })
+  @ManyToOne(() => Folder, (folder) => folder.children, {
+    nullable: true,
+    onDelete: "RESTRICT",
+  })
   @JoinColumn({ name: "parent_id" })
   parent: Folder;
 

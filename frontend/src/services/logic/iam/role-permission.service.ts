@@ -1,4 +1,4 @@
-import { api } from "@/services/api/api";
+import { api } from '@/services/api/api'
 
 export const rolePermissionService = {
   getByRoleId(roleId: string) {
@@ -7,7 +7,7 @@ export const rolePermissionService = {
   sync(roleId: string, permissionIds: string[]) {
     return api.request<any>(`/role-permissions/sync`, {
       method: 'POST',
-      body: JSON.stringify({ roleId, permissionIds })
+      body: JSON.stringify({ roleId, permissionIds }),
     })
-  }
+  },
 }

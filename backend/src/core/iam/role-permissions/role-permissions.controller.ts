@@ -4,7 +4,6 @@ import {
   Post,
   Body,
   Param,
-  Delete,
   UseGuards,
   Query,
 } from "@nestjs/common";
@@ -37,7 +36,7 @@ export class RolePermissionsController {
     @OptionalCompanyId() companyId: string | null,
     @Query("roleId") roleId?: string,
   ) {
-    return this.rolePermissionsService.findAll(companyId as any, roleId);
+    return this.rolePermissionsService.findAll(companyId, roleId);
   }
 
   @Get("role/:roleId")
@@ -45,7 +44,7 @@ export class RolePermissionsController {
     @Param("roleId") roleId: string,
     @OptionalCompanyId() companyId: string | null,
   ) {
-    return this.rolePermissionsService.findAll(companyId as any, roleId);
+    return this.rolePermissionsService.findAll(companyId, roleId);
   }
 
   @Get(":id")
@@ -53,7 +52,7 @@ export class RolePermissionsController {
     @Param("id") id: string,
     @OptionalCompanyId() companyId: string | null,
   ) {
-    return this.rolePermissionsService.findOneCompat(id, companyId as any);
+    return this.rolePermissionsService.findOneCompat(id, companyId);
   }
 
   @Post("sync")
@@ -62,7 +61,7 @@ export class RolePermissionsController {
     @OptionalCompanyId() companyId: string | null,
   ) {
     return this.rolePermissionsService.syncRolePermissions(
-      companyId as any,
+      companyId,
       body.roleId,
       body.permissionIds,
     );

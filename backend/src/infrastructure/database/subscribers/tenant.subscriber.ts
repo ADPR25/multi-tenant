@@ -7,13 +7,19 @@ import {
 import { BaseTenantEntity } from "../base-tenant.entity";
 import { BadRequestException } from "@nestjs/common";
 
+interface TenantAware {
+  companyId?: string | null;
+  code?: string;
+  document_number?: string;
+}
+
 @EventSubscriber()
 export class TenantSubscriber implements EntitySubscriberInterface<BaseTenantEntity> {
   listenTo() {
     return BaseTenantEntity;
   }
 
-  private isGlobalEntity(entity: any): boolean {
+  private isGlobalEntity(entity: TenantAware | undefined): boolean {
     if (!entity) return false;
     if (entity.code === "SUPER_ADMIN") return true;
     if (entity.document_number === "00000000") return true;
@@ -25,13 +31,13 @@ export class TenantSubscriber implements EntitySubscriberInterface<BaseTenantEnt
       return;
     }
 
-    const entity = event.entity as any;
+    const entity = event.entity as TenantAware | undefined;
 
-    if (this.isGlobalEntity(entity) && !entity.companyId) {
+    if (this.isGlobalEntity(entity) && !entity?.companyId) {
       return;
     }
 
-    if (event.metadata.tableName === "role_menus" && !entity.companyId) {
+    if (event.metadata.tableName === "role_menus" && !entity?.companyId) {
       return;
     }
 
@@ -47,8 +53,11 @@ export class TenantSubscriber implements EntitySubscriberInterface<BaseTenantEnt
       return;
     }
 
-    const newCompanyId = (event.entity as any)?.companyId;
-    const oldCompanyId = event.databaseEntity?.companyId;
+    const newEntity = event.entity as TenantAware | undefined;
+    const oldEntity = event.databaseEntity as TenantAware | undefined;
+
+    const newCompanyId = newEntity?.companyId;
+    const oldCompanyId = oldEntity?.companyId;
 
     if (newCompanyId && oldCompanyId && newCompanyId !== oldCompanyId) {
       throw new BadRequestException(
@@ -57,10 +66,7 @@ export class TenantSubscriber implements EntitySubscriberInterface<BaseTenantEnt
     }
 
     if ((newCompanyId && !oldCompanyId) || (!newCompanyId && oldCompanyId)) {
-      if (
-        !this.isGlobalEntity(event.entity) &&
-        !this.isGlobalEntity(event.databaseEntity)
-      ) {
+      if (!this.isGlobalEntity(newEntity) && !this.isGlobalEntity(oldEntity)) {
         throw new BadRequestException(
           `TenantSubscriber: No puedes cambiar companyId de ${event.metadata.name}`,
         );

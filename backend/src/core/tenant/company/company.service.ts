@@ -8,16 +8,12 @@ import { Repository, DataSource } from "typeorm";
 import { Company } from "./entities/company.entity";
 import { CreateCompanyDto } from "./dto/create-company.dto";
 import { UpdateCompanyDto } from "./dto/update-company.dto";
-import { Role } from "@/core/iam/roles/entities/role.entity";
-import { Permission } from "@/core/iam/permissions/entities/permission.entity";
-import { RolePermission } from "@/core/iam/role-permissions/entities/role-permission.entity";
 import { CompanySetting } from "../company-settings/entities/company-setting.entity";
 import { PaginationDto } from "@/common/dto/pagination.dto";
 import {
   paginate,
   paginatedResponse,
 } from "@/common/helpers/pagination.helper";
-import { ACCESS_CATALOG } from "@/modules/frontend/data/access.catalog";
 
 @Injectable()
 export class CompanyService {

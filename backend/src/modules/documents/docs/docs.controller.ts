@@ -20,11 +20,16 @@ import { RequirePermissions } from "@/common/decorators/permissions.decorator";
 import {
   CurrentCompanyId,
   CurrentUser,
+  CurrentUserPayload,
 } from "@/common/decorators/current-company.decorator";
-import { PaginationDto } from "@/common/dto/pagination.dto";
 import { JwtAuthGuard } from "@/common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "@/common/guards/permissions.guard";
 import * as path from "path";
+import { Express } from "express";
+import { FilterDto } from "@/common/filters/filter.dto";
+import { PaginationDto } from "@/common/dto/pagination.dto";
+
+type DocsFilterDto = PaginationDto & FilterDto;
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller("documents/docs")
@@ -36,7 +41,7 @@ export class DocsController {
   create(
     @Body() dto: CreateDocDto,
     @CurrentCompanyId() companyId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
     return this.docsService.create(dto, companyId, user.id);
   }
@@ -47,7 +52,11 @@ export class DocsController {
     FileInterceptor("file", {
       storage: memoryStorage(),
       limits: { fileSize: 10 * 1024 * 1024 },
-      fileFilter: (req, file, cb) => {
+      fileFilter: (
+        _req: unknown,
+        file: Express.Multer.File,
+        cb: (error: Error | null, accept: boolean) => void,
+      ) => {
         const allowed = /pdf|jpg|jpeg|png|docx|xlsx|doc|xls/;
         const ok = allowed.test(path.extname(file.originalname).toLowerCase());
         if (!ok) return cb(new Error("Tipo de archivo no permitido"), false);
@@ -56,10 +65,10 @@ export class DocsController {
     }),
   )
   upload(
-    @UploadedFile() file: any,
+    @UploadedFile() file: Express.Multer.File,
     @Body() dto: CreateDocDto,
     @CurrentCompanyId() companyId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
     return this.docsService.createWithFile(dto, companyId, user, file);
   }
@@ -68,7 +77,7 @@ export class DocsController {
   @RequirePermissions("documents:docs:read")
   findAll(
     @CurrentCompanyId() companyId: string,
-    @Query() pagination: PaginationDto & any,
+    @Query() pagination: DocsFilterDto,
     @Query("state") state?: string,
     @Query("search") search?: string,
   ) {
@@ -103,7 +112,7 @@ export class DocsController {
   remove(
     @Param("id") id: string,
     @CurrentCompanyId() companyId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
     return this.docsService.remove(id, companyId, user);
   }

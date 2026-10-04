@@ -1,4 +1,4 @@
-import { api } from "@/services/api/api";
+import { api } from '@/services/api/api'
 export const rolesService = {
   list(active?: boolean) {
     console.log(active)
@@ -15,5 +15,5 @@ export const rolesService = {
   },
   toggleActive(id: string, isActive: boolean) {
     return this.update(id, { isActive })
-  }
+  },
 }

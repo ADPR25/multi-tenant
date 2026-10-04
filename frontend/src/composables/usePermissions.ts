@@ -6,7 +6,7 @@ const permissions = ref<string[]>([])
 const loaded = ref(false)
 
 export const usePermissions = () => {
-  const getUser = () => get.useAuth('user') as any
+  const getUser = () => get.useAuth('user')
 
   const getRoleCode = () => {
     const u = getUser()
@@ -43,10 +43,10 @@ export const usePermissions = () => {
 
     try {
       const data = await rolePermissionService.getByRoleId(user.roleId)
-      const list = Array.isArray(data)? data : data.permissions || data.data || []
+      const list = Array.isArray(data) ? data : data.permissions || data.data || []
       permissions.value = list
-       .map((p: any) => (typeof p === 'string'? p : p.permission?.name || p.name))
-       .filter(Boolean)
+        .map((p: any) => (typeof p === 'string' ? p : p.permission?.name || p.name))
+        .filter(Boolean)
       set.useAuth('my_permissions', permissions.value)
       loaded.value = true
       return permissions.value
@@ -62,8 +62,14 @@ export const usePermissions = () => {
     if (permissions.value.includes('*')) return true
     return permissions.value.includes(perm)
   }
-  const canAny = (...perms: string[]) => isSuper.value? true : perms.some((p) => permissions.value.includes(p) || permissions.value.includes('*'))
-  const canAll = (...perms: string[]) => isSuper.value? true : perms.every((p) => permissions.value.includes(p) || permissions.value.includes('*'))
+  const canAny = (...perms: string[]) =>
+    isSuper.value
+      ? true
+      : perms.some((p) => permissions.value.includes(p) || permissions.value.includes('*'))
+  const canAll = (...perms: string[]) =>
+    isSuper.value
+      ? true
+      : perms.every((p) => permissions.value.includes(p) || permissions.value.includes('*'))
 
   const clear = () => {
     permissions.value = []

@@ -3,22 +3,14 @@
     class="relative flex flex-col items-center justify-center min-h-screen p-6 overflow-hidden z-1"
   >
     <div class="mx-auto w-full max-w-[242px] text-center sm:max-w-[472px]">
-      <h1
-        class="mb-8 font-bold text-gray-800 text-title-md dark:text-white/90 xl:text-title-2xl"
-      >
+      <h1 class="mb-8 font-bold text-gray-800 text-title-md dark:text-white/90 xl:text-title-2xl">
         ERROR
       </h1>
 
       <img src="/images/error/404.svg" alt="404" class="dark:hidden" />
-      <img
-        src="/images/error/404-dark.svg"
-        alt="404"
-        class="hidden dark:block"
-      />
+      <img src="/images/error/404-dark.svg" alt="404" class="hidden dark:block" />
 
-      <p
-        class="mt-10 mb-6 text-base text-gray-700 dark:text-gray-400 sm:text-lg"
-      >
+      <p class="mt-10 mb-6 text-base text-gray-700 dark:text-gray-400 sm:text-lg">
         We can't seem to find the page you are looking for!
       </p>
 
@@ -37,8 +29,8 @@
   </div>
 </template>
 
-<script setup>
-import { ref } from "vue";
+<script setup lang="ts">
+import { ref } from 'vue'
 
-const currentYear = ref(new Date().getFullYear());
+const currentYear = ref(new Date().getFullYear())
 </script>

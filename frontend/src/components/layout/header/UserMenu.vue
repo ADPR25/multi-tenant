@@ -62,7 +62,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { get } from '@/store/authstore'
@@ -87,8 +87,12 @@ const menuItems = [
   { href: '/profile', icon: CircleHelp, text: 'Support' },
 ]
 
-const toggleDropdown = () => { dropdownOpen.value =!dropdownOpen.value }
-const closeDropdown = () => { dropdownOpen.value = false }
+const toggleDropdown = () => {
+  dropdownOpen.value = !dropdownOpen.value
+}
+const closeDropdown = () => {
+  dropdownOpen.value = false
+}
 
 const signOut = () => {
   try {
@@ -102,7 +106,7 @@ const signOut = () => {
 }
 
 const handleClickOutside = (event) => {
-  if (dropdownRef.value &&!dropdownRef.value.contains(event.target)) {
+  if (dropdownRef.value && !dropdownRef.value.contains(event.target)) {
     closeDropdown()
   }
 }

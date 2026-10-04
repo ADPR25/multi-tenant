@@ -22,5 +22,5 @@ export class Company extends BaseEntity {
   address: string;
 
   @Column({ default: true })
-  isActive: boolean
+  isActive: boolean;
 }

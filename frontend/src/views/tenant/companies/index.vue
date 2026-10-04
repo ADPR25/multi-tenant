@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { get } from '@/store/authstore'
@@ -7,12 +7,33 @@ import { Plus, Pencil, Eye, X, Power } from 'lucide-vue-next'
 import CompanyForm from '@/views/tenant/companies/create/index.vue'
 import CompanyView from '@/views/tenant/companies/view/index.vue'
 
-const user = get.useAuth('user')
-const companies = ref([])
+defineOptions({
+  name: 'CompaniesPage',
+})
+
+interface Company {
+  id: string
+  name: string
+  tax_id?: string
+  phone?: string
+  isActive: boolean
+  createdAt?: string
+}
+
+interface UserAuth {
+  roleCode?: string
+  role?: string
+  company?: Company | string
+  companyId?: string
+  company_id?: string
+}
+
+const user = get.useAuth('user') as unknown as UserAuth
+const companies = ref<Company[]>([])
 const search = ref('')
 const loading = ref(false)
-const mode = ref('list')
-const selectedCompany = ref(null)
+const mode = ref<'list' | 'create' | 'edit' | 'view'>('list')
+const selectedCompany = ref<Company | null>(null)
 const dialogActive = ref(false)
 const toggling = ref(false)
 
@@ -22,11 +43,11 @@ const isSuperAdmin = computed(() => {
 
 const isSelectedActive = computed(() => !!selectedCompany.value?.isActive)
 
-const fetchCompanies = async () => {
+const fetchCompanies = async (): Promise<void> => {
   if (!isSuperAdmin.value) return
   loading.value = true
   try {
-    const data = await companiesService.list()
+    const data = (await companiesService.list()) as Company[] | { data: Company[] }
     companies.value = Array.isArray(data) ? data : data.data || []
   } catch (e) {
     console.error(e)
@@ -35,18 +56,18 @@ const fetchCompanies = async () => {
   }
 }
 
-const fetchMyCompany = async () => {
+const fetchMyCompany = async (): Promise<void> => {
   loading.value = true
   try {
     if (user?.company && typeof user.company === 'object') {
       selectedCompany.value = user.company
       return
     }
-    const companyId = user?.companyId || user?.company || user?.company_id
+    const companyId = user?.companyId || (user?.company as string) || user?.company_id
     if (!companyId) return
-    
-    const data = await companiesService.getById(companyId)
-    selectedCompany.value = data.data || data
+
+    const data = (await companiesService.getById(companyId)) as { data: Company } | Company
+    selectedCompany.value = (data as { data: Company }).data || (data as Company)
   } catch (e) {
     console.error(e)
   } finally {
@@ -54,24 +75,24 @@ const fetchMyCompany = async () => {
   }
 }
 
-const openCreate = () => {
+const openCreate = (): void => {
   selectedCompany.value = null
   mode.value = 'create'
 }
-const openEdit = (c) => {
+const openEdit = (c: Company): void => {
   selectedCompany.value = c
   mode.value = 'edit'
 }
-const openView = (c) => {
+const openView = (c: Company): void => {
   selectedCompany.value = c
   mode.value = 'view'
 }
-const openActive = (c) => {
+const openActive = (c: Company): void => {
   selectedCompany.value = c
   dialogActive.value = true
 }
 
-const toggleActiveStatus = async () => {
+const toggleActiveStatus = async (): Promise<void> => {
   if (!selectedCompany.value) return
   toggling.value = true
   try {
@@ -80,13 +101,14 @@ const toggleActiveStatus = async () => {
     await fetchCompanies()
   } catch (e) {
     console.error(e)
-    alert(e.message || 'No se pudo cambiar el estado')
+    const msg = e instanceof Error ? e.message : 'No se pudo cambiar el estado'
+    alert(msg)
   } finally {
     toggling.value = false
   }
 }
 
-const close = () => {
+const close = (): void => {
   if (!isSuperAdmin.value) {
     mode.value = 'view'
     return
@@ -95,7 +117,7 @@ const close = () => {
   selectedCompany.value = null
 }
 
-const onSaved = async () => {
+const onSaved = async (): Promise<void> => {
   if (isSuperAdmin.value) {
     close()
     await fetchCompanies()
@@ -109,12 +131,12 @@ const headers = [
   { title: 'Nombre', key: 'name', minWidth: '160px' },
   { title: 'NIT', key: 'tax_id', minWidth: '130px' },
   { title: 'Teléfono', key: 'phone', minWidth: '140px' },
-  { title: 'Estado', key: 'isActive', minWidth: '110px', align: 'center' },
+  { title: 'Estado', key: 'isActive', minWidth: '110px', align: 'center' as const },
   { title: 'Creado', key: 'createdAt', minWidth: '130px' },
-  { title: 'Opciones', key: 'actions', minWidth: '120px', align: 'end', sortable: false },
+  { title: 'Opciones', key: 'actions', minWidth: '120px', align: 'end' as const, sortable: false },
 ]
 
-const formatDate = (d) =>
+const formatDate = (d?: string): string =>
   d
     ? new Date(d).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric' })
     : '-'
@@ -161,24 +183,24 @@ onMounted(async () => {
             class="companies-table bg-transparent"
             item-value="id"
           >
-            <template v-slot:item.name="{ item }">
+            <template #[`item.name`]="{ item }">
               <span
                 class="font-medium whitespace-nowrap"
                 :class="{ 'text-gray-400 italic': !item.name }"
                 >{{ item.name || '(Sin nombre)' }}</span
               >
             </template>
-            <template v-slot:item.isActive="{ item }">
+            <template #[`item.isActive`]="{ item }">
               <v-chip :color="item.isActive ? 'success' : 'error'" size="small" variant="tonal">{{
                 item.isActive ? 'Activa' : 'Inactiva'
               }}</v-chip>
             </template>
-            <template v-slot:item.createdAt="{ item }">
+            <template #[`item.createdAt`]="{ item }">
               <span class="text-sm text-gray-500 whitespace-nowrap">{{
                 formatDate(item.createdAt)
               }}</span>
             </template>
-            <template v-slot:item.actions="{ item }">
+            <template #[`item.actions`]="{ item }">
               <div class="flex justify-end gap-1">
                 <v-btn icon size="x-small" variant="text" color="primary" @click="openView(item)"
                   ><Eye class="h-4 w-4"
@@ -224,7 +246,12 @@ onMounted(async () => {
         </h1>
         <v-btn v-if="isSuperAdmin" variant="text" icon @click="close"><X class="h-5 w-5" /></v-btn>
       </div>
-      <CompanyView :company="selectedCompany" @close="close" @edit="openEdit" />
+      <CompanyView
+        v-if="selectedCompany"
+        :company="selectedCompany"
+        @close="close"
+        @edit="openEdit"
+      />
     </div>
   </AdminLayout>
 

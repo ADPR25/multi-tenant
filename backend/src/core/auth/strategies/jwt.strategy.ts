@@ -4,6 +4,13 @@ import { ExtractJwt, Strategy } from "passport-jwt";
 import { ConfigService } from "@nestjs/config";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
 import { Cache } from "cache-manager";
+import { CurrentUserPayload } from "@/common/decorators/current-company.decorator";
+
+type JwtPayload = CurrentUserPayload & {
+  jti?: string;
+  iat?: number;
+  exp?: number;
+};
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -18,7 +25,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: any) {
+  async validate(payload: JwtPayload): Promise<JwtPayload> {
     if (!payload?.jti) return payload;
 
     const isBlacklisted = await this.cacheManager.get(

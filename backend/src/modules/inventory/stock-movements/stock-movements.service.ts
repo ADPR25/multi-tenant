@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, Repository } from "typeorm";
+import { DataSource, FindOptionsWhere, Repository } from "typeorm";
 import { StockMovement, MovementType } from "./entities/stock-movement.entity";
 import { Stock } from "../stocks/entities/stock.entity";
 import { Product } from "../products/entities/product.entity";
@@ -33,7 +33,6 @@ export class StockMovementsService {
     await queryRunner.connect();
     await queryRunner.startTransaction();
     try {
-      // Validar existencia tenancy
       const product = await queryRunner.manager.findOne(Product, {
         where: { id: dto.productId, companyId },
       });
@@ -94,7 +93,7 @@ export class StockMovementsService {
         }
         newQuantity = previousQuantity - dto.quantity;
       } else if (dto.type === MovementType.ADJUSTMENT) {
-        newQuantity = dto.quantity; // Ajuste = setea saldo final
+        newQuantity = dto.quantity;
       }
 
       stock.quantity = newQuantity;
@@ -167,9 +166,10 @@ export class StockMovementsService {
     productId?: string,
     warehouseId?: string,
   ) {
-    const where: any = { companyId };
+    const where: FindOptionsWhere<StockMovement> = { companyId };
     if (productId) where.productId = productId;
     if (warehouseId) where.warehouseId = warehouseId;
+
     const [data, total] = await this.movementRepo.findAndCount({
       where,
       relations: ["product", "warehouse"],

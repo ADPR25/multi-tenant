@@ -18,6 +18,11 @@ import {
   paginatedResponse,
 } from "@/common/helpers/pagination.helper";
 import { UploadsService } from "@/modules/uploads/uploads.service";
+import { CurrentUserPayload } from "@/common/decorators/current-company.decorator";
+import { Express } from "express";
+import { FilterDto } from "@/common/filters/filter.dto";
+
+type DocsFilterDto = PaginationDto & FilterDto;
 
 @Injectable()
 export class DocsService {
@@ -69,24 +74,26 @@ export class DocsService {
       ...createDocDto,
       companyId,
       createdBy: userId,
-    } as any);
+    });
     return this.repoService.save(data);
   }
 
   async createWithFile(
     dto: CreateDocDto,
     companyId: string,
-    user: any,
-    file?: any,
+    user: CurrentUserPayload,
+    file?: Express.Multer.File,
   ) {
     await this.validateRelations(dto, companyId);
     const folder = await this.folderRepo.findOne({
       where: { id: dto.folderId, companyId },
     });
-    if (!folder) {
-      throw new NotFoundException("Carpeta no encontrada");
-    }
-    const effectiveUserId = user.id || user.sub || user.userId || user._id;
+    if (!folder) throw new NotFoundException("Carpeta no encontrada");
+
+    const effectiveUserId = user.id || user.sub;
+    if (!effectiveUserId)
+      throw new BadRequestException("Usuario no identificado");
+
     if (folder.ownerFolderName) {
       if (folder.createdBy && folder.createdBy !== effectiveUserId) {
         throw new ForbiddenException(
@@ -95,30 +102,35 @@ export class DocsService {
       }
     }
 
-    let fileData: any = {};
+    let fileData: ReturnType<UploadsService["saveFile"]> | null = null;
     if (file) {
       fileData = this.uploadsService.saveFile(companyId, dto.folderId, file);
     }
+
+    const ownerName =
+      folder.ownerFolderName ||
+      `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim() ||
+      null;
 
     const dataToCreate = {
       ...dto,
       companyId,
       createdBy: effectiveUserId,
-      fileName: fileData.originalName || file?.originalname,
-      storageKey: fileData.storageKey || fileData.key,
-      mimeType: fileData.mimeType || file?.mimetype,
-      size: fileData.size,
-      ownerFolderName:
-        folder.ownerFolderName || `${user.first_name} ${user.last_name}`.trim(),
+      fileName: fileData?.originalName ?? file?.originalname,
+      storageKey: fileData?.storageKey,
+      mimeType: fileData?.mimeType ?? file?.mimetype,
+      size: fileData?.size,
+      ownerFolderName: ownerName,
     };
-    const data = this.repoService.create(dataToCreate as any);
+
+    const data = this.repoService.create(dataToCreate);
     const saved = await this.repoService.save(data);
     return saved;
   }
 
   async findAll(
     companyId: string,
-    pagination: PaginationDto & any,
+    pagination: DocsFilterDto,
     state?: boolean,
     search?: string,
   ) {
@@ -132,12 +144,15 @@ export class DocsService {
 
     if (state !== undefined) qb.andWhere("d.isActive = :state", { state });
     if (search) qb.andWhere("d.title ILIKE :search", { search: `%${search}%` });
-    if (pagination.folderId)
-      qb.andWhere("d.folderId = :fid", { fid: pagination.folderId });
+
+    const folderId = (pagination as { folderId?: string }).folderId;
+    if (folderId) {
+      qb.andWhere("d.folderId = :fid", { fid: folderId });
+    }
 
     qb.orderBy("d.createdAt", "DESC").skip(skip).take(take);
     const [data, total] = await qb.getManyAndCount();
-    return paginatedResponse(data, total, pagination);
+    return paginatedResponse(data, total, pagination as PaginationDto);
   }
 
   async findOne(id: string, companyId: string) {
@@ -162,7 +177,7 @@ export class DocsService {
     return this.repoService.save(doc);
   }
 
-  async remove(id: string, companyId: string, user?: any) {
+  async remove(id: string, companyId: string, user?: CurrentUserPayload) {
     const doc = await this.repoService.findOne({
       where: { id, companyId },
       relations: ["folder"],
@@ -170,19 +185,20 @@ export class DocsService {
     if (!doc) throw new NotFoundException(`doc ${id} not found`);
 
     if (user && doc.folder?.ownerFolderName) {
-      const effectiveUserId = user.id || user.sub || user.userId || user._id;
-      if (doc.createdBy && doc.createdBy !== effectiveUserId) {
+      const effectiveUserId = user.id || user.sub;
+      if (
+        doc.createdBy &&
+        effectiveUserId &&
+        doc.createdBy !== effectiveUserId
+      ) {
         throw new ForbiddenException(
           "No puedes eliminar documentos de otro compañero",
         );
       }
     }
 
-    if (doc.storageKey) {
-      this.uploadsService.deleteFile(doc.storageKey);
-    }
+    if (doc.storageKey) this.uploadsService.deleteFile(doc.storageKey);
     await this.repoService.remove(doc);
-
     return { deleted: true, id };
   }
 }

@@ -2,17 +2,31 @@ import { Injectable } from "@nestjs/common";
 import * as fs from "fs";
 import * as path from "path";
 
+type MulterFile = Express.Multer.File;
+
+interface SavedFileInfo {
+  storageKey: string;
+  mimeType: string;
+  size: number;
+  originalName: string;
+  filename: string;
+}
+
 @Injectable()
 export class UploadsService {
-  private basePath = path.resolve(process.cwd(), 'uploads');
+  private basePath = path.resolve(process.cwd(), "uploads");
 
-  saveFile(companyId: string, folderId: string, file: any) {
-    const dest = path.join(this.basePath, 'docs', companyId, folderId);
+  saveFile(
+    companyId: string,
+    folderId: string,
+    file: MulterFile,
+  ): SavedFileInfo {
+    const dest = path.join(this.basePath, "docs", companyId, folderId);
     if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
 
     const safeName = file.originalname
-      .replace(/\s+/g, '_')
-      .replace(/[^a-zA-Z0-9._-]/g, '');
+      .replace(/\s+/g, "_")
+      .replace(/[^a-zA-Z0-9._-]/g, "");
 
     const filename = `${Date.now()}-${safeName}`;
     const fullPath = path.join(dest, filename);
@@ -28,7 +42,7 @@ export class UploadsService {
     };
   }
 
-  getAbsolutePath(storageKey: string) {
+  getAbsolutePath(storageKey: string): string {
     return path.join(this.basePath, storageKey);
   }
 

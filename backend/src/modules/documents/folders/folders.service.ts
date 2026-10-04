@@ -8,14 +8,14 @@ import { CreateFolderDto } from "./dto/create-folder.dto";
 import { UpdateFolderDto } from "./dto/update-folder.dto";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Folder } from "./entities/folder.entity";
-import { Repository, IsNull, Raw } from "typeorm";
+import { Repository, IsNull, Raw, FindOptionsWhere } from "typeorm";
 import {
   paginate,
   paginatedResponse,
 } from "@/common/helpers/pagination.helper";
-import { PaginationDto } from "@/common/dto/pagination.dto";
 import { UsersService } from "@/core/iam/users/users.service";
 import { FilterDto } from "@/common/filters/filter.dto";
+import { CurrentUserPayload } from "@/common/decorators/current-company.decorator";
 
 @Injectable()
 export class FoldersService {
@@ -36,18 +36,21 @@ export class FoldersService {
       ...dto,
       companyId,
       createdBy: userId,
-    } as any);
+    });
     return this.repo.save(data);
   }
 
-  async createPersonal(parentId: string, companyId: string, user: any) {
-    const UserSelected = await this.userService.findOne(
-      user.id || user.sub || user.userId,
-      companyId,
-    );
+  async createPersonal(
+    parentId: string,
+    companyId: string,
+    user: CurrentUserPayload,
+  ) {
+    const userId = user.id || user.sub;
+    if (!userId) throw new NotFoundException("Usuario no identificado");
 
+    const userSelected = await this.userService.findOne(userId, companyId);
     const fullName =
-      `${UserSelected.first_name} ${UserSelected.last_name}`.trim();
+      `${userSelected.first_name} ${userSelected.last_name}`.trim();
 
     const exists = await this.repo.findOne({
       where: { companyId, parentId, name: fullName },
@@ -60,7 +63,7 @@ export class FoldersService {
       parentId,
       companyId,
       ownerFolderName: fullName,
-      createdBy: UserSelected.id,
+      createdBy: userSelected.id,
     });
     return this.repo.save(data);
   }
@@ -73,7 +76,7 @@ export class FoldersService {
   ) {
     const isList = find === "list" || find?.includes("list");
 
-    const where: any = {
+    const where: FindOptionsWhere<Folder> = {
       companyId,
       ...(state !== undefined ? { isActive: state } : {}),
     };
@@ -100,7 +103,7 @@ export class FoldersService {
       ...paginate(pagination),
     });
 
-    const mapped = data.map((f: any) => ({
+    const mapped = data.map((f) => ({
       id: f.id,
       createdAt: f.createdAt,
       updatedAt: f.updatedAt,
@@ -128,7 +131,7 @@ export class FoldersService {
     childId: string,
     companyId: string,
   ): Promise<boolean> {
-    let currentId = potentialParentId;
+    let currentId: string | null = potentialParentId;
     for (let i = 0; i < 20; i++) {
       if (!currentId) return false;
       if (currentId === childId) return true;

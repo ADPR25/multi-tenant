@@ -46,9 +46,9 @@ onMounted(async () => {
     documentCategoriesService.list({ limit: 'all' }).catch(() => []),
     documentTypesService.list({ limit: 'all' }).catch(() => []),
   ])
-  folders.value = (f as any).data || f || []
-  categories.value = (c as any).data || c || []
-  types.value = (t as any).data || t || []
+  folders.value = f.data || f || []
+  categories.value = c.data || c || []
+  types.value = t.data || t || []
 })
 </script>
 <template>

@@ -7,14 +7,14 @@ import { BaseTenantEntity } from "@/infrastructure/database/base-tenant.entity";
 @Unique(["companyId", "roleId", "permissionId"])
 @Index(["companyId", "roleId"])
 export class RolePermission extends BaseTenantEntity {
-  @Column({ type: "uuid" }) 
+  @Column({ type: "uuid" })
   roleId: string;
 
   @ManyToOne(() => Role, { onDelete: "CASCADE" })
   @JoinColumn({ name: "roleId" })
   role: Role;
 
-  @Column({ type: "uuid" }) 
+  @Column({ type: "uuid" })
   permissionId: string;
 
   @ManyToOne(() => Permission, { onDelete: "CASCADE" })

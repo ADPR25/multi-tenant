@@ -13,6 +13,11 @@ import { RolePermission } from "@/core/iam/role-permissions/entities/role-permis
 import { Role } from "@/core/iam/roles/entities/role.entity";
 import { PERMISSIONS_KEY } from "@/common/decorators/permissions.decorator";
 import { IS_PUBLIC_KEY } from "../decorators/public.decorator";
+import { CurrentUserPayload } from "../decorators/current-company.decorator";
+
+interface RequestWithUser {
+  user?: CurrentUserPayload;
+}
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -22,11 +27,11 @@ export class PermissionsGuard implements CanActivate {
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
-  private isSuperAdmin(user: any, role?: Role | null): boolean {
+  private isSuperAdmin(user: CurrentUserPayload, role?: Role | null): boolean {
     return (
-      user?.roleCode === "SUPER_ADMIN" ||
-      user?.code === "SUPER_ADMIN" ||
-      user?.role?.code === "SUPER_ADMIN" ||
+      user.roleCode === "SUPER_ADMIN" ||
+      user.code === "SUPER_ADMIN" ||
+      user.role?.code === "SUPER_ADMIN" ||
       role?.code === "SUPER_ADMIN"
     );
   }
@@ -44,8 +49,9 @@ export class PermissionsGuard implements CanActivate {
     );
     if (!required?.length) return true;
 
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<RequestWithUser>();
     const user = request.user;
+
     if (!user?.roleId) throw new ForbiddenException("Sin rol asignado");
 
     if (this.isSuperAdmin(user)) return true;
@@ -56,14 +62,14 @@ export class PermissionsGuard implements CanActivate {
 
     const cacheKey = `perms:${user.companyId}:${user.roleId}`;
     let perms: RolePermission[] | undefined =
-      await this.cacheManager.get(cacheKey);
+      await this.cacheManager.get<RolePermission[]>(cacheKey);
 
     if (!perms) {
       const role = await this.dataSource
         .getRepository(Role)
         .findOne({ where: { id: user.roleId } });
 
-      if (this.isSuperAdmin(user, role)) return true;
+      if (this.isSuperAdmin(user, role ?? undefined)) return true;
 
       perms = await this.dataSource.getRepository(RolePermission).find({
         where: { companyId: user.companyId, roleId: user.roleId },
@@ -72,7 +78,9 @@ export class PermissionsGuard implements CanActivate {
       await this.cacheManager.set(cacheKey, perms, 120);
     }
 
-    const userPermissionNames = new Set(perms.map((p) => p.permission?.name));
+    const userPermissionNames = new Set(
+      perms.map((p) => p.permission?.name).filter((n): n is string => !!n),
+    );
 
     for (const req of required) {
       if (!userPermissionNames.has(req)) {

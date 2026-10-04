@@ -12,11 +12,26 @@ import { Role } from "../iam/roles/entities/role.entity";
 import { Session } from "./entities/session.entity";
 import { Company } from "../tenant/company/entities/company.entity";
 import { User } from "../iam/users/entities/user.entity";
-import * as crypto from "crypto";
+import * as crypto from "node:crypto";
 import {
   LoginResponseDto,
   RefreshResponseDto,
 } from "./dto/refresh-response.dto";
+
+interface JwtPayload {
+  sub: string;
+  email: string;
+  document_number: string;
+  companyId: string | null;
+  roleId: string;
+  roleCode: string;
+  jti: string;
+}
+
+interface DecodedToken {
+  jti?: string;
+  exp?: number;
+}
 
 @Injectable()
 export class AuthService {
@@ -31,18 +46,24 @@ export class AuthService {
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
-  private generateRefreshToken() {
+  private generateRefreshToken(): {
+    id: string;
+    secret: string;
+    token: string;
+  } {
     const id = crypto.randomUUID();
     const secret = crypto.randomBytes(48).toString("hex");
     return { id, secret, token: `${id}.${secret}` };
   }
+
   private getBcryptRounds(): number {
     return this.configService.getOrThrow<number>("config.bcrypt.rounds");
   }
+
   private getRefreshExpiresMs(): number {
     const expiresIn =
-      this.configService.get<string>("config.jwt.refreshExpiresIn") || "7d";
-    const value = parseInt(expiresIn);
+      this.configService.get<string>("config.jwt.refreshExpiresIn") ?? "7d";
+    const value = parseInt(expiresIn, 10);
     if (expiresIn.endsWith("s")) return value * 1000;
     if (expiresIn.endsWith("m")) return value * 60 * 1000;
     if (expiresIn.endsWith("h")) return value * 60 * 60 * 1000;
@@ -68,11 +89,9 @@ export class AuthService {
       throw new UnauthorizedException("Rol inactivo");
 
     const isSuperAdmin = role.code === "SUPER_ADMIN";
-
     if (!isSuperAdmin) {
-      if (!user.companyId) {
+      if (!user.companyId)
         throw new UnauthorizedException("Usuario sin empresa asignada");
-      }
       const company = await this.companyRepo.findOne({
         where: { id: user.companyId },
       });
@@ -81,27 +100,36 @@ export class AuthService {
     }
 
     const jti = crypto.randomUUID();
-    const payload = {
+    const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
       document_number: user.document_number,
-      companyId: user.companyId || null,
+      companyId: user.companyId ?? null,
       roleId: user.roleId,
       roleCode: role.code,
       jti,
     };
+
     const access_token = this.jwtService.sign(payload);
     const { id, secret, token } = this.generateRefreshToken();
     const familyId = crypto.randomUUID();
+
+    const hashedSecret: string = await bcrypt.hash(
+      secret,
+      this.getBcryptRounds(),
+    );
+
     const session = this.sessionRepo.create({
       id,
-      companyId: user.companyId || (null as any),
+      companyId: user.companyId ?? null,
       userId: user.id,
       familyId,
-      refreshTokenHash: await bcrypt.hash(secret, this.getBcryptRounds()),
+      refreshTokenHash: hashedSecret,
       expiresAt: new Date(Date.now() + this.getRefreshExpiresMs()),
-    } as any);
+    });
+
     await this.sessionRepo.save(session);
+
     return {
       access_token,
       refresh_token: token,
@@ -109,7 +137,7 @@ export class AuthService {
         id: user.id,
         email: user.email,
         document_number: user.document_number,
-        companyId: user.companyId as any,
+        companyId: user.companyId,
         roleId: user.roleId,
         roleCode: role.code,
         isPrincipal: role.isPrincipal,
@@ -121,10 +149,12 @@ export class AuthService {
     const [sessionId, secret] = refreshToken.split(".");
     if (!sessionId || !secret)
       throw new UnauthorizedException("Refresh inválido");
+
     const session = await this.sessionRepo.findOne({
       where: { id: sessionId },
     });
     if (!session) throw new UnauthorizedException("Refresh inválido");
+
     if (session.revoked) {
       await this.sessionRepo.update(
         { familyId: session.familyId },
@@ -136,6 +166,7 @@ export class AuthService {
     }
     if (session.expiresAt < new Date())
       throw new UnauthorizedException("Refresh expirado");
+
     const isValid = await bcrypt.compare(secret, session.refreshTokenHash);
     if (!isValid) throw new UnauthorizedException("Refresh inválido");
 
@@ -143,11 +174,17 @@ export class AuthService {
       let user: User | null;
       if (session.companyId) {
         user = await manager.findOne(User, {
-          where: { id: session.userId, companyId: session.companyId } as any,
+          where: {
+            id: session.userId,
+            companyId: session.companyId,
+          },
         });
       } else {
         user = await manager.findOne(User, {
-          where: { id: session.userId, companyId: IsNull() } as any,
+          where: {
+            id: session.userId,
+            companyId: IsNull(),
+          },
         });
       }
 
@@ -162,36 +199,45 @@ export class AuthService {
           throw new UnauthorizedException("Empresa inactiva");
       }
 
-      const role = await manager.findOne(Role, { where: { id: user.roleId! } });
+      const role = await manager.findOne(Role, { where: { id: user.roleId } });
       if (!role?.isActive) throw new UnauthorizedException("Rol inactivo");
 
       const jti = crypto.randomUUID();
-      const payload = {
+      const payload: JwtPayload = {
         sub: user.id,
         email: user.email,
         document_number: user.document_number,
-        companyId: user.companyId || null,
+        companyId: user.companyId ?? null,
         roleId: user.roleId,
-        roleCode: role?.code,
+        roleCode: role?.code ?? "",
         jti,
       };
+
       const {
         id,
         secret: newSecret,
         token: newToken,
       } = this.generateRefreshToken();
+
+      const newHashedSecret: string = await bcrypt.hash(
+        newSecret,
+        this.getBcryptRounds(),
+      );
+
       const newSession = manager.create(Session, {
         id,
-        companyId: session.companyId || (null as any),
+        companyId: session.companyId ?? null,
         userId: session.userId,
         familyId: session.familyId,
-        refreshTokenHash: await bcrypt.hash(newSecret, this.getBcryptRounds()),
+        refreshTokenHash: newHashedSecret,
         expiresAt: new Date(Date.now() + this.getRefreshExpiresMs()),
-      } as any);
+      });
+
       await manager.save(newSession);
       session.revoked = true;
       session.replacedById = newSession.id;
       await manager.save(session);
+
       return {
         access_token: this.jwtService.sign(payload),
         refresh_token: newToken,
@@ -205,8 +251,13 @@ export class AuthService {
   ): Promise<{ message: string }> {
     if (accessToken) {
       try {
-        const decoded: any = this.jwtService.decode(accessToken);
-        if (decoded?.jti && decoded?.exp) {
+        const decoded = this.jwtService.decode<DecodedToken>(accessToken);
+        if (
+          decoded &&
+          typeof decoded !== "string" &&
+          decoded.jti &&
+          decoded.exp
+        ) {
           const ttlMs = decoded.exp * 1000 - Date.now();
           if (ttlMs > 0) {
             await this.cacheManager.set(
@@ -216,16 +267,22 @@ export class AuthService {
             );
           }
         }
-      } catch {}
+      } catch (error) {
+        console.error(`No se pudo decodificar token en logout`, error);
+      }
     }
+
     const [sessionId, secret] = refreshToken.split(".");
     if (!sessionId || !secret) return { message: "Sesión cerrada" };
+
     const session = await this.sessionRepo.findOne({
       where: { id: sessionId },
     });
     if (!session) return { message: "Sesión cerrada" };
+
     const isValid = await bcrypt.compare(secret, session.refreshTokenHash);
     if (!isValid) return { message: "Sesión cerrada" };
+
     session.revoked = true;
     session.revokedReason = "logout";
     await this.sessionRepo.save(session);

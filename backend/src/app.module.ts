@@ -6,7 +6,8 @@ import { CacheModule } from "@nestjs/cache-manager";
 import { APP_GUARD, APP_INTERCEPTOR } from "@nestjs/core";
 import { ScheduleModule } from "@nestjs/schedule";
 import { TenantSubscriber } from "@/infrastructure/database/subscribers/tenant.subscriber";
-import configuration, { validationSchema } from "@/config/configuration";
+import configuration, { DatabaseConfig } from "@/config/configuration";
+import { validationSchema } from "@/config/configuration";
 import { JwtAuthGuard } from "@/common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "@/common/guards/permissions.guard";
 import { AuditInterceptor } from "@/infrastructure/audit/interceptors/audit.interceptor";
@@ -21,10 +22,14 @@ import { SeedsModule } from "./infrastructure/database/seeds/seeds.module";
     CacheModule.registerAsync({
       isGlobal: true,
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        ttl: config.get<number>("config.cache.ttl"),
-        max: config.get<number>("config.cache.max"),
-      }),
+      useFactory: (config: ConfigService) => {
+        const ttl = config.getOrThrow<number>("config.cache.ttl");
+        const max = config.getOrThrow<number>("config.cache.max");
+        return {
+          ttl,
+          max,
+        };
+      },
     }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 500 }]),
     ConfigModule.forRoot({
@@ -35,7 +40,7 @@ import { SeedsModule } from "./infrastructure/database/seeds/seeds.module";
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService): TypeOrmModuleOptions => {
-        const db = configService.getOrThrow("config.database");
+        const db = configService.getOrThrow<DatabaseConfig>("config.database");
         return {
           type: "postgres",
           host: db.host,
@@ -43,8 +48,7 @@ import { SeedsModule } from "./infrastructure/database/seeds/seeds.module";
           username: db.username,
           password: db.password,
           database: db.database,
-          synchronize:
-            db.synchronize === true || (db.synchronize as any) === "true",
+          synchronize: db.synchronize === true || db.synchronize === "true",
           logging: db.logging,
           autoLoadEntities: db.autoLoadEntities,
           subscribers: [TenantSubscriber],

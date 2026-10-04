@@ -18,11 +18,6 @@ import { CategoriesModule } from "./categories/categories.module";
       { path: "document_management", module: FoldersModule },
     ]),
   ],
-  exports: [
-    CategoriesModule,
-    TypesModule,
-    DocsModule,
-    FoldersModule,
-  ],
+  exports: [CategoriesModule, TypesModule, DocsModule, FoldersModule],
 })
 export class DocumentsModule {}

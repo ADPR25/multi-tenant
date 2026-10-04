@@ -1,1 +1,29 @@
-import { api } from '@/services/api/api'; import { buildQuery } from '@/services/api/buildQuery'; export const documentTypesService = { list(p?:any){ return api.request<any>(`/document_management/documents/types${buildQuery(p)}`) }, getById(id:string){ return api.request<any>(`/document_management/documents/types/${id}`) }, create(payload:any){ return api.request<any>('/document_management/documents/types',{method:'POST',body:JSON.stringify(payload)}) }, update(id:string,payload:any){ return api.request<any>(`/document_management/documents/types/${id}`,{method:'PATCH',body:JSON.stringify(payload)}) }, toggleActive(id:string){ return api.request<any>(`/document_management/documents/types/active/${id}`,{method:'PATCH'}) }, }; export const typeDocumentsService = documentTypesService; export default documentTypesService
+import { api } from '@/services/api/api'
+import { buildQuery } from '@/services/api/buildQuery'
+export const documentTypesService = {
+  list(p?: any) {
+    return api.request<any>(`/document_management/documents/types${buildQuery(p)}`)
+  },
+  getById(id: string) {
+    return api.request<any>(`/document_management/documents/types/${id}`)
+  },
+  create(payload: any) {
+    return api.request<any>('/document_management/documents/types', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  },
+  update(id: string, payload: any) {
+    return api.request<any>(`/document_management/documents/types/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    })
+  },
+  toggleActive(id: string) {
+    return api.request<any>(`/document_management/documents/types/active/${id}`, {
+      method: 'PATCH',
+    })
+  },
+}
+export const typeDocumentsService = documentTypesService
+export default documentTypesService

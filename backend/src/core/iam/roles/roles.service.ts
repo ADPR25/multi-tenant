@@ -8,7 +8,6 @@ import { Repository, DataSource } from "typeorm";
 import { Role } from "./entities/role.entity";
 import { CreateRoleDto } from "./dto/create-role.dto";
 import { UpdateRoleDto } from "./dto/update-role.dto";
-import { User } from "../users/entities/user.entity";
 import { normalizeRoleCode } from "./utils/role-code.util";
 import { PaginationDto } from "@/common/dto/pagination.dto";
 import {

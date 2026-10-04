@@ -8,7 +8,7 @@ export class AuditLog extends BaseTenantEntity {
   userId: string;
 
   @Column()
-  action: string; 
+  action: string;
 
   @Column()
   resource: string;
@@ -17,5 +17,5 @@ export class AuditLog extends BaseTenantEntity {
   resourceId: string;
 
   @Column({ type: "jsonb", nullable: true })
-  details: any;
+  details: Record<string, unknown> | null;
 }

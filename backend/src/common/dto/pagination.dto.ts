@@ -1,31 +1,30 @@
-import { IsOptional, IsInt, Min } from "class-validator";
+import { IsOptional, IsInt, Min, ValidateIf } from "class-validator";
 import { Transform } from "class-transformer";
-import { ValidateIf } from "class-validator";
 
 export class PaginationDto {
   @IsOptional()
-  @Transform(({ value }) => Number(value))
+  @Transform(({ value }: { value: unknown }) => Number(value))
   @IsInt()
   @Min(1)
   page: number = 1;
 
   @IsOptional()
-  @Transform(({ value }) => {
-    if (value === 'all') return 'all';
+  @Transform(({ value }: { value: unknown }) => {
+    if (value === "all") return "all";
     return Number(value);
   })
-  @ValidateIf(o => o.limit !== 'all')
+  @ValidateIf((o: PaginationDto) => o.limit !== "all")
   @IsInt({ message: "El límite debe ser un número entero o 'all'" })
   @Min(1)
-  limit: number | 'all' = 20;
+  limit: number | "all" = 20;
 
-  get skip() { 
-    if (this.limit === 'all') return 0;
-    return (this.page - 1) * (this.limit as number); 
+  get skip(): number {
+    if (this.limit === "all") return 0;
+    return (this.page - 1) * this.limit;
   }
 
-  get isAll() {
-    return this.limit === 'all';
+  get isAll(): boolean {
+    return this.limit === "all";
   }
 }
 
@@ -35,6 +34,7 @@ export class PaginatedResponseDto<T> {
   page: number;
   limit: number;
   totalPages: number;
+
   constructor(data: T[], total: number, page: number, limit: number) {
     this.data = data;
     this.total = total;

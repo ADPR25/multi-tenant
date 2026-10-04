@@ -1,17 +1,21 @@
 import { PaginatedResponseDto, PaginationDto } from "../dto/pagination.dto";
 
 export function paginate(pagination: PaginationDto) {
-  if (pagination.limit === 'all') {
+  if (pagination.limit === "all") {
     return {};
   }
   return {
-    take: pagination.limit as number,
+    take: pagination.limit,
     skip: pagination.skip,
   };
 }
 
-export function paginatedResponse<T>(data: T[], total: number, pagination: PaginationDto) {
-  if (pagination.limit === 'all') {
+export function paginatedResponse<T>(
+  data: T[],
+  total: number,
+  pagination: PaginationDto,
+) {
+  if (pagination.limit === "all") {
     return {
       data,
       total,
@@ -20,5 +24,10 @@ export function paginatedResponse<T>(data: T[], total: number, pagination: Pagin
       totalPages: 1,
     };
   }
-  return new PaginatedResponseDto(data, total, pagination.page, pagination.limit as number);
+  return new PaginatedResponseDto(
+    data,
+    total,
+    pagination.page,
+    pagination.limit,
+  );
 }

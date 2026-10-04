@@ -4,7 +4,7 @@ import { IamModule } from "./iam/iam.module";
 import { AuthModule } from "./auth/auth.module";
 
 @Module({
-    imports: [TenantModule, IamModule, AuthModule],
-    exports: [TenantModule, IamModule, AuthModule]
+  imports: [TenantModule, IamModule, AuthModule],
+  exports: [TenantModule, IamModule, AuthModule],
 })
 export class CoreModule {}

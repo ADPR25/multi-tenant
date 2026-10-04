@@ -5,7 +5,6 @@ import {
   Body,
   Patch,
   Param,
-  Delete,
   UseGuards,
   Query,
   ConflictException,
@@ -16,6 +15,7 @@ import { UpdateRoleDto } from "./dto/update-role.dto";
 import {
   CurrentCompanyId,
   CurrentUser,
+  CurrentUserPayload,
 } from "@/common/decorators/current-company.decorator";
 import { JwtAuthGuard } from "@/common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "@/common/guards/permissions.guard";
@@ -27,16 +27,18 @@ import { PaginationDto } from "@/common/dto/pagination.dto";
 export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
 
+  private isSuper(user: CurrentUserPayload): boolean {
+    return user?.roleCode === "SUPER_ADMIN" || user?.code === "SUPER_ADMIN";
+  }
+
   @Post()
   @RequirePermissions("iam:roles:create")
   create(
     @Body() dto: CreateRoleDto & { companyId?: string },
     @CurrentCompanyId() companyId: string | null,
-    @CurrentUser() user: any,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
-    const isSuper =
-      user?.roleCode === "SUPER_ADMIN" || user?.code === "SUPER_ADMIN";
-    const effectiveCompanyId = isSuper ? dto.companyId : companyId;
+    const effectiveCompanyId = this.isSuper(user) ? dto.companyId : companyId;
 
     console.log(
       dto,
@@ -74,11 +76,12 @@ export class RolesController {
     @Param("id") id: string,
     @CurrentCompanyId() companyId: string | null,
     @Body() dto: UpdateRoleDto & { companyId?: string },
-    @CurrentUser() user: any,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
-    const isSuper = user?.roleCode === "SUPER_ADMIN";
-    const effectiveCompanyId = isSuper ? dto.companyId || companyId : companyId;
-    return this.rolesService.update(id, effectiveCompanyId as string, dto);
+    const effectiveCompanyId = this.isSuper(user)
+      ? dto.companyId || companyId
+      : companyId;
+    return this.rolesService.update(id, effectiveCompanyId, dto);
   }
 
   @Patch("active/:id")

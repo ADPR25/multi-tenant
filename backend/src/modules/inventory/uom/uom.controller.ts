@@ -5,7 +5,6 @@ import {
   Body,
   Patch,
   Param,
-  Delete,
   UseGuards,
   Query,
 } from "@nestjs/common";
@@ -16,7 +15,6 @@ import { JwtAuthGuard } from "@/common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "@/common/guards/permissions.guard";
 import { RequirePermissions } from "@/common/decorators/permissions.decorator";
 import { CurrentCompanyId } from "@/common/decorators/current-company.decorator";
-import { PaginationDto } from "@/common/dto/pagination.dto";
 import { FilterDto } from "@/common/filters/filter.dto";
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -38,12 +36,7 @@ export class UomController {
   findAll(@CurrentCompanyId() companyId: string, @Query() filter: FilterDto) {
     const isActive =
       filter.state !== undefined ? filter.state === "true" : undefined;
-    return this.uomService.findAll(
-      companyId,
-      filter,
-      isActive,
-      filter.find,
-    );
+    return this.uomService.findAll(companyId, filter, isActive, filter.find);
   }
 
   @Get(":id")

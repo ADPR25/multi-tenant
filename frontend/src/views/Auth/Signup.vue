@@ -318,6 +318,5 @@ const togglePasswordVisibility = () => {
   showPassword.value = !showPassword.value
 }
 
-const handleSubmit = () => {
-}
+const handleSubmit = () => {}
 </script>

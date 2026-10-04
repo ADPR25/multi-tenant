@@ -8,7 +8,9 @@ import { FrontendService } from "./frontend.service";
 import { FrontendController } from "./frontend.controller";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([RoleMenu, Role, Permission, RolePermission])],
+  imports: [
+    TypeOrmModule.forFeature([RoleMenu, Role, Permission, RolePermission]),
+  ],
   controllers: [FrontendController],
   providers: [FrontendService],
   exports: [FrontendService],

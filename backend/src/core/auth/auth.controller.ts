@@ -25,9 +25,12 @@ export class AuthController {
   @Throttle({ default: { ttl: 60000, limit: 200 } })
   @Post("logout")
   logout(@Body() dto: RefreshDto, @Req() req: Request) {
+    const authHeader = req.headers.authorization;
     const accessToken =
-      (req.headers as any).authorization?.replace("Bearer ", "") ||
-      (req.headers as any).Authorization?.replace("Bearer ", "");
+      typeof authHeader === "string"
+        ? authHeader.replace("Bearer ", "")
+        : undefined;
+
     return this.authService.logout(dto.refresh_token, accessToken);
   }
 }

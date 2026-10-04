@@ -159,14 +159,20 @@ async function toggle() {
             <strong :class="isSelectedActive ? 'text-red-600' : 'text-green-600'">
               {{ isSelectedActive ? 'inactivar' : 'activar' }}
             </strong>
-            el documento <strong>{{ itemToToggle?.title }}</strong>.
+            el documento <strong>{{ itemToToggle?.title }}</strong
+            >.
           </p>
           <p class="mt-3 text-sm">¿Deseas continuar?</p>
         </v-card-text>
         <v-card-actions class="p-6 pt-4">
           <v-btn variant="text" @click="dialogActive = false" :disabled="toggling">Cancelar</v-btn>
           <v-spacer />
-          <v-btn :color="isSelectedActive ? 'error' : 'success'" variant="flat" :loading="toggling" @click="toggle">
+          <v-btn
+            :color="isSelectedActive ? 'error' : 'success'"
+            variant="flat"
+            :loading="toggling"
+            @click="toggle"
+          >
             {{ isSelectedActive ? 'Sí, inactivar' : 'Sí, activar' }}
           </v-btn>
         </v-card-actions>

@@ -6,14 +6,12 @@ import {
   Req,
   Query,
   UnauthorizedException,
-  Delete,
 } from "@nestjs/common";
 import { UploadsService } from "./uploads.service";
 import { JwtService } from "@nestjs/jwt";
 import { Request, Response } from "express";
 import * as fs from "fs";
 import { Public } from "@/common/decorators/public.decorator";
-import { CurrentCompanyId, CurrentUser } from "@/common/decorators/current-company.decorator";
 
 @Controller("uploads")
 export class UploadsController {
@@ -24,14 +22,14 @@ export class UploadsController {
 
   @Public()
   @Get("docs/:companyId/:folderId/:filename")
-  async serve(
+  serve(
     @Param("companyId") companyId: string,
     @Param("folderId") folderId: string,
     @Param("filename") filename: string,
     @Req() req: Request,
     @Res() res: Response,
     @Query("token") tokenQuery?: string,
-  ) {
+  ): void {
     const token =
       tokenQuery ||
       (req.headers.authorization?.startsWith("Bearer ")
@@ -42,19 +40,24 @@ export class UploadsController {
 
     try {
       this.jwtService.verify(token);
-    } catch (e) {
-      throw new UnauthorizedException("Token inválido");
+    } catch (error) {
+      throw new UnauthorizedException("Token inválido", {
+        cause: error as Error,
+      });
     }
 
     const key = `docs/${companyId}/${folderId}/${filename}`;
     const abs = this.uploadsService.getAbsolutePath(key);
-    if (!fs.existsSync(abs))
-      return res.status(404).json({ message: "Archivo no encontrado" });
+    if (!fs.existsSync(abs)) {
+      res.status(404).json({ message: "Archivo no encontrado" });
+      return;
+    }
 
     res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
-    if (filename.toLowerCase().endsWith(".pdf"))
+    if (filename.toLowerCase().endsWith(".pdf")) {
       res.setHeader("Content-Type", "application/pdf");
+    }
 
-    return res.sendFile(abs);
+    res.sendFile(abs);
   }
 }

@@ -1,12 +1,5 @@
 import { BaseTenantEntity } from "@/infrastructure/database/base-tenant.entity";
-import {
-  Entity,
-  Index,
-  Column,
-  DeleteDateColumn,
-  ManyToOne,
-  JoinColumn,
-} from "typeorm";
+import { Entity, Index, Column, ManyToOne, JoinColumn } from "typeorm";
 import { Category } from "../../categories/entities/category.entity";
 import { Folder } from "../../folders/entities/folder.entity";
 import { Type } from "../../types/entities/type.entity";

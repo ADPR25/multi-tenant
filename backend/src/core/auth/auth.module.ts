@@ -21,11 +21,22 @@ import { SessionsCleanupService } from "./tasks/sessions-cleanup.service";
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService): JwtModuleOptions => {
-        const secret = configService.getOrThrow<string>("config.jwt.secret");
-        const expiresIn = configService.getOrThrow<string>("config.jwt.expiresIn");
+        const secret: string =
+          configService.getOrThrow<string>("config.jwt.secret");
+        const expiresIn: string = configService.getOrThrow<string>(
+          "config.jwt.expiresIn",
+        );
+
         return {
           secret,
-          signOptions: { expiresIn: expiresIn as any },
+          signOptions: {
+            expiresIn:
+              expiresIn as unknown as JwtModuleOptions["signOptions"] extends {
+                expiresIn?: infer E;
+              }
+                ? E
+                : never,
+          },
         };
       },
     }),

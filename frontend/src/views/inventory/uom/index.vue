@@ -1,16 +1,28 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import AppDataTable from '@/components/common/AppDataTable.vue'
 import CreateView from './create/index.vue'
 import { uomService } from '@/services'
 import { usePermissions } from '@/composables/usePermissions'
 import { Plus, Pencil, Power, Ruler, X } from 'lucide-vue-next'
-import { ref } from 'vue'
+
+defineOptions({
+  name: 'UomPage',
+})
+
+interface UomItem {
+  id: string
+  name: string
+  short_name?: string
+  isActive: boolean
+  createdAt?: string
+}
 
 const { can } = usePermissions()
 const mode = ref<'list' | 'create' | 'edit'>('list')
-const selected = ref<any>(null)
-const tableRef = ref<InstanceType<typeof AppDataTable>>()
+const selected = ref<UomItem | null>(null)
+const tableRef = ref<{ reload: () => void } | null>(null)
 
 const headers = [
   { title: 'Nombre', key: 'name' },
@@ -20,28 +32,29 @@ const headers = [
   { title: 'Opciones', key: 'actions', align: 'end' as const, sortable: false },
 ]
 
-function openCreate() {
+function openCreate(): void {
   selected.value = null
   mode.value = 'create'
 }
 
-function openEdit(item: any) {
+function openEdit(item: UomItem): void {
   selected.value = item
   mode.value = 'edit'
 }
 
-function closeList() {
+function closeList(): void {
   mode.value = 'list'
   selected.value = null
   tableRef.value?.reload()
 }
 
-async function toggle(item: any) {
+async function toggle(item: UomItem): Promise<void> {
   try {
     await uomService.toggleActive(item.id)
     tableRef.value?.reload()
-  } catch (e: any) {
-    alert(e.message)
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Error al cambiar estado'
+    alert(msg)
   }
 }
 </script>
@@ -59,15 +72,15 @@ async function toggle(item: any) {
       </div>
 
       <AppDataTable ref="tableRef" :headers="headers" :fetch-fn="uomService.list">
-        <template #item.isActive="{ item }">
+        <template #[`item.isActive`]="{ item }">
           <v-chip :color="item.isActive ? 'success' : 'error'" size="small">
             {{ item.isActive ? 'Activo' : 'Inactivo' }}
           </v-chip>
         </template>
-        <template #item.createdAt="{ item }">
-          {{ new Date(item.createdAt).toLocaleDateString() }}
+        <template #[`item.createdAt`]="{ item }">
+          {{ item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '-' }}
         </template>
-        <template #item.actions="{ item }">
+        <template #[`item.actions`]="{ item }">
           <div class="flex justify-end gap-1">
             <v-btn
               v-if="can('inventory:uom:update')"
@@ -102,7 +115,7 @@ async function toggle(item: any) {
           <X class="h-5 w-5" />
         </v-btn>
       </div>
-      <CreateView :item="selected" @close="closeList" @created="closeList" />
+      <CreateView :item="selected ?? undefined" @close="closeList" @created="closeList" />
     </div>
   </AdminLayout>
 </template>

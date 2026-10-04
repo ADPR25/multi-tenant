@@ -4,10 +4,30 @@ import { usePermissions } from '@/composables/usePermissions'
 import { useMenuStore } from '@/store/menu.store'
 
 const staticRoutes = [
-  { path: '/dashboard', name: 'Ecommerce', component: () => import('../views/dashboard.vue'), meta: { title: 'Dashboard' } },
-  { path: '/profile', name: 'Profile', component: () => import('../views/Others/UserProfile.vue'), meta: { title: 'Profile' } },
-  { path: '/error-404', name: '404 Error', component: () => import('../views/Errors/FourZeroFour.vue'), meta: { title: '404 Error' } },
-  { path: '/', name: 'Signin', component: () => import('../views/Auth/Signin.vue'), meta: { title: 'Signin', public: true } },
+  {
+    path: '/dashboard',
+    name: 'Ecommerce',
+    component: () => import('../views/dashboard.vue'),
+    meta: { title: 'Dashboard' },
+  },
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: () => import('../views/Others/UserProfile.vue'),
+    meta: { title: 'Profile' },
+  },
+  {
+    path: '/error-404',
+    name: '404 Error',
+    component: () => import('../views/Errors/FourZeroFour.vue'),
+    meta: { title: '404 Error' },
+  },
+  {
+    path: '/',
+    name: 'Signin',
+    component: () => import('../views/Auth/Signin.vue'),
+    meta: { title: 'Signin', public: true },
+  },
 ]
 
 const viewModules = import.meta.glob('../views/**/*.vue')
@@ -38,12 +58,12 @@ router.beforeEach(async (to, from, next) => {
   document.title = `${to.meta.title || 'App'} | TailAdmin`
 
   const { load, loaded } = usePermissions()
-  if (token &&!loaded.value) await load()
+  if (token && !loaded.value) await load()
 
-  if (!token &&!isPublic) return next('/')
+  if (!token && !isPublic) return next('/')
   if (token && to.path === '/') return next('/dashboard')
 
-  if (token &&!isDynamicRouteAdded &&!routesLoading) {
+  if (token && !isDynamicRouteAdded && !routesLoading) {
     routesLoading = true
     try {
       const menuStore = useMenuStore()
@@ -66,7 +86,7 @@ router.beforeEach(async (to, from, next) => {
 
       isDynamicRouteAdded = true
       routesLoading = false
-      return next({...to, replace: true })
+      return next({ ...to, replace: true })
     } catch (e) {
       console.error(e)
       routesLoading = false
@@ -86,8 +106,8 @@ export const resetDynamicRoutes = () => {
     menuStore.reset()
   } catch {}
   router.getRoutes().forEach((r) => {
-    if (r.name &&!staticRoutes.find((s) => s.name === r.name) && r.name!== 'NotFound') {
-      router.removeRoute(r.name as string)
+    if (r.name && !staticRoutes.find((s) => s.name === r.name) && r.name !== 'NotFound') {
+      router.removeRoute(r.name)
     }
   })
 }

@@ -80,7 +80,7 @@ const hasStructuralChild = computed(() => folders.value.some((f: any) => !f.owne
 const canCreatePersonal = computed(() => {
   if (isRoot.value) return false
   if (isInsideMyPersonalFolder.value) return false
-  if (!!currentFolder.value?.ownerFolderName) return false
+  if (currentFolder.value?.ownerFolderName) return false
   if (hasMyPersonalFolder.value) return false
   if (hasStructuralChild.value) return false
   return !!currentFolder.value

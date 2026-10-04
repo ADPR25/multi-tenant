@@ -21,3 +21,8 @@
 * serials -> series / IMEIs
 * kardex / costing -> costo promedio, FIFO, valorizado - hoy tu stock-movements no calcula costo
 * reservations -> reserva de stock para pedidos
+
+
+
+# verificar siempre con:
+npx eslint src --ext ts --cache

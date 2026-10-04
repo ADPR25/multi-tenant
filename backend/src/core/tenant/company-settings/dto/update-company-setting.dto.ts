@@ -1,6 +1,6 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { CreateCompanySettingDto } from './create-company-setting.dto';
+import { PartialType } from "@nestjs/mapped-types";
+import { CreateCompanySettingDto } from "./create-company-setting.dto";
 
-export class UpdateCompanySettingDto extends PartialType(CreateCompanySettingDto) {}
-
-
+export class UpdateCompanySettingDto extends PartialType(
+  CreateCompanySettingDto,
+) {}

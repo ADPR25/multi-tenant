@@ -152,7 +152,7 @@
   </aside>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useSidebar } from '@/composables/useSidebar'
@@ -164,7 +164,7 @@ const route = useRoute()
 const { isExpanded, isMobileOpen, isHovered, openSubmenu } = useSidebar()
 const menuStore = useMenuStore()
 
-const loading = computed(() => menuStore.loading &&!menuStore.sidebar.length)
+const loading = computed(() => menuStore.loading && !menuStore.sidebar.length)
 const rawSidebar = computed(() => menuStore.sidebar)
 
 const FALLBACK_ICON = LucideIcons.LayoutDashboard
@@ -211,7 +211,7 @@ const isActive = (path) => route.path === path
 
 const toggleSubmenu = (groupIndex, itemIndex) => {
   const key = `${groupIndex}-${itemIndex}`
-  openSubmenu.value = openSubmenu.value === key? null : key
+  openSubmenu.value = openSubmenu.value === key ? null : key
 }
 
 const isAnySubmenuRouteActive = computed(() => {

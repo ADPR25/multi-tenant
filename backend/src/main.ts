@@ -10,26 +10,29 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
 
   app.use(helmet());
-  app.setGlobalPrefix(configService.get("config.app.prefix") || '');
+  app.setGlobalPrefix(configService.get("config.app.prefix") || "");
 
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
-      transformOptions: { enableImplicitConversion: true }
+      transformOptions: { enableImplicitConversion: true },
     }),
   );
 
   app.useGlobalFilters(new AllExceptionsFilter());
 
   app.enableCors({
-    origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:5173', 'http://localhost:3000'],
+    origin: process.env.ALLOWED_ORIGINS?.split(",") || [
+      "http://localhost:5173",
+      "http://localhost:3000",
+    ],
     credentials: true,
   });
 
   app.enableShutdownHooks();
-  await app.listen(configService.get("config.app.port") || '');
+  await app.listen(configService.get<number>("config.app.port") ?? 3000);
   console.log(`🚀 App running on port ${configService.get("config.app.port")}`);
 }
-bootstrap();
+void bootstrap();

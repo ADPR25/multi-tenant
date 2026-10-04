@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { get } from '@/store/authstore'
 import { usersService, companiesService, rolesService } from '@/services'

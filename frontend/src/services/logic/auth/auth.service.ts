@@ -1,4 +1,4 @@
-import { api } from "@/services/api/api";
+import { api } from '@/services/api/api'
 
 export const authService = {
   login(payload: { document_number: string; password: string }) {
