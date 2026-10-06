@@ -27,6 +27,10 @@ export class TenantSubscriber implements EntitySubscriberInterface<BaseTenantEnt
   }
 
   beforeInsert(event: InsertEvent<BaseTenantEntity>) {
+    // ⚠️ NO TOCAR - Lógica de SUPER_ADMIN global sin companyId
+    // Si lo rompes, se cae el seed y la creación de empresas
+    // ⚠️ DO NOT TOUCH - Global SUPER_ADMIN logic without companyId
+    // If you break it, seeding and company creation will fail.
     if (event.metadata.tableName === "sessions") {
       return;
     }

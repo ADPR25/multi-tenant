@@ -7,18 +7,31 @@ import { Plus, Pencil, X, Power, ShieldCheck } from 'lucide-vue-next'
 import CreateComponent from './create/index.vue'
 import { usePermissions } from '@/composables/usePermissions'
 
+defineOptions({
+  name: 'IamUsersPage',
+})
+
+interface UserItem {
+  id: string
+  first_name?: string
+  last_name?: string
+  document_number?: string
+  isActive?: boolean
+  [key: string]: unknown
+}
+
 const { can } = usePermissions()
 
-const mode = ref('list')
-const selectedItem = ref(null)
-const tableRef = ref(null)
+const mode = ref<'list' | 'create' | 'edit'>('list')
+const selectedItem = ref<UserItem | null>(null)
+const tableRef = ref<InstanceType<typeof AppDataTable> | null>(null)
 
 const headers = [
   { title: 'Numero de documento', key: 'document_number', minWidth: '180px' },
   { title: 'Nombre', key: 'fullName', minWidth: '220px', sortable: false },
   { title: 'Rol', key: 'role.name', minWidth: '180px', sortable: false },
-  { title: 'Estado', key: 'isActive', minWidth: '110px', align: 'center' },
-  { title: 'Opciones', key: 'actions', minWidth: '120px', align: 'end', sortable: false },
+  { title: 'Estado', key: 'isActive', minWidth: '110px', align: 'center' as const },
+  { title: 'Opciones', key: 'actions', minWidth: '120px', align: 'end' as const, sortable: false },
 ]
 
 function openCreate() {
@@ -26,7 +39,7 @@ function openCreate() {
   mode.value = 'create'
 }
 
-function openEdit(item) {
+function openEdit(item: UserItem) {
   selectedItem.value = item
   mode.value = 'edit'
 }
@@ -36,19 +49,20 @@ function close() {
   selectedItem.value = null
 }
 
-const porConfirmar = (val) => val || 'por confirmar'
+const porConfirmar = (val: string | undefined | null) => val || 'por confirmar'
 
-async function onSaved() {
+function onSaved() {
   close()
   tableRef.value?.reload()
 }
 
-async function toggleActive(item) {
+async function toggleActive(item: UserItem) {
   try {
     await usersService.toggleActive(item.id, !item.isActive)
     tableRef.value?.reload()
-  } catch (e) {
-    alert(e.message || 'No se pudo cambiar el estado')
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'No se pudo cambiar el estado'
+    alert(msg)
   }
 }
 </script>
@@ -71,19 +85,21 @@ async function toggleActive(item) {
         :fetch-fn="usersService.list"
         search-placeholder="Buscar por nombre, documento..."
       >
-        <template #item.fullName="{ item }"> {{ item.first_name }} {{ item.last_name }} </template>
+        <template #[`item.fullName`]="{ item }">
+          {{ item.first_name }} {{ item.last_name }}
+        </template>
 
-        <template #item.isActive="{ item }">
+        <template #[`item.isActive`]="{ item }">
           <v-chip :color="item.isActive ? 'success' : 'error'" size="small" variant="tonal">
             {{ item.isActive ? 'Activo' : 'Inactivo' }}
           </v-chip>
         </template>
 
-        <template #item.document_number="{ item }">
+        <template #[`item.document_number`]="{ item }">
           {{ porConfirmar(item.document_number) }}
         </template>
 
-        <template #item.actions="{ item }">
+        <template #[`item.actions`]="{ item }">
           <div class="flex justify-end gap-1">
             <v-btn
               v-if="can('iam:users:update')"

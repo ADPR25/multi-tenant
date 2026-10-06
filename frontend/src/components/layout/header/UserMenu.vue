@@ -19,7 +19,7 @@
 
     <div
       v-if="dropdownOpen"
-      class="absolute right-0 mt-[17px] flex w-[260px] flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-theme-lg dark:border-gray-800 dark:bg-gray-dark"
+      class="absolute right-0 mt- flex w- flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-theme-lg dark:border-gray-800 dark:bg-gray-dark"
     >
       <div>
         <span class="block font-medium text-gray-700 text-theme-sm dark:text-gray-400">
@@ -72,8 +72,16 @@ import { usePermissions } from '@/composables/usePermissions'
 
 const router = useRouter()
 const dropdownOpen = ref(false)
-const dropdownRef = ref(null)
-const user = get.useAuth('user')
+const dropdownRef = ref<HTMLElement | null>(null)
+
+interface AuthUser {
+  firstName?: string
+  lastName?: string
+  email?: string
+  roleCode?: string
+}
+
+const user = get.useAuth('user') as AuthUser
 
 const initials = computed(() => {
   const first = user?.firstName?.[0] || user?.email?.[0] || 'U'
@@ -100,13 +108,16 @@ const signOut = () => {
     const { clear } = usePermissions()
     clear()
     menuStore.reset()
-  } catch {}
+  } catch {
+    console.warn('Failed to clear menu/permissions on signOut')
+  }
   sessionStorage.clear()
-  router.push('/')
+  void router.push('/')
 }
 
-const handleClickOutside = (event) => {
-  if (dropdownRef.value && !dropdownRef.value.contains(event.target)) {
+const handleClickOutside = (event: MouseEvent) => {
+  const target = event.target as Node
+  if (dropdownRef.value && !dropdownRef.value.contains(target)) {
     closeDropdown()
   }
 }

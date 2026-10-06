@@ -169,9 +169,9 @@ const rawSidebar = computed(() => menuStore.sidebar)
 
 const FALLBACK_ICON = LucideIcons.LayoutDashboard
 
-const getIcon = (name) => {
+const getIcon = (name?: string) => {
   if (!name) return FALLBACK_ICON
-  const aliases = {
+  const aliases: Record<string, string> = {
     Confi: 'Settings2',
     Config: 'Settings2',
     IAM: 'ShieldCheck',
@@ -181,35 +181,42 @@ const getIcon = (name) => {
     Terceros: 'Users',
   }
   const cleanName = aliases[name] || name
-  return LucideIcons[cleanName] || FALLBACK_ICON
+  return (LucideIcons as Record<string, unknown>)[cleanName] || FALLBACK_ICON
 }
 
 const menuGroups = computed(() => {
-  const items = rawSidebar.value.map((item) => {
-    if (item.children) {
-      return {
-        name: item.name,
-        icon: getIcon(item.icon || item.name),
-        subItems: item.children.map((child) => ({
-          name: child.name,
-          path: child.path,
-          icon: getIcon(child.icon),
-        })),
+  const items = rawSidebar.value.map(
+    (item: {
+      name: string
+      icon?: string
+      path?: string
+      children?: { name: string; path: string; icon?: string }[]
+    }) => {
+      if (item.children) {
+        return {
+          name: item.name,
+          icon: getIcon(item.icon || item.name),
+          subItems: item.children.map((child) => ({
+            name: child.name,
+            path: child.path,
+            icon: getIcon(child.icon),
+          })),
+        }
+      } else {
+        return {
+          name: item.name,
+          icon: getIcon(item.icon),
+          path: item.path,
+        }
       }
-    } else {
-      return {
-        name: item.name,
-        icon: getIcon(item.icon),
-        path: item.path,
-      }
-    }
-  })
+    },
+  )
   return [{ title: 'Menu', items }]
 })
 
-const isActive = (path) => route.path === path
+const isActive = (path?: string) => route.path === path
 
-const toggleSubmenu = (groupIndex, itemIndex) => {
+const toggleSubmenu = (groupIndex: number, itemIndex: number) => {
   const key = `${groupIndex}-${itemIndex}`
   openSubmenu.value = openSubmenu.value === key ? null : key
 }
@@ -217,36 +224,37 @@ const toggleSubmenu = (groupIndex, itemIndex) => {
 const isAnySubmenuRouteActive = computed(() => {
   return menuGroups.value.some((group) =>
     group.items.some(
-      (item) => item.subItems && item.subItems.some((subItem) => isActive(subItem.path)),
+      (item: { subItems?: { path?: string }[] }) =>
+        item.subItems && item.subItems.some((subItem) => isActive(subItem.path)),
     ),
   )
 })
 
-const isSubmenuOpen = (groupIndex, itemIndex) => {
+const isSubmenuOpen = (groupIndex: number, itemIndex: number) => {
   const key = `${groupIndex}-${itemIndex}`
   return (
     openSubmenu.value === key ||
     (isAnySubmenuRouteActive.value &&
-      menuGroups.value[groupIndex].items[itemIndex].subItems?.some((subItem) =>
+      menuGroups.value[groupIndex].items[itemIndex].subItems?.some((subItem: { path?: string }) =>
         isActive(subItem.path),
       ))
   )
 }
 
-const startTransition = (el) => {
+const startTransition = (el: HTMLElement) => {
   el.style.height = 'auto'
   const height = el.scrollHeight
   el.style.height = '0px'
-  el.offsetHeight
+  void el.offsetHeight
   el.style.height = height + 'px'
 }
-const endTransition = (el) => {
+const endTransition = (el: HTMLElement) => {
   el.style.height = ''
 }
 
 onMounted(() => {
   if (!menuStore.loaded) {
-    menuStore.fetchSidebar()
+    void menuStore.fetchSidebar()
   }
 })
 </script>

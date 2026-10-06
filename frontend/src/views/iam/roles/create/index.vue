@@ -1,4 +1,8 @@
 <script setup lang="ts">
+defineOptions({
+  name: 'RolesCreateView',
+})
+
 import { ref, watch, computed, onMounted } from 'vue'
 import { get } from '@/store/authstore'
 import { companiesService, rolesService } from '@/services'
@@ -188,7 +192,7 @@ onMounted(async () => {
           class="rounded-xl"
         />
       </v-col>
-      <v-col cols="12" v-if="isSuper">
+      <v-col v-if="isSuper" cols="12">
         <div
           class="rounded-xl border border-amber-200 bg-amber-50/50 p-4 dark:border-amber-800/30 dark:bg-amber-900/10"
         >
@@ -229,11 +233,11 @@ onMounted(async () => {
     </v-row>
     <v-row>
       <v-col class="flex">
-        <v-btn color="warning" @click="emit('close')" :disabled="loading">
+        <v-btn color="warning" :disabled="loading" @click="emit('close')">
           <X class="h-4 w-4 mr-2" /> Cancelar
         </v-btn>
         <v-spacer />
-        <v-btn @click="submit" color="primary" :loading="loading" :disabled="loading">
+        <v-btn color="primary" :loading="loading" :disabled="loading" @click="submit">
           <Loader2 v-if="loading" class="h-4 w-4 mr-2 animate-spin" />
           <Save v-else class="h-4 w-4 mr-2" />
           {{ isEditMode ? 'Actualizar' : 'Crear rol' }}

@@ -81,7 +81,13 @@ const submit = async (): Promise<void> => {
       ? await companiesService.update(props.company!.id, form.value)
       : await companiesService.create(form.value)
 
-    const companyData = (data as { data: Company }).data || (data as Company)
+    type CompanyResponse = { data: Company } | Company
+
+    const isWrapped = (res: CompanyResponse): res is { data: Company } => {
+      return typeof res === 'object' && res !== null && 'data' in res
+    }
+
+    const companyData = isWrapped(data) ? data.data : (data as Company)
 
     if (isEdit.value) {
       emit('updated', companyData)
@@ -89,7 +95,7 @@ const submit = async (): Promise<void> => {
       emit('created', companyData)
     }
     emit('close')
-  } catch (e) {
+  } catch (e: unknown) {
     errorMsg.value = e instanceof Error ? e.message : 'Error de conexión'
   } finally {
     loading.value = false

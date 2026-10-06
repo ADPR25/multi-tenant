@@ -1,17 +1,28 @@
 <script setup lang="ts">
+defineOptions({
+  name: 'ModuleCreateView',
+})
+
 import { ref, watch } from 'vue'
 import { __MODULE__Service } from '@/services'
 import { X, Save } from 'lucide-vue-next'
 
+interface TemplateItem {
+  id?: string
+  name?: string
+  documentNumber?: string
+  email?: string
+}
+
 const props = defineProps({
-  item: { type: Object, default: null },
+  item: { type: Object as () => TemplateItem | null, default: null },
   isEdit: { type: Boolean, default: false },
 })
 const emit = defineEmits(['close', 'created', 'updated'])
 
 const loading = ref(false)
 
-const form = ref({})
+const form = ref<TemplateItem>({})
 
 watch(
   () => props.item,
@@ -33,12 +44,13 @@ const submit = async () => {
   loading.value = true
   try {
     const data = props.isEdit
-      ? await __MODULE__Service.update(props.item.id, form.value)
+      ? await __MODULE__Service.update((props.item as TemplateItem).id, form.value)
       : await __MODULE__Service.create(form.value)
 
     emit(props.isEdit ? 'updated' : 'created', data)
-  } catch (e) {
-    alert(e.message)
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Error al guardar'
+    alert(msg)
   } finally {
     loading.value = false
   }
@@ -54,9 +66,9 @@ const submit = async () => {
     </v-row>
 
     <div class="flex mt-6">
-      <v-btn color="warning" @click="emit('close')"
-        ><v-icon :icon="X" class="h-4 w-4 mr-2" /> Cancelar</v-btn
-      >
+      <v-btn color="warning" @click="emit('close')">
+        <v-icon :icon="X" class="h-4 w-4 mr-2" /> Cancelar
+      </v-btn>
       <v-spacer />
       <v-btn color="primary" :loading="loading" @click="submit">
         <v-icon :icon="Save" class="h-4 w-4 mr-2" /> {{ isEdit ? 'Actualizar' : 'Crear' }}

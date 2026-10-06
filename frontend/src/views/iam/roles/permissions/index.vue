@@ -1,4 +1,8 @@
 <script setup lang="ts">
+defineOptions({
+  name: 'RolePermissionsManager',
+})
+
 import { ref, computed, onMounted, watch } from 'vue'
 import { menusService } from '@/services'
 import {

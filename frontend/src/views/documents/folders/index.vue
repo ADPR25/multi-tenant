@@ -1,4 +1,8 @@
 <script setup lang="ts">
+defineOptions({
+  name: 'FoldersIndexView',
+})
+
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import AppDataTable from '@/components/common/AppDataTable.vue'
 import CreateView from './create/index.vue'
@@ -7,13 +11,24 @@ import { usePermissions } from '@/composables/usePermissions'
 import { Plus, Pencil, Power, Folder, X } from 'lucide-vue-next'
 import { ref, computed } from 'vue'
 
+interface FolderItem {
+  id: string
+  name: string
+  description?: string | null
+  parentid?: string | null
+  parent?: { name: string } | null
+  parentName?: string | null
+  isActive: boolean
+  createdAt?: string
+}
+
 const { can } = usePermissions()
 const mode = ref<'list' | 'create' | 'edit'>('list')
-const selected = ref<any>(null)
-const tableRef = ref<InstanceType<typeof AppDataTable>>()
+const selected = ref<FolderItem | null>(null)
+const tableRef = ref<{ reload: () => void } | null>(null)
 const dialogActive = ref(false)
 const toggling = ref(false)
-const itemToToggle = ref<any>(null)
+const itemToToggle = ref<FolderItem | null>(null)
 const isSelectedActive = computed(() => !!itemToToggle.value?.isActive)
 
 const headers = [
@@ -30,7 +45,7 @@ function openCreate() {
   mode.value = 'create'
 }
 
-function openEdit(item: any) {
+function openEdit(item: FolderItem) {
   selected.value = item
   mode.value = 'edit'
 }
@@ -41,7 +56,7 @@ function closeList() {
   tableRef.value?.reload()
 }
 
-function confirmToggle(item: any) {
+function confirmToggle(item: FolderItem) {
   itemToToggle.value = item
   dialogActive.value = true
 }
@@ -54,8 +69,9 @@ async function toggle() {
     dialogActive.value = false
     itemToToggle.value = null
     tableRef.value?.reload()
-  } catch (e: any) {
-    alert(e.message || 'No se pudo cambiar el estado')
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'No se pudo cambiar el estado'
+    alert(msg)
   } finally {
     toggling.value = false
   }
@@ -78,7 +94,7 @@ async function toggle() {
         ref="tableRef"
         :headers="headers"
         :fetch-fn="
-          (params) =>
+          (params: Record<string, unknown>) =>
             foldersService.list({
               ...params,
               find: 'list',
@@ -86,27 +102,27 @@ async function toggle() {
         "
         search-placeholder="Buscar carpeta..."
       >
-        <template #item.description="{ item }">
+        <template #[`item.description`]="{ item }">
           <span class="text-sm text-gray-600 truncate block max-w-">{{
             item.description || '-'
           }}</span>
         </template>
-        <template #item.parentId="{ item }">
+        <template #[`item.parentId`]="{ item }">
           <span class="text-sm text-gray-500">{{
             item.parent?.name || item.parentName || 'Raíz'
           }}</span>
         </template>
-        <template #item.isActive="{ item }">
+        <template #[`item.isActive`]="{ item }">
           <v-chip :color="item.isActive ? 'success' : 'error'" size="small" variant="tonal">
             {{ item.isActive ? 'Activo' : 'Inactivo' }}
           </v-chip>
         </template>
-        <template #item.createdAt="{ item }">
+        <template #[`item.createdAt`]="{ item }">
           <span class="text-sm text-gray-500">{{
             new Date(item.createdAt).toLocaleDateString()
           }}</span>
         </template>
-        <template #item.actions="{ item }">
+        <template #[`item.actions`]="{ item }">
           <div class="flex justify-end gap-1">
             <v-btn
               v-if="can('documents:folders:update')"
@@ -170,7 +186,7 @@ async function toggle() {
           <p class="mt-3 text-sm">¿Deseas continuar?</p>
         </v-card-text>
         <v-card-actions class="p-6 pt-4">
-          <v-btn variant="text" @click="dialogActive = false" :disabled="toggling">Cancelar</v-btn>
+          <v-btn variant="text" :disabled="toggling" @click="dialogActive = false">Cancelar</v-btn>
           <v-spacer />
           <v-btn
             :color="isSelectedActive ? 'error' : 'success'"

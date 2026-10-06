@@ -1,9 +1,16 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { get } from '@/store/authstore'
 import { usePermissions } from '@/composables/usePermissions'
 import { useMenuStore } from '@/store/menu.store'
 
-const staticRoutes = [
+interface DynamicRoute {
+  name: string
+  path: string
+  componentPath: string
+  title?: string
+}
+
+const staticRoutes: RouteRecordRaw[] = [
   {
     path: '/dashboard',
     name: 'Ecommerce',
@@ -32,7 +39,9 @@ const staticRoutes = [
 
 const viewModules = import.meta.glob('../views/**/*.vue')
 
-const componentMap: Record<string, any> = {}
+type ComponentLoader = () => Promise<unknown>
+
+const componentMap: Record<string, ComponentLoader> = {}
 for (const [path, loader] of Object.entries(viewModules)) {
   const normalized = path.replace('../', '@/')
   componentMap[normalized] = loader
@@ -41,7 +50,7 @@ for (const [path, loader] of Object.entries(viewModules)) {
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  scrollBehavior(to, from, savedPosition) {
+  scrollBehavior(_to, _from, savedPosition) {
     return savedPosition || { left: 0, top: 0 }
   },
   routes: staticRoutes,
@@ -50,12 +59,13 @@ const router = createRouter({
 let isDynamicRouteAdded = false
 let routesLoading = false
 
-const getToken = () => get.useAuth('token')
+const getToken = () => get.useAuth('token') as string | null
 
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const token = getToken()
-  const isPublic = to.meta?.public || to.path === '/'
-  document.title = `${to.meta.title || 'App'} | TailAdmin`
+  const isPublic = (to.meta?.public as boolean) || to.path === '/'
+  const title = (to.meta?.title as string) || 'App'
+  document.title = `${title} | TailAdmin`
 
   const { load, loaded } = usePermissions()
   if (token && !loaded.value) await load()
@@ -67,9 +77,9 @@ router.beforeEach(async (to, from, next) => {
     routesLoading = true
     try {
       const menuStore = useMenuStore()
-      const dynamicRoutes = await menuStore.fetchRoutes()
+      const dynamicRoutes = (await menuStore.fetchRoutes()) as DynamicRoute[]
 
-      dynamicRoutes.forEach((route: any) => {
+      dynamicRoutes.forEach((route) => {
         if (!router.hasRoute(route.name) && componentMap[route.componentPath]) {
           router.addRoute({
             path: route.path,
@@ -104,7 +114,9 @@ export const resetDynamicRoutes = () => {
   try {
     const menuStore = useMenuStore()
     menuStore.reset()
-  } catch {}
+  } catch {
+    console.warn('menuStore reset failed')
+  }
   router.getRoutes().forEach((r) => {
     if (r.name && !staticRoutes.find((s) => s.name === r.name) && r.name !== 'NotFound') {
       router.removeRoute(r.name)

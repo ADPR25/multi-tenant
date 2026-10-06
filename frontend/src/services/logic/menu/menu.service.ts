@@ -1,4 +1,5 @@
 import { api } from '../../api/api'
+
 export interface SidebarItem {
   title: string
   path: string
@@ -8,6 +9,7 @@ export interface SidebarItem {
   meta?: Record<string, unknown>
   name?: string
 }
+
 export interface RouteItem {
   path: string
   name: string
@@ -16,6 +18,22 @@ export interface RouteItem {
   componentPath?: string
   meta?: Record<string, unknown>
 }
+
+export interface AssignmentData {
+  sidebar: SidebarItem[]
+  routes?: RouteItem[]
+  permissions?: string[]
+  menus?: unknown[]
+  [key: string]: unknown
+}
+
+export interface SaveRolePayload {
+  sidebar: SidebarItem[]
+  permissions?: string[]
+  routes?: RouteItem[]
+  [key: string]: unknown
+}
+
 export const menuService = {
   getSidebar() {
     return api.request<SidebarItem[]>('/frontend/sidebar')
@@ -35,10 +53,10 @@ export const menuService = {
     )
   },
   getAssignmentData(roleId: string) {
-    return api.request<any>(`/frontend/roles/${roleId}/assignment-data`)
+    return api.request<AssignmentData>(`/frontend/roles/${roleId}/assignment-data`)
   },
-  saveForRole(roleId: string, payload: any) {
-    return api.request(`/frontend/roles/${roleId}/menus`, {
+  saveForRole(roleId: string, payload: SaveRolePayload) {
+    return api.request<AssignmentData>(`/frontend/roles/${roleId}/menus`, {
       method: 'PUT',
       body: JSON.stringify(payload),
     })

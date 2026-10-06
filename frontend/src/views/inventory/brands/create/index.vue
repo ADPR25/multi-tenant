@@ -2,26 +2,42 @@
 import { ref } from 'vue'
 import { brandsService } from '@/services'
 import { Save, X } from 'lucide-vue-next'
-const props = defineProps<{ item?: any }>()
+
+defineOptions({
+  name: 'BrandCreatePage',
+})
+
+interface BrandItemProp {
+  id?: string
+  name?: string
+  description?: string
+}
+
+const props = defineProps<{ item?: BrandItemProp }>()
 const emit = defineEmits(['close', 'created'])
-const formRef = ref()
+
+const formRef = ref<{ validate: () => Promise<{ valid: boolean }> } | null>(null)
 const saving = ref(false)
 const form = ref({ name: props.item?.name || '', description: props.item?.description || '' })
+
 async function submit() {
+  if (!formRef.value) return
   const { valid } = await formRef.value.validate()
   if (!valid) return
   saving.value = true
   try {
-    if (props.item) await brandsService.update(props.item.id, form.value)
+    if (props.item?.id) await brandsService.update(props.item.id, form.value)
     else await brandsService.create(form.value)
     emit('created')
-  } catch (e: any) {
-    alert(e.message)
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Error al guardar marca'
+    alert(msg)
   } finally {
     saving.value = false
   }
 }
 </script>
+
 <template>
   <div class="rounded-2xl border bg-white p-6">
     <v-form ref="formRef" @submit.prevent="submit">
@@ -32,7 +48,7 @@ async function submit() {
             v-model="form.name"
             variant="outlined"
             density="comfortable"
-            :rules="[(v) => !!v || 'Req']"
+            :rules="[(v: string) => !!v || 'Req']"
         /></v-col>
         <v-col cols="12" md="12"
           ><v-label>Descripción</v-label
@@ -42,7 +58,7 @@ async function submit() {
       <div class="flex mt-6">
         <v-btn color="warning" @click="emit('close')"><X class="h-4 w-4 mr-2" />Cancelar</v-btn
         ><v-spacer /><v-btn color="primary" :loading="saving" @click="submit"
-          ><Save class="h-4 w-4 mr-2" />{{ item ? 'Actualizar' : 'Crear' }}</v-btn
+          ><Save class="h-4 w-4 mr-2" />{{ props.item ? 'Actualizar' : 'Crear' }}</v-btn
         >
       </div>
     </v-form>

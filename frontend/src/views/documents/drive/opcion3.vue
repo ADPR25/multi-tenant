@@ -1,4 +1,8 @@
 <script setup lang="ts">
+defineOptions({
+  name: 'DriveOpcion3View',
+})
+
 import { ref, onMounted, computed } from 'vue'
 import type { Ref } from 'vue'
 import { foldersService, documentsService } from '@/services'
@@ -20,49 +24,87 @@ import {
   TrashIcon,
 } from 'lucide-vue-next'
 
-const breadcrumb = ref<any[]>([])
+interface FolderItem {
+  id: string
+  name: string
+  ownerFolderName?: string | null
+  createdBy?: string
+  parentId?: string | null
+}
+
+interface DocItem {
+  id: string
+  fileName: string
+  storageKey?: string | null
+  mimeType?: string
+  categoryId?: string
+  typeId?: string
+  title?: string
+}
+
+interface StoredUser {
+  id?: string
+  sub?: string
+  _id?: string
+  userId?: string
+}
+
+const breadcrumb = ref<FolderItem[]>([])
 const currentFolderId = ref<string | null>(null)
-const folders = ref<any[]>([])
-const docs = ref<any[]>([])
+const folders = ref<FolderItem[]>([])
+const docs = ref<DocItem[]>([])
 const loading = ref(false)
 const uploading = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
-const parentRequirement = ref<any>(null)
+const parentRequirement = ref<DocItem | null>(null)
 const searchQuery = ref('')
 const isDragging = ref(false)
 
-// preview con tipado correcto
-const previewDoc = ref<any>(null)
+const previewDoc = ref<DocItem | null>(null)
 const showPreview = ref(false)
 const previewBlobUrl = ref(null) as Ref<string | null>
 const previewLoading = ref(false)
 
-// delete
 const showDelete = ref(false)
-const deleteDoc = ref<any>(null)
+const deleteDoc = ref<DocItem | null>(null)
 
-const storedUser = computed(() => {
+const storedUser = computed<StoredUser>(() => {
   try {
-    const u = (get as any).useAuth?.('user') || (get as any).useAuth?.user
-    if (u?.id) return u
-  } catch {}
+    const authStore = get as unknown as Record<string, unknown>
+    const useAuth = authStore['useAuth']
+    if (typeof useAuth === 'function') {
+      const u = (useAuth as (k: string) => StoredUser)('user')
+      if (u?.id) return u
+    }
+    const useAuthObj = authStore['useAuth'] as { user?: StoredUser } | undefined
+    if (useAuthObj?.user?.id) return useAuthObj.user
+  } catch {
+    // ignore auth store error
+  }
   try {
     const r = localStorage.getItem('user')
-    if (r) return JSON.parse(r)
-  } catch {}
+    if (r) return JSON.parse(r) as StoredUser
+  } catch {
+    // ignore parse error
+  }
   try {
     const r = localStorage.getItem('auth_user')
-    if (r) return JSON.parse(r)
-  } catch {}
+    if (r) return JSON.parse(r) as StoredUser
+  } catch {
+    // ignore parse error
+  }
   try {
     const r = localStorage.getItem('auth')
     if (r) {
-      const j = JSON.parse(r)
+      const j = JSON.parse(r) as { user?: StoredUser } & StoredUser
       return j.user || j
     }
-  } catch {}
+  } catch {
+    // ignore parse error
+  }
   return {}
 })
+
 const currentUserId = computed(
   () =>
     storedUser.value?.id ||
@@ -80,9 +122,9 @@ const isInsideMyPersonalFolder = computed(
     currentFolder.value?.createdBy === currentUserId.value,
 )
 const hasMyPersonalFolder = computed(() =>
-  folders.value.some((f: any) => f.createdBy === currentUserId.value && !!f.ownerFolderName),
+  folders.value.some((f) => f.createdBy === currentUserId.value && !!f.ownerFolderName),
 )
-const hasStructuralChild = computed(() => folders.value.some((f: any) => !f.ownerFolderName))
+const hasStructuralChild = computed(() => folders.value.some((f) => !f.ownerFolderName))
 const canCreatePersonal = computed(() => {
   if (isRoot.value) return false
   if (isInsideMyPersonalFolder.value) return false
@@ -93,85 +135,100 @@ const canCreatePersonal = computed(() => {
 })
 const canUploadHere = computed(() => isInsideMyPersonalFolder.value)
 
-const requiredDocs = computed(() => docs.value.filter((d: any) => !d.storageKey))
-const uploadedDocs = computed(() => docs.value.filter((d: any) => !!d.storageKey))
+const requiredDocs = computed(() => docs.value.filter((d) => !d.storageKey))
+const uploadedDocs = computed(() => docs.value.filter((d) => !!d.storageKey))
 const filteredDocs = computed(() => {
   let l = uploadedDocs.value
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
-    l = l.filter((d: any) => (d.fileName || '').toLowerCase().includes(q))
+    l = l.filter((d) => (d.fileName || '').toLowerCase().includes(q))
   }
   return l
 })
 
-function getFileUrl(k: string) {
+function getFileUrl(k: string): string {
   return documentsService.downloadUrl(k, true)
 }
-function isPdf(doc: any) {
-  return doc.mimeType?.includes('pdf') || doc.fileName?.toLowerCase().endsWith('.pdf')
+
+function isPdf(doc: DocItem): boolean {
+  return !!doc.mimeType?.includes('pdf') || !!doc.fileName?.toLowerCase().endsWith('.pdf')
 }
 
-async function load(id: string | null) {
+async function load(id: string | null): Promise<void> {
   loading.value = true
   try {
     const [f, d] = await Promise.all([
       foldersService
         .list({ parentId: id ?? 'null', limit: 100, state: true })
-        .then((r: any) => r.data || r)
-        .catch(() => []),
+        .then((r: { data?: FolderItem[] } | FolderItem[]) => {
+          if (Array.isArray(r)) return r
+          return r.data || []
+        })
+        .catch(() => [] as FolderItem[]),
       id
         ? documentsService
             .list({ folderId: id, limit: 100 })
-            .then((r: any) => r.data || r)
-            .catch(() => [])
-        : Promise.resolve([]),
+            .then((r: { data?: DocItem[] } | DocItem[]) => {
+              if (Array.isArray(r)) return r
+              return r.data || []
+            })
+            .catch(() => [] as DocItem[])
+        : Promise.resolve([] as DocItem[]),
     ])
     folders.value = f || []
     docs.value = d || []
-    const tpl = (d as any[]).find((x: any) => !x.storageKey && x.categoryId && x.typeId)
+    const tpl = d.find((x) => !x.storageKey && x.categoryId && x.typeId)
     if (tpl) parentRequirement.value = tpl
     else if (!id) parentRequirement.value = null
   } finally {
     loading.value = false
   }
 }
-function enter(f: any) {
+
+function enter(f: FolderItem): void {
   breadcrumb.value.push(f)
   currentFolderId.value = f.id
-  load(f.id)
+  void load(f.id)
 }
-function back() {
+
+function back(): void {
   breadcrumb.value.pop()
   currentFolderId.value = breadcrumb.value.length
     ? breadcrumb.value[breadcrumb.value.length - 1].id
     : null
   if (!breadcrumb.value.length) parentRequirement.value = null
-  load(currentFolderId.value)
+  void load(currentFolderId.value)
 }
-function goRoot() {
+
+function goRoot(): void {
   breadcrumb.value = []
   currentFolderId.value = null
   parentRequirement.value = null
-  load(null)
+  void load(null)
 }
-function goTo(i: number) {
+
+function goTo(i: number): void {
   breadcrumb.value = breadcrumb.value.slice(0, i + 1)
   currentFolderId.value = breadcrumb.value[i].id
-  load(currentFolderId.value)
+  void load(currentFolderId.value)
 }
-async function createPersonal() {
+
+async function createPersonal(): Promise<void> {
   if (!currentFolderId.value) return
   try {
     await foldersService.createPersonal({ parentId: currentFolderId.value })
-    load(currentFolderId.value)
-  } catch (e: any) {
-    alert(e.message)
+    await load(currentFolderId.value)
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Error al crear carpeta'
+    alert(msg)
   }
 }
-function triggerUpload() {
+
+function triggerUpload(): void {
   fileInputRef.value?.click()
 }
-async function uploadFile(file: File) {
+
+async function uploadFile(file: File): Promise<void> {
   if (!currentFolderId.value) return
   const template = requiredDocs.value[0] || parentRequirement.value
   if (!template?.categoryId || !template?.typeId) {
@@ -191,37 +248,42 @@ async function uploadFile(file: File) {
   try {
     uploading.value = true
     await documentsService.upload(fd)
-    load(currentFolderId.value)
-  } catch (err: any) {
-    alert(err.message)
+    await load(currentFolderId.value)
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Error al subir'
+    alert(msg)
   } finally {
     uploading.value = false
   }
 }
-async function onFilePicked(e: Event) {
+
+async function onFilePicked(e: Event): Promise<void> {
   const input = e.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) return
   await uploadFile(file)
   input.value = ''
 }
-function onDragOver(e: DragEvent) {
+
+function onDragOver(e: DragEvent): void {
   e.preventDefault()
   if (canUploadHere.value) isDragging.value = true
 }
-function onDragLeave(e: DragEvent) {
+
+function onDragLeave(e: DragEvent): void {
   e.preventDefault()
   isDragging.value = false
 }
-function onDrop(e: DragEvent) {
+
+function onDrop(e: DragEvent): void {
   e.preventDefault()
   isDragging.value = false
   if (!canUploadHere.value) return
   const f = e.dataTransfer?.files?.[0]
-  if (f) uploadFile(f)
+  if (f) void uploadFile(f)
 }
 
-async function openPreview(doc: any) {
+async function openPreview(doc: DocItem): Promise<void> {
   previewDoc.value = doc
   showPreview.value = true
   previewLoading.value = true
@@ -230,19 +292,22 @@ async function openPreview(doc: any) {
     previewBlobUrl.value = null
   }
   try {
+    if (!doc.storageKey) throw new Error('Sin storageKey')
     const url = getFileUrl(doc.storageKey)
     const res = await fetch(url)
     if (!res.ok) throw new Error(`Error ${res.status}`)
     const blob = await res.blob()
     previewBlobUrl.value = URL.createObjectURL(blob)
-  } catch (e: any) {
-    alert('No se pudo abrir: ' + e.message)
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Error desconocido'
+    alert('No se pudo abrir: ' + msg)
     showPreview.value = false
   } finally {
     previewLoading.value = false
   }
 }
-function closePreview() {
+
+function closePreview(): void {
   showPreview.value = false
   if (previewBlobUrl.value) {
     URL.revokeObjectURL(previewBlobUrl.value)
@@ -250,30 +315,35 @@ function closePreview() {
   }
 }
 
-function openDelete(doc: any) {
+function openDelete(doc: DocItem): void {
   deleteDoc.value = doc
   showDelete.value = true
 }
-function cancelDelete() {
+
+function cancelDelete(): void {
   showDelete.value = false
   deleteDoc.value = null
 }
-const confirmDelete = async () => {
+
+const confirmDelete = async (): Promise<void> => {
   if (!deleteDoc.value?.id) return
   try {
     await documentsService.delete(deleteDoc.value.id)
-    load(currentFolderId.value)
-  } catch (e: any) {
-    alert(e.message)
+    await load(currentFolderId.value)
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Error al eliminar'
+    alert(msg)
   } finally {
     showDelete.value = false
     deleteDoc.value = null
   }
 }
 
-onMounted(() => load(null))
+onMounted(() => {
+  void load(null)
+})
 
-function folderGradient(i: number) {
+function folderGradient(i: number): string {
   const g = [
     'from-violet-100 to-indigo-100 border-violet-200',
     'from-amber-100 to-orange-100 border-amber-200',
@@ -282,7 +352,8 @@ function folderGradient(i: number) {
   ]
   return g[i % g.length]
 }
-function folderIconColor(i: number) {
+
+function folderIconColor(i: number): string {
   const c = ['text-violet-600', 'text-amber-600', 'text-emerald-600', 'text-pink-600']
   return c[i % c.length]
 }
@@ -316,26 +387,26 @@ function folderIconColor(i: number) {
         type="file"
         class="hidden"
         accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx,.doc,.xls"
-        @change="onFilePicked"
+        @change="(e) => void onFilePicked(e)"
       />
 
       <div class="flex items-center justify-between mb-8">
         <div class="flex items-center gap-2.5 text-">
           <button
-            @click="goRoot"
             class="flex items-center gap-2 px-4 py-2 rounded-full bg-white border shadow-sm font-semibold hover:shadow-md transition"
+            @click="goRoot"
           >
             <HardDrive class="h-4 w-4 text-violet-600" /> Mi Drive
           </button>
-          <span v-for="(b, i) in breadcrumb" :key="b.id" class="flex items-center gap-2"
-            ><span class="text-zinc-300">/</span
-            ><button
-              @click="goTo(i)"
+          <span v-for="(b, i) in breadcrumb" :key="b.id" class="flex items-center gap-2">
+            <span class="text-zinc-300">/</span>
+            <button
               class="px-3 py-1.5 rounded-full bg-white border hover:shadow-sm text-zinc-600 font-medium"
+              @click="() => goTo(i)"
             >
               {{ b.name }}
-            </button></span
-          >
+            </button>
+          </span>
         </div>
         <div
           class="hidden md:flex items-center gap-2 text- font-medium text-zinc-500 bg-white border px-3 py-1.5 rounded-full shadow-sm"
@@ -354,8 +425,8 @@ function folderIconColor(i: number) {
           <div class="flex gap-5">
             <button
               v-if="currentFolderId"
-              @click="back"
               class="h-12 w-12 rounded-full bg-zinc-900 text-white flex items-center justify-center shadow-lg hover:scale-105 transition"
+              @click="back"
             >
               <ArrowLeft class="h-5 w-5" />
             </button>
@@ -367,13 +438,15 @@ function folderIconColor(i: number) {
                 <span
                   v-if="!currentFolder"
                   class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-600 text-white text- font-bold tracking-widest"
-                  ><Sparkles class="h-3 w-3" /> NUEVO</span
                 >
+                  <Sparkles class="h-3 w-3" /> NUEVO
+                </span>
                 <span
                   v-if="isInsideMyPersonalFolder"
                   class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500 text-white text- font-bold tracking-widest"
-                  ><Shield class="h-3 w-3" /> PRIVADO</span
                 >
+                  <Shield class="h-3 w-3" /> PRIVADO
+                </span>
               </div>
               <p class="mt-3 text-[13.5px] text-zinc-500 max-w- leading-relaxed">
                 Organiza todo en un lugar colorido, buscable y seguro. Arrastra archivos,
@@ -384,16 +457,16 @@ function folderIconColor(i: number) {
           <div class="flex gap-2.5">
             <button
               v-if="canCreatePersonal"
-              @click="createPersonal"
               class="h-12 px-6 rounded-full bg-zinc-900 text-white text- font-semibold shadow-lg hover:bg-black transition flex items-center"
+              @click="() => void createPersonal()"
             >
               <Plus class="h-4 w-4 mr-2" /> Crear mi carpeta
             </button>
             <button
               v-if="canUploadHere"
-              @click="triggerUpload"
               :disabled="uploading"
               class="h-12 px-7 rounded-full bg-violet-600 text-white text- font-semibold shadow-[0_10px_20px_rgba(124,58,237,0.3)] hover:bg-violet-700 transition flex items-center disabled:opacity-60"
+              @click="triggerUpload"
             >
               <Upload class="h-4 w-4 mr-2" /> {{ uploading ? 'Subiendo...' : 'Subir' }}
             </button>
@@ -412,9 +485,9 @@ function folderIconColor(i: number) {
           <div
             v-for="(f, i) in folders"
             :key="f.id"
-            @click="enter(f)"
             class="group rounded- border-2 p-6 cursor-pointer hover:shadow-[0_20px_40px_-16px_rgba(0,0,0,0.15)] hover:-translate-y-1 transition-all"
             :class="folderGradient(i)"
+            @click="() => enter(f)"
           >
             <div class="flex justify-between mb-10">
               <div
@@ -447,13 +520,14 @@ function folderIconColor(i: number) {
             <h3 class="text- font-bold tracking-wide flex items-center gap-2">
               <span
                 class="h-6 w-6 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center"
-                ><FileText class="h-3.5 w-3.5" /></span
-              >ARCHIVOS EN {{ currentFolder?.name?.toUpperCase() }} · {{ filteredDocs.length }}
+              >
+                <FileText class="h-3.5 w-3.5" />
+              </span>
+              ARCHIVOS EN {{ currentFolder?.name?.toUpperCase() }} · {{ filteredDocs.length }}
             </h3>
             <div class="relative">
-              <Search
-                class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400"
-              /><input
+              <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+              <input
                 v-model="searchQuery"
                 placeholder="Buscar..."
                 class="h-9 w- pl-9 rounded-full bg-zinc-50 border text- focus:outline-none focus:ring-2 focus:ring-violet-200 focus:border-violet-300"
@@ -478,14 +552,14 @@ function folderIconColor(i: number) {
               <div class="flex gap-1.5">
                 <button
                   v-if="isPdf(doc)"
-                  @click="openPreview(doc)"
                   class="h-7 w-7 rounded-full bg-zinc-900 text-white flex items-center justify-center hover:bg-black"
                   title="Vista previa"
+                  @click="() => void openPreview(doc)"
                 >
                   <Eye class="h-3 w-3" />
                 </button>
                 <a
-                  v-if="!isPdf(doc)"
+                  v-if="!isPdf(doc) && doc.storageKey"
                   :href="getFileUrl(doc.storageKey)"
                   target="_blank"
                   class="h-7 w-7 rounded-full border border-zinc-200 flex items-center justify-center hover:border-zinc-900 transition"
@@ -493,9 +567,9 @@ function folderIconColor(i: number) {
                   <Download class="h-3 w-3" />
                 </a>
                 <button
-                  @click="openDelete(doc)"
                   class="h-7 w-7 rounded-full border border-zinc-200 flex items-center justify-center hover:border-red-300 hover:text-red-500 transition"
                   title="Eliminar"
+                  @click="() => openDelete(doc)"
                 >
                   <TrashIcon class="h-3 w-3" />
                 </button>
@@ -539,8 +613,8 @@ function folderIconColor(i: number) {
             </div>
           </div>
           <button
-            @click="closePreview"
             class="h-9 w-9 rounded-full bg-zinc-900 text-white flex items-center justify-center hover:bg-black transition"
+            @click="closePreview"
           >
             <X class="h-4 w-4" />
           </button>
@@ -560,7 +634,6 @@ function folderIconColor(i: number) {
     </Transition>
   </Teleport>
 
-  <!-- DELETE CON V-DIALOG -->
   <v-dialog v-model="showDelete" max-width="450" persistent>
     <v-card class="rounded-2xl">
       <v-card-title class="flex items-center gap-3 pt-6 px-6">
@@ -583,7 +656,7 @@ function folderIconColor(i: number) {
       <v-card-actions class="p-6 pt-4">
         <v-btn variant="text" @click="cancelDelete">Cancelar</v-btn>
         <v-spacer />
-        <v-btn color="red" variant="flat" class="rounded-full" @click="confirmDelete"
+        <v-btn color="red" variant="flat" class="rounded-full" @click="() => void confirmDelete()"
           >Confirmar</v-btn
         >
       </v-card-actions>
@@ -594,7 +667,7 @@ function folderIconColor(i: number) {
 <style scoped>
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity.2s ease;
+  transition: opacity 0.2s ease;
 }
 .fade-enter-from,
 .fade-leave-to {

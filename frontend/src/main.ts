@@ -26,12 +26,12 @@ const vuetify = createVuetify({
 })
 
 const originalWarn = console.warn
-console.warn = (...args: any[]) => {
+console.warn = (...args: unknown[]) => {
   const msg = typeof args[0] === 'string' ? args[0] : ''
   if (msg.includes('No match found for location with path')) {
     return
   }
-  originalWarn(...args)
+  originalWarn(...(args as [unknown, ...unknown[]]))
 }
 
 const app = createApp(App)

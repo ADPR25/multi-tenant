@@ -1,4 +1,8 @@
 <script setup lang="ts">
+defineOptions({
+  name: 'RolesIndexView',
+})
+
 import { ref, computed } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import AppDataTable from '@/components/common/AppDataTable.vue'
@@ -9,14 +13,22 @@ import CreateComponent from './create/index.vue'
 import PermissionsView from './permissions/index.vue'
 import { usePermissions } from '@/composables/usePermissions.ts'
 
+interface RoleItem {
+  id: string
+  name: string
+  description?: string | null
+  isActive: boolean
+  isPrincipal?: boolean
+}
+
 const user = get.useAuth('user')
 const { can } = usePermissions()
 
-const mode = ref('list')
-const selectedRole = ref(null)
+const mode = ref<'list' | 'create' | 'edit' | 'permissions'>('list')
+const selectedRole = ref<RoleItem | null>(null)
 const dialogActive = ref(false)
 const toggling = ref(false)
-const tableRef = ref(null)
+const tableRef = ref<{ reload: () => void } | null>(null)
 
 const isSelectedActive = computed(() => !!selectedRole.value?.isActive)
 
@@ -27,32 +39,27 @@ const headers = [
   { title: 'Opciones', key: 'actions', minWidth: '120px', align: 'end', sortable: false },
 ]
 
-const truncate = (text, max = 25) => {
+const truncate = (text: string | null | undefined, max = 25) => {
   if (!text) return '-'
   return text.length > max ? text.slice(0, max) + '...' : text
 }
-
-const formatDate = (d) =>
-  d
-    ? new Date(d).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric' })
-    : '-'
 
 function openCreate() {
   selectedRole.value = null
   mode.value = 'create'
 }
 
-function openEdit(role) {
+function openEdit(role: RoleItem) {
   selectedRole.value = role
   mode.value = 'edit'
 }
 
-function openPermission(role) {
+function openPermission(role: RoleItem) {
   selectedRole.value = role
   mode.value = 'permissions'
 }
 
-function openActive(role) {
+function openActive(role: RoleItem) {
   selectedRole.value = role
   dialogActive.value = true
 }
@@ -64,9 +71,10 @@ async function toggleActiveStatus() {
     await rolesService.toggleActive(selectedRole.value.id, !selectedRole.value.isActive)
     dialogActive.value = false
     tableRef.value?.reload()
-  } catch (e) {
+  } catch (e: unknown) {
     console.error(e)
-    alert(e.message || 'No se pudo cambiar el estado')
+    const msg = e instanceof Error ? e.message : 'No se pudo cambiar el estado'
+    alert(msg)
   } finally {
     toggling.value = false
   }
@@ -77,12 +85,12 @@ function close() {
   selectedRole.value = null
 }
 
-async function onSaved() {
+function onSaved() {
   close()
   tableRef.value?.reload()
 }
 
-async function onPermissionsSaved() {
+function onPermissionsSaved() {
   close()
   tableRef.value?.reload()
 }
@@ -106,23 +114,23 @@ async function onPermissionsSaved() {
         :fetch-fn="rolesService.list"
         search-placeholder="Buscar por nombre, descripción..."
       >
-        <template #item.name="{ item }">
+        <template #[`item.name`]="{ item }">
           <span class="font-medium whitespace-nowrap flex items-center gap-2">
             <ShieldCheck class="h-4 w-4 text-gray-400" /> {{ item.name }}
           </span>
         </template>
 
-        <template #item.isActive="{ item }">
+        <template #[`item.isActive`]="{ item }">
           <v-chip :color="item.isActive ? 'success' : 'error'" size="small" variant="tonal">
             {{ item.isActive ? 'Activo' : 'Inactivo' }}
           </v-chip>
         </template>
 
-        <template #item.description="{ item }">
+        <template #[`item.description`]="{ item }">
           <v-tooltip
+            v-if="item.description && item.description.length > 25"
             :text="item.description"
             location="top"
-            v-if="item.description && item.description.length > 25"
           >
             <template #activator="{ props }">
               <span v-bind="props" class="text-sm text-gray-600 whitespace-nowrap cursor-help">
@@ -135,7 +143,7 @@ async function onPermissionsSaved() {
           </span>
         </template>
 
-        <template #item.actions="{ item }">
+        <template #[`item.actions`]="{ item }">
           <div class="flex justify-end gap-1">
             <v-btn
               v-if="
@@ -146,8 +154,8 @@ async function onPermissionsSaved() {
               size="x-small"
               variant="text"
               color="primary"
-              @click="openPermission(item)"
               title="Permisos"
+              @click="openPermission(item)"
             >
               <KeyRound class="h-4 w-4" />
             </v-btn>
@@ -241,7 +249,7 @@ async function onPermissionsSaved() {
         <p class="mt-3 text-sm">¿Deseas continuar?</p>
       </v-card-text>
       <v-card-actions class="p-6 pt-4">
-        <v-btn variant="text" @click="dialogActive = false" :disabled="toggling">Cancelar</v-btn>
+        <v-btn variant="text" :disabled="toggling" @click="dialogActive = false">Cancelar</v-btn>
         <v-spacer />
         <v-btn
           :color="isSelectedActive ? 'error' : 'success'"

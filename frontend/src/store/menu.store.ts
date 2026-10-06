@@ -1,10 +1,27 @@
 import { defineStore } from 'pinia'
 import { menuService } from '@/services/logic/menu/menu.service'
 
+interface MenuItem {
+  id?: string
+  path?: string
+  name?: string
+  icon?: string
+  children?: MenuItem[]
+  [key: string]: unknown
+}
+
+interface RouteItem {
+  path: string
+  name?: string
+  component?: string
+  meta?: Record<string, unknown>
+  [key: string]: unknown
+}
+
 export const useMenuStore = defineStore('menu', {
   state: () => ({
-    sidebar: [] as any[],
-    routes: [] as any[],
+    sidebar: [] as MenuItem[],
+    routes: [] as RouteItem[],
     loaded: false,
     loading: false,
   }),
@@ -17,10 +34,10 @@ export const useMenuStore = defineStore('menu', {
           menuService.getSidebar(),
           menuService.getRoutes(),
         ])
-        this.sidebar = sidebar || []
-        this.routes = routes || []
+        this.sidebar = (sidebar as MenuItem[]) || []
+        this.routes = (routes as RouteItem[]) || []
         this.loaded = true
-      } catch (e) {
+      } catch (e: unknown) {
         console.error('Error fetchAll menu', e)
         this.sidebar = []
         this.routes = []
@@ -31,19 +48,19 @@ export const useMenuStore = defineStore('menu', {
     async fetchSidebar() {
       if (this.sidebar.length) return this.sidebar
       try {
-        this.sidebar = await menuService.getSidebar()
+        this.sidebar = (await menuService.getSidebar()) as MenuItem[]
         return this.sidebar
       } catch {
-        return []
+        return [] as MenuItem[]
       }
     },
     async fetchRoutes() {
       if (this.routes.length) return this.routes
       try {
-        this.routes = await menuService.getRoutes()
+        this.routes = (await menuService.getRoutes()) as RouteItem[]
         return this.routes
       } catch {
-        return []
+        return [] as RouteItem[]
       }
     },
     reset() {

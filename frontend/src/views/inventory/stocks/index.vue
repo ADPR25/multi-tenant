@@ -5,12 +5,49 @@ import { stocksService } from '@/services'
 import { Boxes, Eye, X, AlertTriangle, AlertCircle, CheckCircle } from 'lucide-vue-next'
 import { ref, computed } from 'vue'
 
+defineOptions({
+  name: 'StockIndexPage',
+})
+
+interface StockProduct {
+  name?: string
+  sku?: string
+  min_stock?: number | string
+  description?: string
+  cost?: number | string
+  price?: number | string
+}
+
+interface StockWarehouse {
+  name?: string
+  code?: string
+  address?: string
+}
+
+interface StockItem {
+  quantity: number | string
+  product?: StockProduct
+  productid?: string
+  warehouse?: StockWarehouse
+  warehouseid?: string
+  updatedAt?: string
+  [key: string]: unknown
+}
+
+interface FetchParams {
+  page?: number
+  itemsPerPage?: number
+  search?: string
+  sortBy?: unknown
+  [key: string]: unknown
+}
+
 const tableRef = ref<InstanceType<typeof AppDataTable>>()
 const detailOpen = ref(false)
-const detailItem = ref<any>(null)
-const lastItems = ref<any[]>([])
+const detailItem = ref<StockItem | null>(null)
+const lastItems = ref<StockItem[]>([])
 
-function getStockStatus(item: any) {
+function getStockStatus(item: StockItem) {
   const qty = Number(item.quantity)
   const min = Number(item.product?.min_stock ?? 0)
   if (qty <= 0) return { label: 'Agotado', color: 'error', icon: AlertCircle, level: 3 }
@@ -36,14 +73,14 @@ const criticalCount = computed(
     }).length,
 )
 
-async function fetchWrapper(params: any) {
-  const res: any = await stocksService.list(params)
+async function fetchWrapper(params: FetchParams) {
+  const res = (await stocksService.list(params)) as { data?: StockItem[] } & StockItem[]
   const data = res.data || res || []
   lastItems.value = data
   return res
 }
 
-function openDetail(item: any) {
+function openDetail(item: StockItem) {
   detailItem.value = item
   detailOpen.value = true
 }
@@ -117,7 +154,7 @@ const headers = [
       :fetch-fn="fetchWrapper"
       search-placeholder="Buscar producto, bodega..."
     >
-      <template #item.product="{ item }">
+      <template #[`item.product`]="{ item }">
         <div class="leading-tight">
           <p class="font-medium text-gray-800 dark:text-white/90">
             {{ item.product?.name || item.productId }}
@@ -127,13 +164,13 @@ const headers = [
           </p>
         </div>
       </template>
-      <template #item.warehouse="{ item }">
+      <template #[`item.warehouse`]="{ item }">
         <div class="leading-tight">
           <p class="text-sm">{{ item.warehouse?.name || item.warehouseId }}</p>
           <p class="text-xs text-gray-500">{{ item.warehouse?.code }}</p>
         </div>
       </template>
-      <template #item.quantity="{ item }">
+      <template #[`item.quantity`]="{ item }">
         <span
           class="font-bold text-base"
           :class="{ 'text-red-600': Number(item.quantity) <= Number(item.product?.min_stock) }"
@@ -141,17 +178,17 @@ const headers = [
           {{ Number(item.quantity).toString() }}
         </span>
       </template>
-      <template #item.min_stock="{ item }">
+      <template #[`item.min_stock`]="{ item }">
         <span class="font-bold text-base">
-          {{ Number(item.product.min_stock).toString() }}
+          {{ Number(item.product?.min_stock).toString() }}
         </span>
       </template>
-      <template #item.status="{ item }">
+      <template #[`item.status`]="{ item }">
         <v-chip :color="getStockStatus(item).color" size="small" variant="tonal">
           {{ getStockStatus(item).label }}
         </v-chip>
       </template>
-      <template #item.actions="{ item }">
+      <template #[`item.actions`]="{ item }">
         <v-btn icon size="x-small" variant="text" color="primary" @click="openDetail(item)">
           <Eye class="h-4 w-4" />
         </v-btn>
@@ -164,9 +201,9 @@ const headers = [
           <span class="text-lg font-bold flex items-center gap-2">
             <Boxes class="h-5 w-5" /> Detalle Stock
           </span>
-          <v-btn variant="text" icon size="small" @click="detailOpen = false"
-            ><X class="h-4 w-4"
-          /></v-btn>
+          <v-btn variant="text" icon size="small" @click="detailOpen = false">
+            <X class="h-4 w-4" />
+          </v-btn>
         </v-card-title>
         <v-card-text class="p-6 pt-2">
           <div class="space-y-4">
@@ -233,7 +270,9 @@ const headers = [
               </div>
               <div>
                 <p class="text-xs text-gray-500 uppercase">Actualizado</p>
-                <p>{{ new Date(detailItem.updatedAt).toLocaleString() }}</p>
+                <p>
+                  {{ detailItem.updatedAt ? new Date(detailItem.updatedAt).toLocaleString() : '-' }}
+                </p>
               </div>
             </div>
           </div>

@@ -1,4 +1,8 @@
 <script setup lang="ts">
+defineOptions({
+  name: 'ModuleTemplateView',
+})
+
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { ref, onMounted } from 'vue'
 import { __MODULE__Service } from '@/services'
@@ -6,20 +10,27 @@ import { Plus, Pencil, X, Power } from 'lucide-vue-next'
 import CreateComponent from './create/index.vue'
 import { usePermissions } from '@/composables/usePermissions'
 
+interface ModuleItem {
+  id: string
+  name: string
+  documentNumber?: string
+  isActive: boolean
+}
+
 const { can } = usePermissions()
 
-const items = ref([])
+const items = ref<ModuleItem[]>([])
 const search = ref('')
 const loading = ref(false)
-const mode = ref('list')
-const selectedItem = ref(null)
+const mode = ref<'list' | 'create' | 'edit'>('list')
+const selectedItem = ref<ModuleItem | null>(null)
 
 const traer = async () => {
   loading.value = true
   try {
-    const data = await __MODULE__Service.list()
+    const data = (await __MODULE__Service.list()) as { data?: ModuleItem[] } | ModuleItem[]
     items.value = Array.isArray(data) ? data : data.data || []
-  } catch (e) {
+  } catch (e: unknown) {
     console.error(e)
   } finally {
     loading.value = false
@@ -30,7 +41,7 @@ const openCreate = () => {
   selectedItem.value = null
   mode.value = 'create'
 }
-const openEdit = (item) => {
+const openEdit = (item: ModuleItem) => {
   selectedItem.value = item
   mode.value = 'edit'
 }
@@ -46,11 +57,13 @@ const onSaved = async () => {
 const headers = [
   { title: 'Nombre', key: 'name', minWidth: '200px' },
   { title: 'Documento', key: 'documentNumber', minWidth: '150px' },
-  { title: 'Estado', key: 'isActive', minWidth: '110px', align: 'center' },
-  { title: 'Opciones', key: 'actions', minWidth: '120px', align: 'end', sortable: false },
+  { title: 'Estado', key: 'isActive', minWidth: '110px', align: 'center' as const },
+  { title: 'Opciones', key: 'actions', minWidth: '120px', align: 'end' as const, sortable: false },
 ]
 
-onMounted(traer)
+onMounted(() => {
+  void traer()
+})
 </script>
 
 <template>
@@ -83,12 +96,12 @@ onMounted(traer)
             class="bg-transparent"
             item-value="id"
           >
-            <template v-slot:item.isActive="{ item }">
+            <template #[`item.isActive`]="{ item }">
               <v-chip :color="item.isActive ? 'success' : 'error'" size="small" variant="tonal">{{
                 item.isActive ? 'Activo' : 'Inactivo'
               }}</v-chip>
             </template>
-            <template v-slot:item.actions="{ item }">
+            <template #[`item.actions`]="{ item }">
               <div class="flex justify-end gap-1">
                 <v-btn
                   v-if="can('__PERM__:update')"

@@ -7,15 +7,42 @@ import { usePermissions } from '@/composables/usePermissions'
 import { Plus, Pencil, Power, Package, X } from 'lucide-vue-next'
 import { ref, computed } from 'vue'
 
+defineOptions({
+  name: 'ProductsIndexPage',
+})
+
+interface ProductBrand {
+  name?: string
+}
+
+interface ProductCategory {
+  name?: string
+}
+
+interface ProductUom {
+  short_name?: string
+  name?: string
+}
+
+interface ProductItem {
+  id: string
+  sku?: string
+  name?: string
+  brand?: ProductBrand
+  category?: ProductCategory
+  uom?: ProductUom
+  price?: number | string
+  isActive?: boolean
+  [key: string]: unknown
+}
+
 const { can } = usePermissions()
 const mode = ref<'list' | 'create' | 'edit'>('list')
-const selected = ref<any>(null)
+const selected = ref<ProductItem | null>(null)
 const tableRef = ref<InstanceType<typeof AppDataTable>>()
-
-// Modal activar/inactivar
 const dialogActive = ref(false)
 const toggling = ref(false)
-const itemToToggle = ref<any>(null)
+const itemToToggle = ref<ProductItem | null>(null)
 
 const isSelectedActive = computed(() => !!itemToToggle.value?.isActive)
 
@@ -36,7 +63,7 @@ function openCreate() {
   mode.value = 'create'
 }
 
-function openEdit(item: any) {
+function openEdit(item: ProductItem) {
   selected.value = item
   mode.value = 'edit'
 }
@@ -47,7 +74,7 @@ function closeList() {
   tableRef.value?.reload()
 }
 
-function confirmToggle(item: any) {
+function confirmToggle(item: ProductItem) {
   itemToToggle.value = item
   dialogActive.value = true
 }
@@ -60,8 +87,9 @@ async function toggle() {
     dialogActive.value = false
     itemToToggle.value = null
     tableRef.value?.reload()
-  } catch (e: any) {
-    alert(e.message)
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Error al cambiar estado'
+    alert(msg)
   } finally {
     toggling.value = false
   }
@@ -86,22 +114,22 @@ async function toggle() {
         :fetch-fn="productsService.list"
         search-placeholder="Buscar SKU o nombre..."
       >
-        <template #item.brand="{ item }">
+        <template #[`item.brand`]="{ item }">
           {{ item.brand?.name || '-' }}
         </template>
-        <template #item.category="{ item }">
+        <template #[`item.category`]="{ item }">
           {{ item.category?.name || '-' }}
         </template>
-        <template #item.uom="{ item }">
+        <template #[`item.uom`]="{ item }">
           {{ item.uom?.short_name || item.uom?.name || '-' }}
         </template>
-        <template #item.price="{ item }"> ${{ Number(item.price).toFixed(2) }} </template>
-        <template #item.isActive="{ item }">
+        <template #[`item.price`]="{ item }"> ${{ Number(item.price).toFixed(2) }} </template>
+        <template #[`item.isActive`]="{ item }">
           <v-chip :color="item.isActive ? 'success' : 'error'" size="small" variant="tonal">
             {{ item.isActive ? 'Activo' : 'Inactivo' }}
           </v-chip>
         </template>
-        <template #item.actions="{ item }">
+        <template #[`item.actions`]="{ item }">
           <div class="flex justify-end gap-1">
             <v-btn
               v-if="can('inventory:product:update')"

@@ -2,18 +2,35 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { get } from '@/store/authstore'
 import { usersService, companiesService, rolesService } from '@/services'
-import { Save, X } from 'lucide-vue-next'
+import { Save, X, Lock, Eye, EyeOff } from 'lucide-vue-next'
 
-const props = defineProps({
-  item: { type: Object, default: null },
-  isEdit: { type: Boolean, default: false },
+defineOptions({
+  name: 'IamUserCreatePage',
 })
+
+interface UserProp {
+  id?: string
+  first_name?: string
+  last_name?: string
+  document_number?: string
+  email?: string
+  phone?: string
+  roleid?: string | null
+  role?: { id?: string }
+  companyid?: string | null
+  company?: { id?: string }
+}
+
+const props = defineProps<{
+  item?: UserProp | null
+  isEdit?: boolean
+}>()
 
 const emit = defineEmits(['close', 'created', 'updated'])
 
 const user = get.useAuth('user')
-const roles = ref([])
-const empresas = ref([])
+const roles = ref<{ id: string; name: string }[]>([])
+const empresas = ref<{ id: string; name: string }[]>([])
 
 const form = ref({
   first_name: '',
@@ -21,8 +38,8 @@ const form = ref({
   document_number: '',
   email: '',
   phone: '',
-  roleId: null,
-  companyId: null,
+  roleId: null as string | number | null,
+  companyId: null as string | number | null,
   password: '',
 })
 
@@ -67,7 +84,7 @@ watch(
 const submit = async () => {
   loading.value = true
   try {
-    const payload = {
+    const payload: Record<string, unknown> = {
       first_name: form.value.first_name,
       last_name: form.value.last_name,
       document_number: form.value.document_number,
@@ -82,13 +99,14 @@ const submit = async () => {
     }
 
     const data = isEditMode.value
-      ? await usersService.update(props.item.id, payload)
+      ? await usersService.update(props.item!.id as string, payload)
       : await usersService.create(payload)
 
     if (isEditMode.value) emit('updated', data)
     else emit('created', data)
-  } catch (e) {
-    alert(e.message)
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Error al guardar usuario'
+    alert(msg)
   } finally {
     loading.value = false
   }
@@ -96,8 +114,10 @@ const submit = async () => {
 
 const traerRoles = async () => {
   try {
-    const data = await rolesService.list(true)
-    roles.value = Array.isArray(data) ? data : data.data || []
+    const data = (await rolesService.list(true)) as { data?: unknown[] } | unknown[]
+    roles.value = Array.isArray(data)
+      ? (data as typeof roles.value)
+      : (data.data as typeof roles.value) || []
   } catch (e) {
     console.error(e)
   }
@@ -105,16 +125,18 @@ const traerRoles = async () => {
 
 const traerEmpresas = async () => {
   try {
-    const data = await companiesService.list()
-    empresas.value = Array.isArray(data) ? data : data.data || []
+    const data = (await companiesService.list()) as { data?: unknown[] } | unknown[]
+    empresas.value = Array.isArray(data)
+      ? (data as typeof empresas.value)
+      : (data.data as typeof empresas.value) || []
   } catch (e) {
     console.error(e)
   }
 }
 
 onMounted(() => {
-  traerRoles()
-  if (user.roleCode === 'SUPER_ADMIN') traerEmpresas()
+  void traerRoles()
+  if (user.roleCode === 'SUPER_ADMIN') void traerEmpresas()
 })
 </script>
 

@@ -1,13 +1,40 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
+
+export interface DataTableHeader {
+  title: string
+  key: string
+  sortable?: boolean
+  align?: 'start' | 'center' | 'end'
+  width?: string | number
+  [key: string]: unknown
+}
+
+export interface FetchParams {
+  search?: string
+  page: number
+  limit: number
+  [key: string]: unknown
+}
+
+export interface FetchResponse<T = unknown> {
+  data: T[]
+  total: number
+  [key: string]: unknown
+}
+
+export interface UpdateOptionsParams {
+  page: number
+  itemsPerPage: number
+}
 
 const props = defineProps<{
-  headers: any[]
-  fetchFn: (params: any) => Promise<any>
+  headers: DataTableHeader[]
+  fetchFn: (params: FetchParams) => Promise<FetchResponse>
   searchPlaceholder?: string
 }>()
 
-const items = ref<any[]>([])
+const items = ref<unknown[]>([])
 const loading = ref(false)
 const search = ref('')
 const page = ref(1)
@@ -31,18 +58,18 @@ async function load() {
 
 function onSearch() {
   page.value = 1
-  load()
+  void load()
 }
 
-function onUpdateOptions({ page: p, itemsPerPage: limit }: any) {
+function onUpdateOptions({ page: p, itemsPerPage: limit }: UpdateOptionsParams) {
   page.value = p
   itemsPerPage.value = limit
-  load()
+  void load()
 }
 
 defineExpose({ reload: load, items })
 
-load()
+void load()
 </script>
 
 <template>

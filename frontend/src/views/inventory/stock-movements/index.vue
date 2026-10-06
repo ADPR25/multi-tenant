@@ -7,15 +7,44 @@ import { usePermissions } from '@/composables/usePermissions'
 import { Plus, ArrowLeftRight, X, Eye } from 'lucide-vue-next'
 import { ref } from 'vue'
 
+defineOptions({
+  name: 'StockMovementsIndexPage',
+})
+
+interface MovementProduct {
+  name?: string
+  sku?: string
+  description?: string
+}
+
+interface MovementWarehouse {
+  name?: string
+  code?: string
+}
+
+interface StockMovementItem {
+  product?: MovementProduct
+  warehouse?: MovementWarehouse
+  type?: 'IN' | 'OUT' | (string & {})
+  quantity?: number | string
+  createdAt?: string
+  reason?: string
+  previousQuantity?: number | string
+  newQuantity?: number | string
+  referenceId?: string
+  toWarehouseid?: string
+  [key: string]: unknown
+}
+
 const { can } = usePermissions()
 const mode = ref<'list' | 'create'>('list')
 const tableRef = ref<InstanceType<typeof AppDataTable>>()
 
 // Modal detalle
 const detailOpen = ref(false)
-const detailItem = ref<any>(null)
+const detailItem = ref<StockMovementItem | null>(null)
 
-function openDetail(item: any) {
+function openDetail(item: StockMovementItem) {
   detailItem.value = item
   detailOpen.value = true
 }
@@ -53,7 +82,7 @@ function closeList() {
         :fetch-fn="stockMovementsService.list"
         search-placeholder="Buscar producto, bodega..."
       >
-        <template #item.product="{ item }">
+        <template #[`item.product`]="{ item }">
           <div class="leading-tight">
             <p class="font-medium text-gray-800 dark:text-white/90">
               {{ item.product?.name || '-' }}
@@ -61,10 +90,10 @@ function closeList() {
             <p class="text-xs text-gray-500">{{ item.product?.sku || '' }}</p>
           </div>
         </template>
-        <template #item.warehouse="{ item }">
+        <template #[`item.warehouse`]="{ item }">
           <span class="text-sm">{{ item.warehouse?.name || '-' }}</span>
         </template>
-        <template #item.type="{ item }">
+        <template #[`item.type`]="{ item }">
           <v-chip
             size="small"
             :color="item.type === 'IN' ? 'success' : item.type === 'OUT' ? 'error' : 'info'"
@@ -73,13 +102,13 @@ function closeList() {
             {{ item.type }}
           </v-chip>
         </template>
-        <template #item.quantity="{ item }">
+        <template #[`item.quantity`]="{ item }">
           <span class="font-semibold">{{ Number(item.quantity).toString() }}</span>
         </template>
-        <template #item.createdAt="{ item }">
+        <template #[`item.createdAt`]="{ item }">
           <span class="text-sm text-gray-500">{{ new Date(item.createdAt).toLocaleString() }}</span>
         </template>
-        <template #item.actions="{ item }">
+        <template #[`item.actions`]="{ item }">
           <v-btn icon size="x-small" variant="text" color="primary" @click="openDetail(item)">
             <Eye class="h-4 w-4" />
           </v-btn>
@@ -90,7 +119,9 @@ function closeList() {
     <div v-else>
       <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-bold text-gray-800 dark:text-white/90">Nuevo Movimiento</h1>
-        <v-btn variant="text" icon @click="closeList"><X class="h-5 w-5" /></v-btn>
+        <v-btn variant="text" icon @click="closeList">
+          <X class="h-5 w-5" />
+        </v-btn>
       </div>
       <CreateView @close="closeList" @created="closeList" />
     </div>
@@ -101,9 +132,9 @@ function closeList() {
           <span class="text-lg font-bold flex items-center gap-2">
             <ArrowLeftRight class="h-5 w-5" /> Detalle del Movimiento
           </span>
-          <v-btn variant="text" icon size="small" @click="detailOpen = false"
-            ><X class="h-4 w-4"
-          /></v-btn>
+          <v-btn variant="text" icon size="small" @click="detailOpen = false">
+            <X class="h-4 w-4" />
+          </v-btn>
         </v-card-title>
         <v-card-text class="p-6 pt-2">
           <div class="grid grid-cols-2 gap-4 text-sm">
@@ -157,7 +188,9 @@ function closeList() {
             </div>
             <div>
               <p class="text-xs text-gray-500 uppercase">Fecha</p>
-              <p>{{ new Date(detailItem.createdAt).toLocaleString() }}</p>
+              <p>
+                {{ detailItem.createdAt ? new Date(detailItem.createdAt).toLocaleString() : '-' }}
+              </p>
             </div>
             <div>
               <p class="text-xs text-gray-500 uppercase">Referencia</p>

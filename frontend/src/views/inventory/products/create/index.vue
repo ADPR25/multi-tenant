@@ -3,14 +3,44 @@ import { ref, onMounted } from 'vue'
 import { productsService, brandsService, categoriesService, uomService } from '@/services'
 import { Save, X } from 'lucide-vue-next'
 
-const props = defineProps<{ item?: any }>()
+defineOptions({
+  name: 'ProductCreatePage',
+})
+
+interface ProductItemProp {
+  id?: string
+  sku?: string
+  name?: string
+  description?: string
+  brandid?: string
+  brand?: { id?: string }
+  categoryid?: string
+  category?: { id?: string }
+  uomid?: string
+  uom?: { id?: string }
+  cost?: number | string
+  price?: number | string
+  min_stock?: number | string
+}
+
+interface SelectOption {
+  id: string
+  name: string
+  [key: string]: unknown
+}
+
+interface ServiceListResponse<T> {
+  data?: T[]
+}
+
+const props = defineProps<{ item?: ProductItemProp }>()
 const emit = defineEmits(['close', 'created'])
 
-const formRef = ref()
+const formRef = ref<{ validate: () => Promise<{ valid: boolean }> } | null>(null)
 const saving = ref(false)
-const brands = ref<any[]>([])
-const categories = ref<any[]>([])
-const uoms = ref<any[]>([])
+const brands = ref<SelectOption[]>([])
+const categories = ref<SelectOption[]>([])
+const uoms = ref<SelectOption[]>([])
 
 const form = ref({
   sku: props.item?.sku || '',
@@ -25,6 +55,7 @@ const form = ref({
 })
 
 async function submit() {
+  if (!formRef.value) return
   const { valid } = await formRef.value.validate()
   if (!valid) return
   saving.value = true
@@ -35,11 +66,12 @@ async function submit() {
       price: Number(form.value.price),
       min_stock: Number(form.value.min_stock),
     }
-    if (props.item) await productsService.update(props.item.id, payload)
+    if (props.item?.id) await productsService.update(props.item.id, payload)
     else await productsService.create(payload)
     emit('created')
-  } catch (e: any) {
-    alert(e.message)
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Error al guardar producto'
+    alert(msg)
   } finally {
     saving.value = false
   }
@@ -47,13 +79,19 @@ async function submit() {
 
 onMounted(async () => {
   const [b, c, u] = await Promise.all([
-    brandsService.list({ find: 'select', state: true, limit: 'all' }).catch(() => []),
-    categoriesService.list({ find: 'select', state: true, limit: 'all' }).catch(() => []),
-    uomService.list({ find: 'select', state: true, limit: 'all' }).catch(() => []),
+    brandsService.list({ find: 'select', state: true, limit: 'all' }).catch(() => ({ data: [] })),
+    categoriesService
+      .list({ find: 'select', state: true, limit: 'all' })
+      .catch(() => ({ data: [] })),
+    uomService.list({ find: 'select', state: true, limit: 'all' }).catch(() => ({ data: [] })),
   ])
-  brands.value = b.data || b || []
-  categories.value = c.data || c || []
-  uoms.value = u.data || u || []
+  const bData = (b as ServiceListResponse<SelectOption>).data || b || []
+  const cData = (c as ServiceListResponse<SelectOption>).data || c || []
+  const uData = (u as ServiceListResponse<SelectOption>).data || u || []
+
+  brands.value = Array.isArray(bData) ? bData : []
+  categories.value = Array.isArray(cData) ? cData : []
+  uoms.value = Array.isArray(uData) ? uData : []
 })
 </script>
 
@@ -67,7 +105,7 @@ onMounted(async () => {
             v-model="form.sku"
             variant="outlined"
             density="comfortable"
-            :rules="[(v) => !!v || 'Req']"
+            :rules="[(v: string) => !!v || 'Req']"
           />
         </v-col>
         <v-col cols="12" md="9">
@@ -76,7 +114,7 @@ onMounted(async () => {
             v-model="form.name"
             variant="outlined"
             density="comfortable"
-            :rules="[(v) => !!v || 'Req']"
+            :rules="[(v: string) => !!v || 'Req']"
           />
         </v-col>
         <v-col cols="12">
@@ -97,7 +135,7 @@ onMounted(async () => {
             item-value="id"
             variant="outlined"
             density="comfortable"
-            :rules="[(v) => !!v || 'Req']"
+            :rules="[(v: string) => !!v || 'Req']"
           />
         </v-col>
         <v-col cols="12" md="4">
@@ -109,7 +147,7 @@ onMounted(async () => {
             item-value="id"
             variant="outlined"
             density="comfortable"
-            :rules="[(v) => !!v || 'Req']"
+            :rules="[(v: string) => !!v || 'Req']"
           />
         </v-col>
         <v-col cols="12" md="4">
@@ -121,7 +159,7 @@ onMounted(async () => {
             item-value="id"
             variant="outlined"
             density="comfortable"
-            :rules="[(v) => !!v || 'Req']"
+            :rules="[(v: string) => !!v || 'Req']"
           />
         </v-col>
         <v-col cols="12" md="4">
@@ -131,7 +169,7 @@ onMounted(async () => {
             type="number"
             variant="outlined"
             density="comfortable"
-            :rules="[(v) => (v !== '' && v !== null) || 'Req']"
+            :rules="[(v: string | number) => (v !== '' && v !== null) || 'Req']"
           />
         </v-col>
         <v-col cols="12" md="4">
@@ -141,7 +179,7 @@ onMounted(async () => {
             type="number"
             variant="outlined"
             density="comfortable"
-            :rules="[(v) => (v !== '' && v !== null) || 'Req']"
+            :rules="[(v: string | number) => (v !== '' && v !== null) || 'Req']"
           />
         </v-col>
         <v-col cols="12" md="4">
@@ -155,11 +193,11 @@ onMounted(async () => {
         </v-col>
       </v-row>
       <div class="flex mt-6">
-        <v-btn color="warning" @click="emit('close')"><X class="h-4 w-4 mr-2" />Cancelar</v-btn>
+        <v-btn color="warning" @click="emit('close')"> <X class="h-4 w-4 mr-2" />Cancelar </v-btn>
         <v-spacer />
-        <v-btn color="primary" :loading="saving" @click="submit"
-          ><Save class="h-4 w-4 mr-2" />{{ props.item ? 'Actualizar' : 'Crear' }}</v-btn
-        >
+        <v-btn color="primary" :loading="saving" @click="submit">
+          <Save class="h-4 w-4 mr-2" />{{ props.item ? 'Actualizar' : 'Crear' }}
+        </v-btn>
       </div>
     </v-form>
   </div>

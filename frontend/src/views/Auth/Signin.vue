@@ -45,25 +45,31 @@
                   density="comfortable"
                   :prepend-inner-icon="Lock"
                   :append-inner-icon="showPassword ? EyeOff : Eye"
-                  @click:append-inner="togglePasswordVisibility"
                   required
                   hide-details="auto"
+                  @click:append-inner="togglePasswordVisibility"
                 />
               </div>
 
               <div>
-                <v-btn color="primary" block size="large" :loading="loading" @click="handleSubmit">
+                <v-btn
+                  color="primary"
+                  block
+                  size="large"
+                  :loading="loading"
+                  @click="() => void handleSubmit()"
+                >
                   Sign In
                 </v-btn>
               </div>
             </div>
 
-            <div class="mt-5" v-if="error.message">
+            <div v-if="error.message" class="mt-5">
               <Alert
                 variant="warning"
                 title="Error al iniciar sesion"
                 :message="error.message"
-                :showLink="false"
+                :show-link="false"
               />
             </div>
           </div>
@@ -74,6 +80,10 @@
 </template>
 
 <script setup lang="ts">
+defineOptions({
+  name: 'SigninView',
+})
+
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { set } from '@/store/authstore'
@@ -89,7 +99,7 @@ const password = ref('')
 const router = useRouter()
 const showPassword = ref(false)
 const loading = ref(false)
-const error = ref<any>({})
+const error = ref<{ message?: string }>({})
 
 const togglePasswordVisibility = () => {
   showPassword.value = !showPassword.value
@@ -114,9 +124,10 @@ const handleSubmit = async () => {
     const { load } = usePermissions()
     await Promise.all([menuStore.fetchAll().catch(() => {}), load(true).catch(() => {})])
 
-    router.push('/dashboard')
-  } catch (e: any) {
-    error.value = { message: e.message || 'Error de conexion' }
+    await router.push('/dashboard')
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Error de conexion'
+    error.value = { message: msg }
   } finally {
     loading.value = false
   }

@@ -7,10 +7,22 @@ import { ref } from 'vue'
 import { usePermissions } from '@/composables/usePermissions'
 import { Plus, Pencil, Power, Tag, X } from 'lucide-vue-next'
 
+defineOptions({
+  name: 'InventoryBrandsPage',
+})
+
+interface BrandItem {
+  id: string
+  name?: string
+  isActive?: boolean
+  createdAt?: string
+  [key: string]: unknown
+}
+
 const { can } = usePermissions()
 const mode = ref<'list' | 'create' | 'edit'>('list')
-const selected = ref<any>(null)
-const tableRef = ref()
+const selected = ref<BrandItem | null>(null)
+const tableRef = ref<InstanceType<typeof AppDataTable> | null>(null)
 
 const headers = [
   { title: 'Nombre', key: 'name' },
@@ -23,17 +35,23 @@ function openCreate() {
   selected.value = null
   mode.value = 'create'
 }
-function openEdit(item: any) {
+function openEdit(item: BrandItem) {
   selected.value = item
   mode.value = 'edit'
 }
 function closeList() {
   mode.value = 'list'
-  tableRef.value.reload()
+  selected.value = null
+  tableRef.value?.reload()
 }
-async function toggle(item: any) {
-  await brandsService.toggleActive(item.id)
-  tableRef.value.reload()
+async function toggle(item: BrandItem) {
+  try {
+    await brandsService.toggleActive(item.id)
+    tableRef.value?.reload()
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Error al cambiar estado'
+    alert(msg)
+  }
 }
 </script>
 
@@ -48,15 +66,15 @@ async function toggle(item: any) {
       </div>
 
       <AppDataTable ref="tableRef" :headers="headers" :fetch-fn="brandsService.list">
-        <template #item.isActive="{ item }"
+        <template #[`item.isActive`]="{ item }"
           ><v-chip :color="item.isActive ? 'success' : 'error'" size="small">{{
             item.isActive ? 'Activo' : 'Inactivo'
           }}</v-chip></template
         >
-        <template #item.createdAt="{ item }">{{
-          new Date(item.createdAt).toLocaleDateString()
+        <template #[`item.createdAt`]="{ item }">{{
+          item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '-'
         }}</template>
-        <template #item.actions="{ item }">
+        <template #[`item.actions`]="{ item }">
           <div class="flex justify-end gap-1">
             <v-btn
               v-if="can('inventory:brands:update')"

@@ -10,3 +10,9 @@
 import { useSidebar } from '@/composables/useSidebar'
 const { toggleMobileSidebar, isMobileOpen } = useSidebar()
 </script>
+
+<script lang="ts">
+export default {
+  name: 'AppBackdrop',
+}
+</script>

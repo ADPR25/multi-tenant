@@ -27,6 +27,10 @@
 <script setup lang="ts">
 import { CircleCheck, CircleX, TriangleAlert, Info } from 'lucide-vue-next'
 
+defineOptions({
+  name: 'AppAlert',
+})
+
 interface AlertProps {
   variant: 'success' | 'error' | 'warning' | 'info'
   title: string
@@ -36,7 +40,7 @@ interface AlertProps {
   linkText?: string
 }
 
-const props = withDefaults(defineProps<AlertProps>(), {
+withDefaults(defineProps<AlertProps>(), {
   showLink: false,
   linkHref: '#',
   linkText: 'Learn more',

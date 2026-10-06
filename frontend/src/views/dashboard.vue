@@ -1,4 +1,8 @@
 <script setup lang="ts">
+defineOptions({
+  name: 'DashboardView',
+})
+
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { usePermissions } from '@/composables/usePermissions'
 import { onMounted } from 'vue'

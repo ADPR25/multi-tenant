@@ -7,9 +7,21 @@ import { usePermissions } from '@/composables/usePermissions'
 import { Plus, Pencil, Power, LayoutGrid, X } from 'lucide-vue-next'
 import { ref } from 'vue'
 
+defineOptions({
+  name: 'InventoryCategoriesPage',
+})
+
+interface CategoryItem {
+  id: string
+  name?: string
+  isActive?: boolean
+  createdAt?: string
+  [key: string]: unknown
+}
+
 const { can } = usePermissions()
 const mode = ref<'list' | 'create' | 'edit'>('list')
-const selected = ref<any>(null)
+const selected = ref<CategoryItem | null>(null)
 const tableRef = ref<InstanceType<typeof AppDataTable>>()
 
 const headers = [
@@ -24,7 +36,7 @@ function openCreate() {
   mode.value = 'create'
 }
 
-function openEdit(item: any) {
+function openEdit(item: CategoryItem) {
   selected.value = item
   mode.value = 'edit'
 }
@@ -35,12 +47,13 @@ function closeList() {
   tableRef.value?.reload()
 }
 
-async function toggle(item: any) {
+async function toggle(item: CategoryItem) {
   try {
     await categoriesService.toggleActive(item.id)
     tableRef.value?.reload()
-  } catch (e: any) {
-    alert(e.message)
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Error al cambiar estado'
+    alert(msg)
   }
 }
 </script>
@@ -58,15 +71,15 @@ async function toggle(item: any) {
       </div>
 
       <AppDataTable ref="tableRef" :headers="headers" :fetch-fn="categoriesService.list">
-        <template #item.isActive="{ item }">
+        <template #[`item.isActive`]="{ item }">
           <v-chip :color="item.isActive ? 'success' : 'error'" size="small">
             {{ item.isActive ? 'Activo' : 'Inactivo' }}
           </v-chip>
         </template>
-        <template #item.createdAt="{ item }">
-          {{ new Date(item.createdAt).toLocaleDateString() }}
+        <template #[`item.createdAt`]="{ item }">
+          {{ item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '-' }}
         </template>
-        <template #item.actions="{ item }">
+        <template #[`item.actions`]="{ item }">
           <div class="flex justify-end gap-1">
             <v-btn
               v-if="can('inventory:categories:update')"

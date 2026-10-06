@@ -1,4 +1,8 @@
 <script setup lang="ts">
+defineOptions({
+  name: 'DriveOpcion1View',
+})
+
 import { ref, onMounted, computed } from 'vue'
 import { foldersService, documentsService } from '@/services'
 import { get } from '@/store/authstore'
@@ -22,53 +26,92 @@ import {
   TrashIcon,
 } from 'lucide-vue-next'
 
-const breadcrumb = ref<any[]>([])
+interface FolderItem {
+  id: string
+  name: string
+  description?: string | null
+  ownerFolderName?: string | null
+  createdBy?: string
+  parentId?: string | null
+}
+
+interface DocItem {
+  id: string
+  fileName: string
+  title?: string
+  storageKey?: string | null
+  mimeType?: string
+  categoryId?: string
+  typeId?: string
+}
+
+interface StoredUser {
+  id?: string
+  sub?: string
+  _id?: string
+  userId?: string
+}
+
+type Wrapped<T> = { data?: T[] } | T[]
+type AuthStore = { useAuth?: { user?: StoredUser } | ((k: string) => StoredUser) }
+
+const breadcrumb = ref<FolderItem[]>([])
 const currentFolderId = ref<string | null>(null)
-const folders = ref<any[]>([])
-const docs = ref<any[]>([])
+const folders = ref<FolderItem[]>([])
+const docs = ref<DocItem[]>([])
 const loading = ref(false)
 const uploading = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
-const parentRequirement = ref<any>(null)
+const parentRequirement = ref<DocItem | null>(null)
 const showDelete = ref(false)
-const deleteDoc = ref<any>(null)
+const deleteDoc = ref<DocItem | null>(null)
 const showPreview = ref(false)
-const previewDoc = ref<any>(null)
+const previewDoc = ref<DocItem | null>(null)
 const previewBlobUrl = ref<string | null>(null)
 const previewLoading = ref(false)
 
-const storedUser = computed(() => {
+const unwrap = <T,>(r: Wrapped<T>): T[] => {
+  if (Array.isArray(r)) return r
+  return r.data ?? []
+}
+
+const storedUser = computed<StoredUser>(() => {
   try {
-    const u = (get as any).useAuth?.('user') || (get as any).useAuth?.user
-    if (u?.id) return u
-  } catch {}
-  try {
-    const r = localStorage.getItem('user')
-    if (r) return JSON.parse(r)
-  } catch {}
-  try {
-    const r = localStorage.getItem('auth_user')
-    if (r) return JSON.parse(r)
-  } catch {}
-  try {
-    const r = localStorage.getItem('auth')
-    if (r) {
-      const j = JSON.parse(r)
-      return j.user || j
+    const authStore = get as AuthStore
+    const useAuth = authStore.useAuth
+    if (typeof useAuth === 'function') {
+      const u = useAuth('user')
+      if (u?.id) return u
     }
-  } catch {}
-  return {}
+    if (useAuth && typeof useAuth === 'object' && 'user' in useAuth) {
+      if (useAuth.user?.id) return useAuth.user
+    }
+  } catch {
+    // ignore
+  }
+  const readLS = (key: string): StoredUser | null => {
+    try {
+      const r = localStorage.getItem(key)
+      if (!r) return null
+      const j = JSON.parse(r) as { user?: StoredUser } & StoredUser
+      return j.user ?? j
+    } catch {
+      return null
+    }
+  }
+  return readLS('user') ?? readLS('auth_user') ?? readLS('auth') ?? {}
 })
+
 const currentUserId = computed(
   () =>
-    storedUser.value?.id ||
-    storedUser.value?.sub ||
-    storedUser.value?._id ||
-    storedUser.value?.userId ||
+    storedUser.value.id ??
+    storedUser.value.sub ??
+    storedUser.value._id ??
+    storedUser.value.userId ??
     '',
 )
 
-const currentFolder = computed(() => breadcrumb.value[breadcrumb.value.length - 1] || null)
+const currentFolder = computed(() => breadcrumb.value[breadcrumb.value.length - 1] ?? null)
 const isRoot = computed(() => !currentFolder.value)
 const isInsideMyPersonalFolder = computed(
   () =>
@@ -76,9 +119,9 @@ const isInsideMyPersonalFolder = computed(
     currentFolder.value?.createdBy === currentUserId.value,
 )
 const hasMyPersonalFolder = computed(() =>
-  folders.value.some((f: any) => f.createdBy === currentUserId.value && !!f.ownerFolderName),
+  folders.value.some((f) => f.createdBy === currentUserId.value && !!f.ownerFolderName),
 )
-const hasStructuralChild = computed(() => folders.value.some((f: any) => !f.ownerFolderName))
+const hasStructuralChild = computed(() => folders.value.some((f) => !f.ownerFolderName))
 const canCreatePersonal = computed(() => {
   if (isRoot.value) return false
   if (isInsideMyPersonalFolder.value) return false
@@ -88,131 +131,142 @@ const canCreatePersonal = computed(() => {
   return !!currentFolder.value
 })
 const canUploadHere = computed(() => isInsideMyPersonalFolder.value)
-const requiredDocs = computed(() => docs.value.filter((d: any) => !d.storageKey))
-const uploadedDocs = computed(() => docs.value.filter((d: any) => !!d.storageKey))
+const requiredDocs = computed(() => docs.value.filter((d) => !d.storageKey))
+const uploadedDocs = computed(() => docs.value.filter((d) => !!d.storageKey))
 
-function isPdf(doc: any) {
-  return doc.mimeType?.includes('pdf') || doc.fileName?.toLowerCase().endsWith('.pdf')
+function isPdf(doc: DocItem): boolean {
+  return !!doc.mimeType?.includes('pdf') || !!doc.fileName?.toLowerCase().endsWith('.pdf')
 }
-function getFileUrl(storageKey: string) {
+
+function getFileUrl(storageKey: string): string {
   return documentsService.downloadUrl(storageKey, true)
 }
 
-async function openPreview(doc: any) {
+async function openPreview(doc: DocItem): Promise<void> {
   previewDoc.value = doc
   showPreview.value = true
   previewLoading.value = true
   previewBlobUrl.value = null
   try {
+    if (!doc.storageKey) throw new Error('Sin storageKey')
     const url = getFileUrl(doc.storageKey)
     const res = await fetch(url)
     if (!res.ok) throw new Error(`Error ${res.status}`)
     const blob = await res.blob()
     previewBlobUrl.value = URL.createObjectURL(blob)
-  } catch (e: any) {
-    alert('No se pudo abrir PDF: ' + e.message)
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Error desconocido'
+    alert('No se pudo abrir PDF: ' + msg)
     showPreview.value = false
   } finally {
     previewLoading.value = false
   }
 }
 
-async function openDelete(doc: any) {
+function openDelete(doc: DocItem): void {
   deleteDoc.value = doc
   showDelete.value = true
 }
 
-function closePreview() {
+function closePreview(): void {
   showPreview.value = false
   if (previewBlobUrl.value?.startsWith('blob:')) URL.revokeObjectURL(previewBlobUrl.value)
   previewBlobUrl.value = null
 }
 
-async function load(id: string | null) {
+async function load(id: string | null): Promise<void> {
   loading.value = true
   try {
     const [f, d] = await Promise.all([
       foldersService
         .list({ parentId: id ?? 'null', limit: 100, state: true })
-        .then((r: any) => r.data || r)
-        .catch(() => []),
+        .then((r: Wrapped<FolderItem>) => unwrap(r))
+        .catch(() => [] as FolderItem[]),
       id
         ? documentsService
             .list({ folderId: id, limit: 100 })
-            .then((r: any) => r.data || r)
-            .catch(() => [])
-        : Promise.resolve([]),
+            .then((r: Wrapped<DocItem>) => unwrap(r))
+            .catch(() => [] as DocItem[])
+        : Promise.resolve([] as DocItem[]),
     ])
-    folders.value = f || []
-    docs.value = d || []
-    const tpl = (d as any[]).find((x: any) => !x.storageKey && x.categoryId && x.typeId)
+    folders.value = f ?? []
+    docs.value = d ?? []
+    const tpl = d.find((x) => !x.storageKey && x.categoryId && x.typeId)
     if (tpl) parentRequirement.value = tpl
   } finally {
     loading.value = false
   }
 }
-function enter(folder: any) {
+
+function enter(folder: FolderItem): void {
   breadcrumb.value.push(folder)
   currentFolderId.value = folder.id
-  load(folder.id)
+  void load(folder.id)
 }
-function back() {
+
+function back(): void {
   breadcrumb.value.pop()
   currentFolderId.value = breadcrumb.value.length
     ? breadcrumb.value[breadcrumb.value.length - 1].id
     : null
   if (!breadcrumb.value.length) parentRequirement.value = null
-  load(currentFolderId.value)
+  void load(currentFolderId.value)
 }
-function goRoot() {
+
+function goRoot(): void {
   breadcrumb.value = []
   currentFolderId.value = null
   parentRequirement.value = null
-  load(null)
-}
-function goTo(i: number) {
-  breadcrumb.value = breadcrumb.value.slice(0, i + 1)
-  currentFolderId.value = breadcrumb.value[i].id
-  load(currentFolderId.value)
+  void load(null)
 }
 
-const confirmDelete = async () => {
+function goTo(i: number): void {
+  breadcrumb.value = breadcrumb.value.slice(0, i + 1)
+  currentFolderId.value = breadcrumb.value[i].id
+  void load(currentFolderId.value)
+}
+
+const confirmDelete = async (): Promise<void> => {
   if (!deleteDoc.value?.id) return
   try {
     await documentsService.delete(deleteDoc.value.id)
-    load(currentFolderId.value)
-  } catch (e: any) {
-    alert(e.message)
+    await load(currentFolderId.value)
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Error al eliminar'
+    alert(msg)
   } finally {
     showDelete.value = false
     deleteDoc.value = null
   }
 }
 
-async function createPersonal() {
+async function createPersonal(): Promise<void> {
   if (!currentFolderId.value) return
   try {
     await foldersService.createPersonal({ parentId: currentFolderId.value })
-    load(currentFolderId.value)
-  } catch (e: any) {
-    alert(e.message)
+    await load(currentFolderId.value)
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Error al crear carpeta'
+    alert(msg)
   }
 }
-function triggerUpload() {
+
+function triggerUpload(): void {
   fileInputRef.value?.click()
 }
-async function onFilePicked(e: Event) {
+
+async function onFilePicked(e: Event): Promise<void> {
   const input = e.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file || !currentFolderId.value) return
-  const template = requiredDocs.value[0] || parentRequirement.value
+  const template = requiredDocs.value[0] ?? parentRequirement.value
   if (!template?.categoryId || !template?.typeId) {
     alert('La carpeta padre no tiene configurada categoria y tipo')
     return
   }
   const fd = new FormData()
   fd.append('file', file)
-  fd.append('title', currentFolder.value?.name || 'doc')
+  fd.append('title', currentFolder.value?.name ?? 'doc')
   fd.append(
     'description',
     `Archivo de ${currentFolder.value?.name} - ${new Date().toLocaleDateString()}`,
@@ -223,15 +277,19 @@ async function onFilePicked(e: Event) {
   try {
     uploading.value = true
     await documentsService.upload(fd)
-    load(currentFolderId.value)
-  } catch (err: any) {
-    alert(err.message)
+    await load(currentFolderId.value)
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Error al subir'
+    alert(msg)
   } finally {
     uploading.value = false
     if (input) input.value = ''
   }
 }
-onMounted(() => load(null))
+
+onMounted(() => {
+  void load(null)
+})
 </script>
 
 <template>
@@ -242,7 +300,7 @@ onMounted(() => load(null))
         type="file"
         class="hidden"
         accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx,.doc,.xls"
-        @change="onFilePicked"
+        @change="(e) => void onFilePicked(e)"
       />
 
       <div class="flex items-center justify-between mb-8">
@@ -257,7 +315,7 @@ onMounted(() => load(null))
             <span class="text-zinc-300">/</span>
             <button
               class="px-2.5 py-1 rounded-full hover:bg-white hover:shadow-sm border border-transparent hover:border-zinc-200 transition-all text-zinc-500 hover:text-zinc-900 font-medium"
-              @click="goTo(i)"
+              @click="() => goTo(i)"
             >
               {{ b.name }}
             </button>
@@ -284,8 +342,8 @@ onMounted(() => load(null))
           <div class="flex items-start gap-4 min-w-0">
             <button
               v-if="currentFolderId"
-              @click="back"
               class="h-10 w-10 rounded-full bg-zinc-900 text-white flex items-center justify-center shadow-sm hover:bg-black transition shrink-0"
+              @click="back"
             >
               <ArrowLeft class="h-5 w-5" />
             </button>
@@ -303,8 +361,9 @@ onMounted(() => load(null))
                 <span
                   v-else-if="isRoot"
                   class="inline-flex items-center gap-1.5 text- font-semibold tracking-widest bg-indigo-600 text-white px-3 py-1.5 rounded-full"
-                  ><Sparkles class="h-3 w-3" /> WORKSPACE</span
                 >
+                  <Sparkles class="h-3 w-3" /> WORKSPACE
+                </span>
               </div>
               <p class="mt-2.5 text-[13.5px] text-zinc-500 max-w- leading-relaxed">
                 <span v-if="isRoot"
@@ -325,16 +384,16 @@ onMounted(() => load(null))
           <div class="flex gap-2.5 shrink-0">
             <button
               v-if="canCreatePersonal"
-              @click="createPersonal"
               class="h- px-6 rounded-full bg-zinc-900 text-white text-[13.5px] font-semibold flex items-center shadow-[0_4px_14px_rgba(0,0,0,0.2)] hover:bg-black transition"
+              @click="() => void createPersonal()"
             >
               <Plus class="h-4 w-4 mr-2" /> Crear mi carpeta
             </button>
             <button
               v-if="canUploadHere"
-              @click="triggerUpload"
               :disabled="uploading"
               class="h- px-6 rounded-full bg-[#3c50e0] text-white text-[13.5px] font-semibold flex items-center shadow-[0_8px_20px_rgba(60,80,224,0.3)] hover:bg-[#3445c7] transition disabled:opacity-60"
+              @click="triggerUpload"
             >
               <Upload class="h-4 w-4 mr-2" /> {{ uploading ? 'Subiendo...' : 'Subir documento' }}
             </button>
@@ -365,8 +424,8 @@ onMounted(() => load(null))
             <div
               v-for="f in folders"
               :key="f.id"
-              @click="enter(f)"
               class="group relative rounded- border border-zinc-200 bg-white p- hover:shadow-[0_12px_32px_-12px_rgba(0,0,0,0.18)] hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
+              @click="() => enter(f)"
             >
               <div class="rounded- bg-white p-5 h-full">
                 <div class="flex justify-between items-start mb-6">
@@ -452,8 +511,8 @@ onMounted(() => load(null))
             </p>
             <button
               v-if="canUploadHere"
-              @click="triggerUpload"
               class="mt-5 h-10 px-5 rounded-full bg-zinc-900 text-white text- font-medium"
+              @click="triggerUpload"
             >
               Subir primer documento
             </button>
@@ -485,23 +544,23 @@ onMounted(() => load(null))
               <div class="flex items-center gap-1.5 opacity-60 group-hover:opacity-100 transition">
                 <button
                   v-if="isPdf(doc)"
-                  @click="openPreview(doc)"
                   class="h-9 w-9 rounded-full bg-zinc-900 text-white flex items-center justify-center hover:bg-black shadow-sm"
                   title="Vista previa"
+                  @click="() => void openPreview(doc)"
                 >
                   <Eye class="h-4 w-4" />
                 </button>
                 <a
-                  v-if="!isPdf(doc)"
+                  v-if="!isPdf(doc) && doc.storageKey"
                   :href="getFileUrl(doc.storageKey)"
                   target="_blank"
                   class="h-9 w-9 rounded-full bg-white border border-zinc-200 flex items-center justify-center hover:border-zinc-900 hover:text-zinc-900 transition"
-                  ><Download class="h-4 w-4"
-                /></a>
+                >
+                  <Download class="h-4 w-4" />
+                </a>
                 <button
-                  @click="openDelete(doc)"
-                  target="_blank"
                   class="h-9 w-9 rounded-full bg-white border border-zinc-200 flex items-center justify-center hover:border-zinc-900 hover:text-zinc-900 transition"
+                  @click="() => openDelete(doc)"
                 >
                   <TrashIcon class="h-4 w-4" />
                 </button>
@@ -534,8 +593,8 @@ onMounted(() => load(null))
             </div>
           </div>
           <button
-            @click="closePreview"
             class="h-9 w-9 rounded-full bg-zinc-900 text-white flex items-center justify-center"
+            @click="closePreview"
           >
             <X class="h-4 w-4" />
           </button>
@@ -570,9 +629,9 @@ onMounted(() => load(null))
         <p class="mt-3 text-sm">¿Deseas continuar?</p>
       </v-card-text>
       <v-card-actions class="p-6 pt-4">
-        <v-btn variant="text" @click="((showDelete = false), (deleteDoc = null))">Cancelar</v-btn>
+        <v-btn variant="text" @click="((showDelete = false), (deleteDoc = null))"> Cancelar </v-btn>
         <v-spacer />
-        <v-btn @click="confirmDelete"> Confirmar </v-btn>
+        <v-btn color="error" variant="flat" @click="() => void confirmDelete()">Confirmar</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -581,7 +640,7 @@ onMounted(() => load(null))
 <style scoped>
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity.2s ease;
+  transition: opacity 0.2s ease;
 }
 .fade-enter-from,
 .fade-leave-to {
