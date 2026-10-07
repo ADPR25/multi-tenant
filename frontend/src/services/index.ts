@@ -1,21 +1,21 @@
-export * from './api/api'
-export * from './logic/iam/companies.service'
-export * from './logic/iam/users.service'
-export * from './logic/iam/roles.service'
-export * from './logic/menu/menus.service'
-export * from './logic/iam/role-permission.service'
-export * from './logic/auth/auth.service'
-export * from './logic/menu/menu.service'
-export * from './logic/inventory/brands.service'
-export * from './logic/inventory/warehouses.service'
-export * from './logic/inventory/uom.service'
-export * from './logic/inventory/products.service'
-export * from './logic/inventory/stocks.service'
-export * from './logic/inventory/stock-movements.service'
-export { categoriesService as inventoryCategoriesService } from './logic/inventory/categories.service'
-export { default as categoriesService } from './logic/inventory/categories.service'
-export * from './logic/document/documents.service'
-export * from './logic/document/types.service'
-export * from './logic/document/folders.service'
-export { documentCategoriesService } from './logic/document/categories.service'
-export { documentCategoriesService as documentCategoriesServiceAlias } from './logic/document/categories.service'
+export * from "./api/api";
+export * from "./logic/iam/companies.service";
+export * from "./logic/iam/users.service";
+export * from "./logic/iam/roles.service";
+export * from "./logic/menu/menus.service";
+export * from "./logic/iam/role-permission.service";
+export * from "./logic/auth/auth.service";
+export * from "./logic/menu/menu.service";
+export * from "./logic/inventory/brands.service";
+export * from "./logic/inventory/warehouses.service";
+export * from "./logic/inventory/uom.service";
+export * from "./logic/inventory/products.service";
+export * from "./logic/inventory/stocks.service";
+export * from "./logic/inventory/stock-movements.service";
+export { categoriesService as inventoryCategoriesService } from "./logic/inventory/categories.service";
+export { default as categoriesService } from "./logic/inventory/categories.service";
+export * from "./logic/document/documents.service";
+export * from "./logic/document/types.service";
+export * from "./logic/document/folders.service";
+export { documentCategoriesService } from "./logic/document/categories.service";
+export { documentCategoriesService as documentCategoriesServiceAlias } from "./logic/document/categories.service";

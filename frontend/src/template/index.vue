@@ -1,77 +1,95 @@
 <script setup lang="ts">
 defineOptions({
-  name: 'ModuleTemplateView',
-})
+  name: "ModuleTemplateView",
+});
 
-import AdminLayout from '@/components/layout/AdminLayout.vue'
-import { ref, onMounted } from 'vue'
-import { __MODULE__Service } from '@/services'
-import { Plus, Pencil, X, Power } from 'lucide-vue-next'
-import CreateComponent from './create/index.vue'
-import { usePermissions } from '@/composables/usePermissions'
+import AdminLayout from "@/components/layout/AdminLayout.vue";
+import { ref, onMounted } from "vue";
+import { __MODULE__Service } from "@/services";
+import { Plus, Pencil, X, Power } from "lucide-vue-next";
+import CreateComponent from "./create/index.vue";
+import { usePermissions } from "@/composables/usePermissions";
 
 interface ModuleItem {
-  id: string
-  name: string
-  documentNumber?: string
-  isActive: boolean
+  id: string;
+  name: string;
+  documentNumber?: string;
+  isActive: boolean;
 }
 
-const { can } = usePermissions()
+const { can } = usePermissions();
 
-const items = ref<ModuleItem[]>([])
-const search = ref('')
-const loading = ref(false)
-const mode = ref<'list' | 'create' | 'edit'>('list')
-const selectedItem = ref<ModuleItem | null>(null)
+const items = ref<ModuleItem[]>([]);
+const search = ref("");
+const loading = ref(false);
+const mode = ref<"list" | "create" | "edit">("list");
+const selectedItem = ref<ModuleItem | null>(null);
 
 const traer = async () => {
-  loading.value = true
+  loading.value = true;
   try {
-    const data = (await __MODULE__Service.list()) as { data?: ModuleItem[] } | ModuleItem[]
-    items.value = Array.isArray(data) ? data : data.data || []
+    const data = (await __MODULE__Service.list()) as
+      { data?: ModuleItem[] } | ModuleItem[];
+    items.value = Array.isArray(data) ? data : data.data || [];
   } catch (e: unknown) {
-    console.error(e)
+    console.error(e);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 const openCreate = () => {
-  selectedItem.value = null
-  mode.value = 'create'
-}
+  selectedItem.value = null;
+  mode.value = "create";
+};
 const openEdit = (item: ModuleItem) => {
-  selectedItem.value = item
-  mode.value = 'edit'
-}
+  selectedItem.value = item;
+  mode.value = "edit";
+};
 const close = () => {
-  mode.value = 'list'
-  selectedItem.value = null
-}
+  mode.value = "list";
+  selectedItem.value = null;
+};
 const onSaved = async () => {
-  close()
-  await traer()
-}
+  close();
+  await traer();
+};
 
 const headers = [
-  { title: 'Nombre', key: 'name', minWidth: '200px' },
-  { title: 'Documento', key: 'documentNumber', minWidth: '150px' },
-  { title: 'Estado', key: 'isActive', minWidth: '110px', align: 'center' as const },
-  { title: 'Opciones', key: 'actions', minWidth: '120px', align: 'end' as const, sortable: false },
-]
+  { title: "Nombre", key: "name", minWidth: "200px" },
+  { title: "Documento", key: "documentNumber", minWidth: "150px" },
+  {
+    title: "Estado",
+    key: "isActive",
+    minWidth: "110px",
+    align: "center" as const,
+  },
+  {
+    title: "Opciones",
+    key: "actions",
+    minWidth: "120px",
+    align: "end" as const,
+    sortable: false,
+  },
+];
 
 onMounted(() => {
-  void traer()
-})
+  void traer();
+});
 </script>
 
 <template>
   <AdminLayout>
     <div v-if="mode === 'list'">
       <div class="flex items-center justify-between mb-6">
-        <h1 class="text-2xl font-bold text-gray-800 dark:text-white/90">__MODULE_TITLE__</h1>
-        <v-btn v-if="can('__PERM__:create')" color="success" @click="openCreate">
+        <h1 class="text-2xl font-bold text-gray-800 dark:text-white/90">
+          __MODULE_TITLE__
+        </h1>
+        <v-btn
+          v-if="can('__PERM__:create')"
+          color="success"
+          @click="openCreate"
+        >
           <Plus class="h-4 w-4 mr-2" /> Crear
         </v-btn>
       </div>
@@ -97,9 +115,12 @@ onMounted(() => {
             item-value="id"
           >
             <template #[`item.isActive`]="{ item }">
-              <v-chip :color="item.isActive ? 'success' : 'error'" size="small" variant="tonal">{{
-                item.isActive ? 'Activo' : 'Inactivo'
-              }}</v-chip>
+              <v-chip
+                :color="item.isActive ? 'success' : 'error'"
+                size="small"
+                variant="tonal"
+                >{{ item.isActive ? "Activo" : "Inactivo" }}</v-chip
+              >
             </template>
             <template #[`item.actions`]="{ item }">
               <div class="flex justify-end gap-1">
@@ -130,7 +151,7 @@ onMounted(() => {
     <div v-else>
       <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-bold text-gray-800 dark:text-white/90">
-          {{ mode === 'edit' ? 'Editar' : 'Crear' }} __MODULE_TITLE__
+          {{ mode === "edit" ? "Editar" : "Crear" }} __MODULE_TITLE__
         </h1>
         <v-btn variant="text" icon @click="close"><X class="h-5 w-5" /></v-btn>
       </div>

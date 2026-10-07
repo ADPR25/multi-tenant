@@ -13,11 +13,16 @@
               Back to dashboard
             </router-link>
           </div>
-          <div class="flex flex-col justify-center flex-1 w-full max-w-md mx-auto">
+          <div
+            class="flex flex-col justify-center flex-1 w-full max-w-md mx-auto"
+          >
             <div class="mb-5">
-              <h1 class="mb-2 font-semibold text-gray-800 dark:text-white/90">Sign In</h1>
+              <h1 class="mb-2 font-semibold text-gray-800 dark:text-white/90">
+                Sign In
+              </h1>
               <p class="text-sm text-gray-500 dark:text-gray-400">
-                Inicia sesión de manera segura en el portal de administración empresarial
+                Inicia sesión de manera segura en el portal de administración
+                empresarial
               </p>
             </div>
 
@@ -81,55 +86,58 @@
 
 <script setup lang="ts">
 defineOptions({
-  name: 'SigninView',
-})
+  name: "SigninView",
+});
 
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { set } from '@/store/authstore'
-import { authService } from '@/services'
-import Alert from '@/components/Alert.vue'
-import FullScreenLayout from '@/components/layout/FullScreenLayout.vue'
-import { Eye, EyeOff, Lock } from 'lucide-vue-next'
-import { useMenuStore } from '@/store/menu.store'
-import { usePermissions } from '@/composables/usePermissions'
+import { ref } from "vue";
+import { useRouter } from "vue-router";
+import { set } from "@/store/authstore";
+import { authService } from "@/services";
+import Alert from "@/components/Alert.vue";
+import FullScreenLayout from "@/components/layout/FullScreenLayout.vue";
+import { Eye, EyeOff, Lock } from "lucide-vue-next";
+import { useMenuStore } from "@/store/menu.store";
+import { usePermissions } from "@/composables/usePermissions";
 
-const document_number = ref('')
-const password = ref('')
-const router = useRouter()
-const showPassword = ref(false)
-const loading = ref(false)
-const error = ref<{ message?: string }>({})
+const document_number = ref("");
+const password = ref("");
+const router = useRouter();
+const showPassword = ref(false);
+const loading = ref(false);
+const error = ref<{ message?: string }>({});
 
 const togglePasswordVisibility = () => {
-  showPassword.value = !showPassword.value
-}
+  showPassword.value = !showPassword.value;
+};
 
 const handleSubmit = async () => {
-  loading.value = true
-  error.value = {}
+  loading.value = true;
+  error.value = {};
   try {
     const data = await authService.login({
       document_number: document_number.value,
       password: password.value,
-    })
+    });
 
-    set.useAuth('token', data.access_token)
-    set.useAuth('user', data.user)
-    set.useAuth('company', data.user.company || null)
-    set.useAuth('IsSuperAdmin', data.user.roleCode === 'SUPER_ADMIN')
-    set.useAuth('my_permissions', null)
+    set.useAuth("token", data.access_token);
+    set.useAuth("user", data.user);
+    set.useAuth("company", data.user.company || null);
+    set.useAuth("IsSuperAdmin", data.user.roleCode === "SUPER_ADMIN");
+    set.useAuth("my_permissions", null);
 
-    const menuStore = useMenuStore()
-    const { load } = usePermissions()
-    await Promise.all([menuStore.fetchAll().catch(() => {}), load(true).catch(() => {})])
+    const menuStore = useMenuStore();
+    const { load } = usePermissions();
+    await Promise.all([
+      menuStore.fetchAll().catch(() => {}),
+      load(true).catch(() => {}),
+    ]);
 
-    await router.push('/dashboard')
+    await router.push("/dashboard");
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Error de conexion'
-    error.value = { message: msg }
+    const msg = e instanceof Error ? e.message : "Error de conexion";
+    error.value = { message: msg };
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 </script>

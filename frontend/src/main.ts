@@ -1,44 +1,44 @@
-import './assets/main.css'
-import 'jsvectormap/dist/jsvectormap.css'
-import 'flatpickr/dist/flatpickr.css'
-import 'vuetify/styles'
-import '@mdi/font/css/materialdesignicons.css'
+import "./assets/main.css";
+import "jsvectormap/dist/jsvectormap.css";
+import "flatpickr/dist/flatpickr.css";
+import "vuetify/styles";
+import "@mdi/font/css/materialdesignicons.css";
 
-import { createPinia } from 'pinia'
-import { createApp } from 'vue'
-import App from './App.vue'
-import router from './router/index.ts'
-import VueApexCharts from 'vue3-apexcharts'
+import { createPinia } from "pinia";
+import { createApp } from "vue";
+import App from "./App.vue";
+import router from "./router/index.ts";
+import VueApexCharts from "vue3-apexcharts";
 
-import { createVuetify } from 'vuetify'
-import * as components from 'vuetify/components'
-import * as directives from 'vuetify/directives'
-import { aliases, mdi } from 'vuetify/iconsets/mdi'
+import { createVuetify } from "vuetify";
+import * as components from "vuetify/components";
+import * as directives from "vuetify/directives";
+import { aliases, mdi } from "vuetify/iconsets/mdi";
 
 const vuetify = createVuetify({
   components,
   directives,
   icons: {
-    defaultSet: 'mdi',
+    defaultSet: "mdi",
     aliases,
     sets: { mdi },
   },
-})
+});
 
-const originalWarn = console.warn
+const originalWarn = console.warn;
 console.warn = (...args: unknown[]) => {
-  const msg = typeof args[0] === 'string' ? args[0] : ''
-  if (msg.includes('No match found for location with path')) {
-    return
+  const msg = typeof args[0] === "string" ? args[0] : "";
+  if (msg.includes("No match found for location with path")) {
+    return;
   }
-  originalWarn(...(args as [unknown, ...unknown[]]))
-}
+  originalWarn(...(args as [unknown, ...unknown[]]));
+};
 
-const app = createApp(App)
+const app = createApp(App);
 
-app.use(createPinia())
-app.use(router)
-app.use(vuetify)
-app.use(VueApexCharts)
+app.use(createPinia());
+app.use(router);
+app.use(vuetify);
+app.use(VueApexCharts);
 
-app.mount('#app')
+app.mount("#app");

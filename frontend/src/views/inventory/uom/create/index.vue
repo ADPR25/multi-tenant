@@ -1,48 +1,50 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { uomService } from '@/services'
-import { Save, X } from 'lucide-vue-next'
+import { ref } from "vue";
+import { uomService } from "@/services";
+import { Save, X } from "lucide-vue-next";
 
 defineOptions({
-  name: 'UomCreateForm',
-})
+  name: "UomCreateForm",
+});
 
 interface UomItem {
-  id: string
-  name: string
-  short_name?: string
+  id: string;
+  name: string;
+  short_name?: string;
 }
 
 const props = defineProps<{
-  item?: UomItem | null
-}>()
+  item?: UomItem | null;
+}>();
 
 const emit = defineEmits<{
-  (e: 'close'): void
-  (e: 'created'): void
-}>()
+  (e: "close"): void;
+  (e: "created"): void;
+}>();
 
-const formRef = ref<{ validate: () => Promise<{ valid: boolean }> } | null>(null)
-const saving = ref(false)
+const formRef = ref<{ validate: () => Promise<{ valid: boolean }> } | null>(
+  null,
+);
+const saving = ref(false);
 
 const form = ref({
-  name: props.item?.name || '',
-  short_name: props.item?.short_name || '',
-})
+  name: props.item?.name || "",
+  short_name: props.item?.short_name || "",
+});
 
 async function submit(): Promise<void> {
-  const result = await formRef.value?.validate()
-  if (!result?.valid) return
-  saving.value = true
+  const result = await formRef.value?.validate();
+  if (!result?.valid) return;
+  saving.value = true;
   try {
-    if (props.item) await uomService.update(props.item.id, form.value)
-    else await uomService.create(form.value)
-    emit('created')
+    if (props.item) await uomService.update(props.item.id, form.value);
+    else await uomService.create(form.value);
+    emit("created");
   } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Error al guardar'
-    alert(msg)
+    const msg = e instanceof Error ? e.message : "Error al guardar";
+    alert(msg);
   } finally {
-    saving.value = false
+    saving.value = false;
   }
 }
 </script>
@@ -71,9 +73,12 @@ async function submit(): Promise<void> {
         /></v-col>
       </v-row>
       <div class="flex mt-6">
-        <v-btn color="warning" @click="emit('close')"><X class="h-4 w-4 mr-2" />Cancelar</v-btn
+        <v-btn color="warning" @click="emit('close')"
+          ><X class="h-4 w-4 mr-2" />Cancelar</v-btn
         ><v-spacer /><v-btn color="primary" :loading="saving" @click="submit"
-          ><Save class="h-4 w-4 mr-2" />{{ props.item ? 'Actualizar' : 'Crear' }}</v-btn
+          ><Save class="h-4 w-4 mr-2" />{{
+            props.item ? "Actualizar" : "Crear"
+          }}</v-btn
         >
       </div>
     </v-form>

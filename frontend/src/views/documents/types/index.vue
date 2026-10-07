@@ -1,77 +1,93 @@
 <script setup lang="ts">
 defineOptions({
-  name: 'DocumentTypesIndexView',
-})
+  name: "DocumentTypesIndexView",
+});
 
-import AdminLayout from '@/components/layout/AdminLayout.vue'
-import AppDataTable from '@/components/common/AppDataTable.vue'
-import CreateView from './create/index.vue'
-import { documentTypesService } from '@/services'
-import { usePermissions } from '@/composables/usePermissions'
-import { Plus, Pencil, Power, FileType, X } from 'lucide-vue-next'
-import { ref, computed } from 'vue'
+import AdminLayout from "@/components/layout/AdminLayout.vue";
+import AppDataTable from "@/components/common/AppDataTable.vue";
+import CreateView from "./create/index.vue";
+import { documentTypesService } from "@/services";
+import { usePermissions } from "@/composables/usePermissions";
+import { Plus, Pencil, Power, FileType, X } from "lucide-vue-next";
+import { ref, computed } from "vue";
 
 interface DocumentTypeItem {
-  id: string
-  name: string
-  description?: string | null
-  isActive: boolean
-  createdAt?: string
+  id: string;
+  name: string;
+  description?: string | null;
+  isActive: boolean;
+  createdAt?: string;
 }
 
-const { can } = usePermissions()
-const mode = ref<'list' | 'create' | 'edit'>('list')
-const selected = ref<DocumentTypeItem | null>(null)
-const tableRef = ref<{ reload: () => void } | null>(null)
+const { can } = usePermissions();
+const mode = ref<"list" | "create" | "edit">("list");
+const selected = ref<DocumentTypeItem | null>(null);
+const tableRef = ref<{ reload: () => void } | null>(null);
 
 // Modal activar/inactivar
-const dialogActive = ref(false)
-const toggling = ref(false)
-const itemToToggle = ref<DocumentTypeItem | null>(null)
-const isSelectedActive = computed(() => !!itemToToggle.value?.isActive)
+const dialogActive = ref(false);
+const toggling = ref(false);
+const itemToToggle = ref<DocumentTypeItem | null>(null);
+const isSelectedActive = computed(() => !!itemToToggle.value?.isActive);
 
 const headers = [
-  { title: 'Nombre', key: 'name', minWidth: '200px' },
-  { title: 'Descripción', key: 'description', minWidth: '300px', sortable: false },
-  { title: 'Activo', key: 'isActive', align: 'center' as const, width: '110px' },
-  { title: 'Fecha', key: 'createdAt', width: '120px' },
-  { title: 'Opciones', key: 'actions', align: 'end' as const, sortable: false, width: '120px' },
-]
+  { title: "Nombre", key: "name", minWidth: "200px" },
+  {
+    title: "Descripción",
+    key: "description",
+    minWidth: "300px",
+    sortable: false,
+  },
+  {
+    title: "Activo",
+    key: "isActive",
+    align: "center" as const,
+    width: "110px",
+  },
+  { title: "Fecha", key: "createdAt", width: "120px" },
+  {
+    title: "Opciones",
+    key: "actions",
+    align: "end" as const,
+    sortable: false,
+    width: "120px",
+  },
+];
 
 function openCreate() {
-  selected.value = null
-  mode.value = 'create'
+  selected.value = null;
+  mode.value = "create";
 }
 
 function openEdit(item: DocumentTypeItem) {
-  selected.value = item
-  mode.value = 'edit'
+  selected.value = item;
+  mode.value = "edit";
 }
 
 function closeList() {
-  mode.value = 'list'
-  selected.value = null
-  tableRef.value?.reload()
+  mode.value = "list";
+  selected.value = null;
+  tableRef.value?.reload();
 }
 
 function confirmToggle(item: DocumentTypeItem) {
-  itemToToggle.value = item
-  dialogActive.value = true
+  itemToToggle.value = item;
+  dialogActive.value = true;
 }
 
 async function toggle() {
-  if (!itemToToggle.value) return
-  toggling.value = true
+  if (!itemToToggle.value) return;
+  toggling.value = true;
   try {
-    await documentTypesService.toggleActive(itemToToggle.value.id)
-    dialogActive.value = false
-    itemToToggle.value = null
-    tableRef.value?.reload()
+    await documentTypesService.toggleActive(itemToToggle.value.id);
+    dialogActive.value = false;
+    itemToToggle.value = null;
+    tableRef.value?.reload();
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'No se pudo cambiar el estado'
-    alert(msg)
+    const msg = e instanceof Error ? e.message : "No se pudo cambiar el estado";
+    alert(msg);
   } finally {
-    toggling.value = false
+    toggling.value = false;
   }
 }
 </script>
@@ -80,10 +96,16 @@ async function toggle() {
   <AdminLayout>
     <div v-if="mode === 'list'">
       <div class="flex items-center justify-between mb-6">
-        <h1 class="text-2xl font-bold text-gray-800 dark:text-white/90 flex items-center gap-2">
+        <h1
+          class="text-2xl font-bold text-gray-800 dark:text-white/90 flex items-center gap-2"
+        >
           <FileType class="h-6 w-6" /> Tipos de Documento
         </h1>
-        <v-btn v-if="can('documents:types:create')" color="primary" @click="openCreate">
+        <v-btn
+          v-if="can('documents:types:create')"
+          color="primary"
+          @click="openCreate"
+        >
           <Plus class="h-4 w-4 mr-2" /> Crear
         </v-btn>
       </div>
@@ -96,12 +118,16 @@ async function toggle() {
       >
         <template #[`item.description`]="{ item }">
           <span class="text-sm text-gray-600 truncate block max-w-">{{
-            item.description || '-'
+            item.description || "-"
           }}</span>
         </template>
         <template #[`item.isActive`]="{ item }">
-          <v-chip :color="item.isActive ? 'success' : 'error'" size="small" variant="tonal">
-            {{ item.isActive ? 'Activo' : 'Inactivo' }}
+          <v-chip
+            :color="item.isActive ? 'success' : 'error'"
+            size="small"
+            variant="tonal"
+          >
+            {{ item.isActive ? "Activo" : "Inactivo" }}
           </v-chip>
         </template>
         <template #[`item.createdAt`]="{ item }">
@@ -139,9 +165,11 @@ async function toggle() {
     <div v-else>
       <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-bold text-gray-800 dark:text-white/90">
-          {{ mode === 'edit' ? 'Editar' : 'Crear' }} Tipo de Documento
+          {{ mode === "edit" ? "Editar" : "Crear" }} Tipo de Documento
         </h1>
-        <v-btn variant="text" icon @click="closeList"><X class="h-5 w-5" /></v-btn>
+        <v-btn variant="text" icon @click="closeList"
+          ><X class="h-5 w-5"
+        /></v-btn>
       </div>
       <CreateView :item="selected" @close="closeList" @created="closeList" />
     </div>
@@ -152,20 +180,24 @@ async function toggle() {
           <div
             :class="[
               'w-10 h-10 rounded-full flex items-center justify-center',
-              isSelectedActive ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600',
+              isSelectedActive
+                ? 'bg-red-100 text-red-600'
+                : 'bg-green-100 text-green-600',
             ]"
           >
             <Power class="h-5 w-5" />
           </div>
           <span class="text-lg font-bold">
-            {{ isSelectedActive ? '¿Inactivar tipo?' : '¿Activar tipo?' }}
+            {{ isSelectedActive ? "¿Inactivar tipo?" : "¿Activar tipo?" }}
           </span>
         </v-card-title>
         <v-card-text class="px-6 pb-2 text-gray-600">
           <p>
             Estás a punto de
-            <strong :class="isSelectedActive ? 'text-red-600' : 'text-green-600'">
-              {{ isSelectedActive ? 'inactivar' : 'activar' }}
+            <strong
+              :class="isSelectedActive ? 'text-red-600' : 'text-green-600'"
+            >
+              {{ isSelectedActive ? "inactivar" : "activar" }}
             </strong>
             el tipo <strong>{{ itemToToggle?.name }}</strong
             >.
@@ -173,7 +205,12 @@ async function toggle() {
           <p class="mt-3 text-sm">¿Deseas continuar?</p>
         </v-card-text>
         <v-card-actions class="p-6 pt-4">
-          <v-btn variant="text" :disabled="toggling" @click="dialogActive = false">Cancelar</v-btn>
+          <v-btn
+            variant="text"
+            :disabled="toggling"
+            @click="dialogActive = false"
+            >Cancelar</v-btn
+          >
           <v-spacer />
           <v-btn
             :color="isSelectedActive ? 'error' : 'success'"
@@ -181,7 +218,7 @@ async function toggle() {
             :loading="toggling"
             @click="toggle"
           >
-            {{ isSelectedActive ? 'Sí, inactivar' : 'Sí, activar' }}
+            {{ isSelectedActive ? "Sí, inactivar" : "Sí, activar" }}
           </v-btn>
         </v-card-actions>
       </v-card>

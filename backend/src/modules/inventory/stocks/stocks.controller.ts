@@ -1,14 +1,11 @@
 import {
   Controller,
   Get,
-  Post,
-  Body,
   Param,
   UseGuards,
   Query,
 } from "@nestjs/common";
 import { StocksService } from "./stocks.service";
-import { CreateStockDto } from "./dto/create-stock.dto";
 import { CurrentCompanyId } from "@/common/decorators/current-company.decorator";
 import { JwtAuthGuard } from "@/common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "@/common/guards/permissions.guard";
@@ -19,13 +16,7 @@ import { PaginationDto } from "@/common/dto/pagination.dto";
 @Controller("stocks")
 export class StocksController {
   constructor(private readonly stocksService: StocksService) {}
-
-  @Post()
-  @RequirePermissions("inventory:stocks:create")
-  create(@Body() dto: CreateStockDto, @CurrentCompanyId() companyId: string) {
-    return this.stocksService.create(dto, companyId);
-  }
-
+  
   @Get()
   @RequirePermissions("inventory:stocks:read")
   findAll(
@@ -34,7 +25,7 @@ export class StocksController {
     @Query("productId") productId?: string,
     @Query("warehouseId") warehouseId?: string,
     @Query("search") search?: string,
-    @Query("status") status?: "low" | "out" | "ok",
+    @Query("status") status?: "low" | "out" | "ok" | "all",
   ) {
     return this.stocksService.findAll(
       companyId,

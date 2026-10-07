@@ -1,11 +1,11 @@
 <script setup lang="ts">
 defineOptions({
-  name: 'DriveOpcion1View',
-})
+  name: "DriveOpcion1View",
+});
 
-import { ref, onMounted, computed } from 'vue'
-import { foldersService, documentsService } from '@/services'
-import { get } from '@/store/authstore'
+import { ref, onMounted, computed } from "vue";
+import { foldersService, documentsService } from "@/services";
+import { get } from "@/store/authstore";
 import {
   Folder,
   Plus,
@@ -24,83 +24,85 @@ import {
   Users,
   HardDrive,
   TrashIcon,
-} from 'lucide-vue-next'
+} from "lucide-vue-next";
 
 interface FolderItem {
-  id: string
-  name: string
-  description?: string | null
-  ownerFolderName?: string | null
-  createdBy?: string
-  parentId?: string | null
+  id: string;
+  name: string;
+  description?: string | null;
+  ownerFolderName?: string | null;
+  createdBy?: string;
+  parentId?: string | null;
 }
 
 interface DocItem {
-  id: string
-  fileName: string
-  title?: string
-  storageKey?: string | null
-  mimeType?: string
-  categoryId?: string
-  typeId?: string
+  id: string;
+  fileName: string;
+  title?: string;
+  storageKey?: string | null;
+  mimeType?: string;
+  categoryId?: string;
+  typeId?: string;
 }
 
 interface StoredUser {
-  id?: string
-  sub?: string
-  _id?: string
-  userId?: string
+  id?: string;
+  sub?: string;
+  _id?: string;
+  userId?: string;
 }
 
-type Wrapped<T> = { data?: T[] } | T[]
-type AuthStore = { useAuth?: { user?: StoredUser } | ((k: string) => StoredUser) }
+type Wrapped<T> = { data?: T[] } | T[];
+type AuthStore = {
+  useAuth?: { user?: StoredUser } | ((k: string) => StoredUser);
+};
 
-const breadcrumb = ref<FolderItem[]>([])
-const currentFolderId = ref<string | null>(null)
-const folders = ref<FolderItem[]>([])
-const docs = ref<DocItem[]>([])
-const loading = ref(false)
-const uploading = ref(false)
-const fileInputRef = ref<HTMLInputElement | null>(null)
-const parentRequirement = ref<DocItem | null>(null)
-const showDelete = ref(false)
-const deleteDoc = ref<DocItem | null>(null)
-const showPreview = ref(false)
-const previewDoc = ref<DocItem | null>(null)
-const previewBlobUrl = ref<string | null>(null)
-const previewLoading = ref(false)
+const breadcrumb = ref<FolderItem[]>([]);
+const currentFolderId = ref<string | null>(null);
+const folders = ref<FolderItem[]>([]);
+const docs = ref<DocItem[]>([]);
+const loading = ref(false);
+const uploading = ref(false);
+const fileInputRef = ref<HTMLInputElement | null>(null);
+const parentRequirement = ref<DocItem | null>(null);
+const showDelete = ref(false);
+const deleteDoc = ref<DocItem | null>(null);
+const showPreview = ref(false);
+const previewDoc = ref<DocItem | null>(null);
+const previewBlobUrl = ref<string | null>(null);
+const previewLoading = ref(false);
 
 const unwrap = <T,>(r: Wrapped<T>): T[] => {
-  if (Array.isArray(r)) return r
-  return r.data ?? []
-}
+  if (Array.isArray(r)) return r;
+  return r.data ?? [];
+};
 
 const storedUser = computed<StoredUser>(() => {
   try {
-    const authStore = get as AuthStore
-    const useAuth = authStore.useAuth
-    if (typeof useAuth === 'function') {
-      const u = useAuth('user')
-      if (u?.id) return u
+    const authStore = get as AuthStore;
+    const useAuth = authStore.useAuth;
+    if (typeof useAuth === "function") {
+      const u = useAuth("user");
+      if (u?.id) return u;
     }
-    if (useAuth && typeof useAuth === 'object' && 'user' in useAuth) {
-      if (useAuth.user?.id) return useAuth.user
+    if (useAuth && typeof useAuth === "object" && "user" in useAuth) {
+      if (useAuth.user?.id) return useAuth.user;
     }
   } catch {
     // ignore
   }
   const readLS = (key: string): StoredUser | null => {
     try {
-      const r = localStorage.getItem(key)
-      if (!r) return null
-      const j = JSON.parse(r) as { user?: StoredUser } & StoredUser
-      return j.user ?? j
+      const r = localStorage.getItem(key);
+      if (!r) return null;
+      const j = JSON.parse(r) as { user?: StoredUser } & StoredUser;
+      return j.user ?? j;
     } catch {
-      return null
+      return null;
     }
-  }
-  return readLS('user') ?? readLS('auth_user') ?? readLS('auth') ?? {}
-})
+  };
+  return readLS("user") ?? readLS("auth_user") ?? readLS("auth") ?? {};
+});
 
 const currentUserId = computed(
   () =>
@@ -108,78 +110,88 @@ const currentUserId = computed(
     storedUser.value.sub ??
     storedUser.value._id ??
     storedUser.value.userId ??
-    '',
-)
+    "",
+);
 
-const currentFolder = computed(() => breadcrumb.value[breadcrumb.value.length - 1] ?? null)
-const isRoot = computed(() => !currentFolder.value)
+const currentFolder = computed(
+  () => breadcrumb.value[breadcrumb.value.length - 1] ?? null,
+);
+const isRoot = computed(() => !currentFolder.value);
 const isInsideMyPersonalFolder = computed(
   () =>
     !!currentFolder.value?.ownerFolderName &&
     currentFolder.value?.createdBy === currentUserId.value,
-)
+);
 const hasMyPersonalFolder = computed(() =>
-  folders.value.some((f) => f.createdBy === currentUserId.value && !!f.ownerFolderName),
-)
-const hasStructuralChild = computed(() => folders.value.some((f) => !f.ownerFolderName))
+  folders.value.some(
+    (f) => f.createdBy === currentUserId.value && !!f.ownerFolderName,
+  ),
+);
+const hasStructuralChild = computed(() =>
+  folders.value.some((f) => !f.ownerFolderName),
+);
 const canCreatePersonal = computed(() => {
-  if (isRoot.value) return false
-  if (isInsideMyPersonalFolder.value) return false
-  if (currentFolder.value?.ownerFolderName) return false
-  if (hasMyPersonalFolder.value) return false
-  if (hasStructuralChild.value) return false
-  return !!currentFolder.value
-})
-const canUploadHere = computed(() => isInsideMyPersonalFolder.value)
-const requiredDocs = computed(() => docs.value.filter((d) => !d.storageKey))
-const uploadedDocs = computed(() => docs.value.filter((d) => !!d.storageKey))
+  if (isRoot.value) return false;
+  if (isInsideMyPersonalFolder.value) return false;
+  if (currentFolder.value?.ownerFolderName) return false;
+  if (hasMyPersonalFolder.value) return false;
+  if (hasStructuralChild.value) return false;
+  return !!currentFolder.value;
+});
+const canUploadHere = computed(() => isInsideMyPersonalFolder.value);
+const requiredDocs = computed(() => docs.value.filter((d) => !d.storageKey));
+const uploadedDocs = computed(() => docs.value.filter((d) => !!d.storageKey));
 
 function isPdf(doc: DocItem): boolean {
-  return !!doc.mimeType?.includes('pdf') || !!doc.fileName?.toLowerCase().endsWith('.pdf')
+  return (
+    !!doc.mimeType?.includes("pdf") ||
+    !!doc.fileName?.toLowerCase().endsWith(".pdf")
+  );
 }
 
 function getFileUrl(storageKey: string): string {
-  return documentsService.downloadUrl(storageKey, true)
+  return documentsService.downloadUrl(storageKey, true);
 }
 
 async function openPreview(doc: DocItem): Promise<void> {
-  previewDoc.value = doc
-  showPreview.value = true
-  previewLoading.value = true
-  previewBlobUrl.value = null
+  previewDoc.value = doc;
+  showPreview.value = true;
+  previewLoading.value = true;
+  previewBlobUrl.value = null;
   try {
-    if (!doc.storageKey) throw new Error('Sin storageKey')
-    const url = getFileUrl(doc.storageKey)
-    const res = await fetch(url)
-    if (!res.ok) throw new Error(`Error ${res.status}`)
-    const blob = await res.blob()
-    previewBlobUrl.value = URL.createObjectURL(blob)
+    if (!doc.storageKey) throw new Error("Sin storageKey");
+    const url = getFileUrl(doc.storageKey);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Error ${res.status}`);
+    const blob = await res.blob();
+    previewBlobUrl.value = URL.createObjectURL(blob);
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Error desconocido'
-    alert('No se pudo abrir PDF: ' + msg)
-    showPreview.value = false
+    const msg = e instanceof Error ? e.message : "Error desconocido";
+    alert("No se pudo abrir PDF: " + msg);
+    showPreview.value = false;
   } finally {
-    previewLoading.value = false
+    previewLoading.value = false;
   }
 }
 
 function openDelete(doc: DocItem): void {
-  deleteDoc.value = doc
-  showDelete.value = true
+  deleteDoc.value = doc;
+  showDelete.value = true;
 }
 
 function closePreview(): void {
-  showPreview.value = false
-  if (previewBlobUrl.value?.startsWith('blob:')) URL.revokeObjectURL(previewBlobUrl.value)
-  previewBlobUrl.value = null
+  showPreview.value = false;
+  if (previewBlobUrl.value?.startsWith("blob:"))
+    URL.revokeObjectURL(previewBlobUrl.value);
+  previewBlobUrl.value = null;
 }
 
 async function load(id: string | null): Promise<void> {
-  loading.value = true
+  loading.value = true;
   try {
     const [f, d] = await Promise.all([
       foldersService
-        .list({ parentId: id ?? 'null', limit: 100, state: true })
+        .list({ parentId: id ?? "null", limit: 100, state: true })
         .then((r: Wrapped<FolderItem>) => unwrap(r))
         .catch(() => [] as FolderItem[]),
       id
@@ -188,108 +200,108 @@ async function load(id: string | null): Promise<void> {
             .then((r: Wrapped<DocItem>) => unwrap(r))
             .catch(() => [] as DocItem[])
         : Promise.resolve([] as DocItem[]),
-    ])
-    folders.value = f ?? []
-    docs.value = d ?? []
-    const tpl = d.find((x) => !x.storageKey && x.categoryId && x.typeId)
-    if (tpl) parentRequirement.value = tpl
+    ]);
+    folders.value = f ?? [];
+    docs.value = d ?? [];
+    const tpl = d.find((x) => !x.storageKey && x.categoryId && x.typeId);
+    if (tpl) parentRequirement.value = tpl;
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
 function enter(folder: FolderItem): void {
-  breadcrumb.value.push(folder)
-  currentFolderId.value = folder.id
-  void load(folder.id)
+  breadcrumb.value.push(folder);
+  currentFolderId.value = folder.id;
+  void load(folder.id);
 }
 
 function back(): void {
-  breadcrumb.value.pop()
+  breadcrumb.value.pop();
   currentFolderId.value = breadcrumb.value.length
     ? breadcrumb.value[breadcrumb.value.length - 1].id
-    : null
-  if (!breadcrumb.value.length) parentRequirement.value = null
-  void load(currentFolderId.value)
+    : null;
+  if (!breadcrumb.value.length) parentRequirement.value = null;
+  void load(currentFolderId.value);
 }
 
 function goRoot(): void {
-  breadcrumb.value = []
-  currentFolderId.value = null
-  parentRequirement.value = null
-  void load(null)
+  breadcrumb.value = [];
+  currentFolderId.value = null;
+  parentRequirement.value = null;
+  void load(null);
 }
 
 function goTo(i: number): void {
-  breadcrumb.value = breadcrumb.value.slice(0, i + 1)
-  currentFolderId.value = breadcrumb.value[i].id
-  void load(currentFolderId.value)
+  breadcrumb.value = breadcrumb.value.slice(0, i + 1);
+  currentFolderId.value = breadcrumb.value[i].id;
+  void load(currentFolderId.value);
 }
 
 const confirmDelete = async (): Promise<void> => {
-  if (!deleteDoc.value?.id) return
+  if (!deleteDoc.value?.id) return;
   try {
-    await documentsService.delete(deleteDoc.value.id)
-    await load(currentFolderId.value)
+    await documentsService.delete(deleteDoc.value.id);
+    await load(currentFolderId.value);
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Error al eliminar'
-    alert(msg)
+    const msg = e instanceof Error ? e.message : "Error al eliminar";
+    alert(msg);
   } finally {
-    showDelete.value = false
-    deleteDoc.value = null
+    showDelete.value = false;
+    deleteDoc.value = null;
   }
-}
+};
 
 async function createPersonal(): Promise<void> {
-  if (!currentFolderId.value) return
+  if (!currentFolderId.value) return;
   try {
-    await foldersService.createPersonal({ parentId: currentFolderId.value })
-    await load(currentFolderId.value)
+    await foldersService.createPersonal({ parentId: currentFolderId.value });
+    await load(currentFolderId.value);
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Error al crear carpeta'
-    alert(msg)
+    const msg = e instanceof Error ? e.message : "Error al crear carpeta";
+    alert(msg);
   }
 }
 
 function triggerUpload(): void {
-  fileInputRef.value?.click()
+  fileInputRef.value?.click();
 }
 
 async function onFilePicked(e: Event): Promise<void> {
-  const input = e.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file || !currentFolderId.value) return
-  const template = requiredDocs.value[0] ?? parentRequirement.value
+  const input = e.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file || !currentFolderId.value) return;
+  const template = requiredDocs.value[0] ?? parentRequirement.value;
   if (!template?.categoryId || !template?.typeId) {
-    alert('La carpeta padre no tiene configurada categoria y tipo')
-    return
+    alert("La carpeta padre no tiene configurada categoria y tipo");
+    return;
   }
-  const fd = new FormData()
-  fd.append('file', file)
-  fd.append('title', currentFolder.value?.name ?? 'doc')
+  const fd = new FormData();
+  fd.append("file", file);
+  fd.append("title", currentFolder.value?.name ?? "doc");
   fd.append(
-    'description',
+    "description",
     `Archivo de ${currentFolder.value?.name} - ${new Date().toLocaleDateString()}`,
-  )
-  fd.append('folderId', currentFolderId.value)
-  fd.append('categoryId', template.categoryId)
-  fd.append('typeId', template.typeId)
+  );
+  fd.append("folderId", currentFolderId.value);
+  fd.append("categoryId", template.categoryId);
+  fd.append("typeId", template.typeId);
   try {
-    uploading.value = true
-    await documentsService.upload(fd)
-    await load(currentFolderId.value)
+    uploading.value = true;
+    await documentsService.upload(fd);
+    await load(currentFolderId.value);
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Error al subir'
-    alert(msg)
+    const msg = err instanceof Error ? err.message : "Error al subir";
+    alert(msg);
   } finally {
-    uploading.value = false
-    if (input) input.value = ''
+    uploading.value = false;
+    if (input) input.value = "";
   }
 }
 
 onMounted(() => {
-  void load(null)
-})
+  void load(null);
+});
 </script>
 
 <template>
@@ -324,9 +336,13 @@ onMounted(() => {
         <div
           class="hidden md:flex items-center gap-2 text- font-medium tracking-widest text-zinc-400"
         >
-          <span class="flex items-center gap-1"><Shield class="h-3 w-3" /> ENCRIPTADO</span>
+          <span class="flex items-center gap-1"
+            ><Shield class="h-3 w-3" /> ENCRIPTADO</span
+          >
           <span class="h-3 w-px bg-zinc-200" />
-          <span class="flex items-center gap-1"><Users class="h-3 w-3" /> EMPRESARIAL</span>
+          <span class="flex items-center gap-1"
+            ><Users class="h-3 w-3" /> EMPRESARIAL</span
+          >
         </div>
       </div>
 
@@ -349,14 +365,19 @@ onMounted(() => {
             </button>
             <div class="min-w-0">
               <div class="flex items-center gap-3 flex-wrap">
-                <h1 class="text- leading-none font-[700] tracking-tight text-zinc-900 truncate">
-                  {{ currentFolder?.name || 'Drive Empresarial' }}
+                <h1
+                  class="text- leading-none font-[700] tracking-tight text-zinc-900 truncate"
+                >
+                  {{ currentFolder?.name || "Drive Empresarial" }}
                 </h1>
                 <span
                   v-if="isInsideMyPersonalFolder"
                   class="inline-flex items-center gap-1.5 text- font-semibold tracking-widest bg-[#101828] text-white px-3 py-1.5 rounded-full ring-1 ring-white/10"
                 >
-                  <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> PRIVADO
+                  <span
+                    class="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"
+                  />
+                  PRIVADO
                 </span>
                 <span
                   v-else-if="isRoot"
@@ -365,14 +386,16 @@ onMounted(() => {
                   <Sparkles class="h-3 w-3" /> WORKSPACE
                 </span>
               </div>
-              <p class="mt-2.5 text-[13.5px] text-zinc-500 max-w- leading-relaxed">
+              <p
+                class="mt-2.5 text-[13.5px] text-zinc-500 max-w- leading-relaxed"
+              >
                 <span v-if="isRoot"
-                  >Gestión documental centralizada. Organiza, protege y audita la información de tu
-                  empresa.</span
+                  >Gestión documental centralizada. Organiza, protege y audita
+                  la información de tu empresa.</span
                 >
                 <span v-else-if="isInsideMyPersonalFolder"
-                  >Carpeta personal protegida. Solo tú y RRHH pueden ver estos archivos. Todo queda
-                  registrado.</span
+                  >Carpeta personal protegida. Solo tú y RRHH pueden ver estos
+                  archivos. Todo queda registrado.</span
                 >
                 <span v-else
                   >Carpeta del sistema · {{ folders.length }} subcarpetas ·
@@ -395,7 +418,8 @@ onMounted(() => {
               class="h- px-6 rounded-full bg-[#3c50e0] text-white text-[13.5px] font-semibold flex items-center shadow-[0_8px_20px_rgba(60,80,224,0.3)] hover:bg-[#3445c7] transition disabled:opacity-60"
               @click="triggerUpload"
             >
-              <Upload class="h-4 w-4 mr-2" /> {{ uploading ? 'Subiendo...' : 'Subir documento' }}
+              <Upload class="h-4 w-4 mr-2" />
+              {{ uploading ? "Subiendo..." : "Subir documento" }}
             </button>
           </div>
         </div>
@@ -405,13 +429,17 @@ onMounted(() => {
         <div
           class="h-10 w-10 border- border-zinc-200 border-t-zinc-900 rounded-full animate-spin"
         />
-        <p class="text- tracking-widest font-semibold text-zinc-400">CARGANDO VAULT</p>
+        <p class="text- tracking-widest font-semibold text-zinc-400">
+          CARGANDO VAULT
+        </p>
       </div>
 
       <template v-else>
         <div class="mb-10">
           <div class="flex items-center justify-between mb-5">
-            <h3 class="text- font-bold tracking-[0.18em] text-zinc-400 flex items-center gap-2">
+            <h3
+              class="text- font-bold tracking-[0.18em] text-zinc-400 flex items-center gap-2"
+            >
               <Layers class="h-3.5 w-3.5" /> CARPETAS
             </h3>
             <span
@@ -420,7 +448,9 @@ onMounted(() => {
               >{{ folders.length }} carpetas</span
             >
           </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div
+            class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4"
+          >
             <div
               v-for="f in folders"
               :key="f.id"
@@ -447,18 +477,32 @@ onMounted(() => {
                     </div>
                   </div>
                 </div>
-                <p class="font-semibold text-[14.5px] text-zinc-900 truncate">{{ f.name }}</p>
-                <p class="mt-1 text-[12.5px] text-zinc-500 truncate flex items-center gap-1">
-                  <span v-if="f.ownerFolderName" class="inline-flex items-center gap-1"
+                <p class="font-semibold text-[14.5px] text-zinc-900 truncate">
+                  {{ f.name }}
+                </p>
+                <p
+                  class="mt-1 text-[12.5px] text-zinc-500 truncate flex items-center gap-1"
+                >
+                  <span
+                    v-if="f.ownerFolderName"
+                    class="inline-flex items-center gap-1"
                     ><span class="h-1 w-1 rounded-full bg-zinc-400" /> De:
                     {{ f.ownerFolderName }}</span
                   >
-                  <span v-else>{{ f.description || 'Carpeta empresarial' }}</span>
+                  <span v-else>{{
+                    f.description || "Carpeta empresarial"
+                  }}</span>
                 </p>
-                <div class="mt-4 h-px bg-gradient-to-r from-zinc-100 to-transparent" />
-                <div class="mt-3 flex items-center justify-between text- text-zinc-400 font-medium">
+                <div
+                  class="mt-4 h-px bg-gradient-to-r from-zinc-100 to-transparent"
+                />
+                <div
+                  class="mt-3 flex items-center justify-between text- text-zinc-400 font-medium"
+                >
                   <span>Acceso protegido</span
-                  ><span class="group-hover:text-zinc-900 transition">Abrir →</span>
+                  ><span class="group-hover:text-zinc-900 transition"
+                    >Abrir →</span
+                  >
                 </div>
               </div>
             </div>
@@ -471,8 +515,12 @@ onMounted(() => {
               >
                 <FolderOpen class="h-5 w-5 text-zinc-400" />
               </div>
-              <p class="text- font-medium text-zinc-600">No hay carpetas raíz</p>
-              <p class="text- text-zinc-400 mt-1">El administrador debe crear la estructura</p>
+              <p class="text- font-medium text-zinc-600">
+                No hay carpetas raíz
+              </p>
+              <p class="text- text-zinc-400 mt-1">
+                El administrador debe crear la estructura
+              </p>
             </div>
           </div>
         </div>
@@ -484,9 +532,11 @@ onMounted(() => {
           <div
             class="px-7 py-5 flex items-center justify-between border-b border-zinc-100 bg-zinc-50/60"
           >
-            <h3 class="text- font-bold tracking-[0.18em] text-zinc-500 flex items-center gap-2">
+            <h3
+              class="text- font-bold tracking-[0.18em] text-zinc-500 flex items-center gap-2"
+            >
               <FileIcon class="h-4 w-4" /> ARCHIVOS EN
-              {{ (currentFolder?.name || '').toUpperCase() }}
+              {{ (currentFolder?.name || "").toUpperCase() }}
             </h3>
             <span
               v-if="uploadedDocs.length"
@@ -506,8 +556,8 @@ onMounted(() => {
             </div>
             <p class="font-semibold text-zinc-900">Vault vacío</p>
             <p class="text- text-zinc-500 mt-1 max-w-">
-              Aún no has subido documentos a tu carpeta privada. Los archivos aquí están cifrados y
-              auditados.
+              Aún no has subido documentos a tu carpeta privada. Los archivos
+              aquí están cifrados y auditados.
             </p>
             <button
               v-if="canUploadHere"
@@ -536,12 +586,16 @@ onMounted(() => {
                 <div class="flex items-center gap-2 mt-0.5">
                   <span
                     class="text- px-2 py-0.5 rounded-full bg-zinc-100 border text-zinc-500 font-medium"
-                    >{{ doc.mimeType?.split('/').pop()?.toUpperCase() || 'DOC' }}</span
+                    >{{
+                      doc.mimeType?.split("/").pop()?.toUpperCase() || "DOC"
+                    }}</span
                   >
                   <span class="text- text-zinc-400">· Seguro</span>
                 </div>
               </div>
-              <div class="flex items-center gap-1.5 opacity-60 group-hover:opacity-100 transition">
+              <div
+                class="flex items-center gap-1.5 opacity-60 group-hover:opacity-100 transition"
+              >
                 <button
                   v-if="isPdf(doc)"
                   class="h-9 w-9 rounded-full bg-zinc-900 text-white flex items-center justify-center hover:bg-black shadow-sm"
@@ -588,8 +642,12 @@ onMounted(() => {
               <FileText class="h-4 w-4" />
             </div>
             <div class="min-w-0">
-              <p class="font-semibold text- truncate">{{ previewDoc?.fileName }}</p>
-              <p class="text- text-zinc-500 truncate">{{ previewDoc?.title }}</p>
+              <p class="font-semibold text- truncate">
+                {{ previewDoc?.fileName }}
+              </p>
+              <p class="text- text-zinc-500 truncate">
+                {{ previewDoc?.title }}
+              </p>
             </div>
           </div>
           <button
@@ -599,7 +657,9 @@ onMounted(() => {
             <X class="h-4 w-4" />
           </button>
         </div>
-        <div class="flex-1 overflow-hidden flex items-center justify-center p-4 sm:p-8">
+        <div
+          class="flex-1 overflow-hidden flex items-center justify-center p-4 sm:p-8"
+        >
           <div
             v-if="previewLoading"
             class="h-6 w-6 border-2 border-white/20 border-t-white rounded-full animate-spin"
@@ -629,9 +689,16 @@ onMounted(() => {
         <p class="mt-3 text-sm">¿Deseas continuar?</p>
       </v-card-text>
       <v-card-actions class="p-6 pt-4">
-        <v-btn variant="text" @click="((showDelete = false), (deleteDoc = null))"> Cancelar </v-btn>
+        <v-btn
+          variant="text"
+          @click="((showDelete = false), (deleteDoc = null))"
+        >
+          Cancelar
+        </v-btn>
         <v-spacer />
-        <v-btn color="error" variant="flat" @click="() => void confirmDelete()">Confirmar</v-btn>
+        <v-btn color="error" variant="flat" @click="() => void confirmDelete()"
+          >Confirmar</v-btn
+        >
       </v-card-actions>
     </v-card>
   </v-dialog>

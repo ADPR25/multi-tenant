@@ -22,14 +22,14 @@ export class WarehousesService {
     @InjectRepository(Warehouse)
     private readonly repoService: Repository<Warehouse>,
     private readonly dataSource: DataSource,
-  ) {}
+  ) { }
 
   async create(dto: CreateWarehouseDto, companyId: string) {
     const exists = await this.repoService.findOne({
       where: { companyId, code: dto.code },
     });
-    if (exists)
-      throw new ConflictException(`Bodega con codigo ${dto.code} ya existe`);
+    if (exists) throw new ConflictException(`Bodega con codigo ${dto.code} ya existe`);
+
     const data = this.repoService.create({ ...dto, companyId });
 
     const queryRunner = this.dataSource.createQueryRunner();
@@ -40,17 +40,24 @@ export class WarehousesService {
       const products = await queryRunner.manager.find(Product, {
         where: { companyId, isActive: true },
       });
+
       if (products.length > 0) {
-        const stocks = products.map((p) =>
-          queryRunner.manager.create(Stock, {
-            companyId,
-            productId: p.id,
-            warehouseId: savedWh.id,
-            quantity: 0,
-          }),
-        );
-        await queryRunner.manager.save(stocks);
+        const stocksToInsert = products.map((p) => ({
+          companyId,
+          productId: p.id,
+          warehouseId: savedWh.id,
+          quantity: 0,
+        }));
+
+        await queryRunner.manager
+          .createQueryBuilder()
+          .insert()
+          .into(Stock)
+          .values(stocksToInsert)
+          .orIgnore()
+          .execute();
       }
+
       await queryRunner.commitTransaction();
       return savedWh;
     } catch (e) {
@@ -61,9 +68,16 @@ export class WarehousesService {
     }
   }
 
-  async findAll(companyId: string, pagination: PaginationDto, state?: boolean) {
+  async findAll(
+    companyId: string,
+    pagination: PaginationDto,
+    state?: boolean,
+    find?: string,
+  ) {
+    const isSelect = find === "select" || find?.includes("select");
     const [data, total] = await this.repoService.findAndCount({
       where: { companyId, ...(state !== undefined ? { isActive: state } : {}) },
+      ...(isSelect ? { select: ["id", "name"] as const } : {}),
       order: { createdAt: "DESC" },
       ...paginate(pagination),
     });

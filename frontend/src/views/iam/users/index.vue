@@ -1,68 +1,79 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import AdminLayout from '@/components/layout/AdminLayout.vue'
-import AppDataTable from '@/components/common/AppDataTable.vue'
-import { usersService } from '@/services'
-import { Plus, Pencil, X, Power, ShieldCheck } from 'lucide-vue-next'
-import CreateComponent from './create/index.vue'
-import { usePermissions } from '@/composables/usePermissions'
+import { ref } from "vue";
+import AdminLayout from "@/components/layout/AdminLayout.vue";
+import AppDataTable from "@/components/common/AppDataTable.vue";
+import { usersService } from "@/services";
+import { Plus, Pencil, X, Power, ShieldCheck } from "lucide-vue-next";
+import CreateComponent from "./create/index.vue";
+import { usePermissions } from "@/composables/usePermissions";
 
 defineOptions({
-  name: 'IamUsersPage',
-})
+  name: "IamUsersPage",
+});
 
 interface UserItem {
-  id: string
-  first_name?: string
-  last_name?: string
-  document_number?: string
-  isActive?: boolean
-  [key: string]: unknown
+  id: string;
+  first_name?: string;
+  last_name?: string;
+  document_number?: string;
+  isActive?: boolean;
+  [key: string]: unknown;
 }
 
-const { can } = usePermissions()
+const { can } = usePermissions();
 
-const mode = ref<'list' | 'create' | 'edit'>('list')
-const selectedItem = ref<UserItem | null>(null)
-const tableRef = ref<InstanceType<typeof AppDataTable> | null>(null)
+const mode = ref<"list" | "create" | "edit">("list");
+const selectedItem = ref<UserItem | null>(null);
+const tableRef = ref<InstanceType<typeof AppDataTable> | null>(null);
 
 const headers = [
-  { title: 'Numero de documento', key: 'document_number', minWidth: '180px' },
-  { title: 'Nombre', key: 'fullName', minWidth: '220px', sortable: false },
-  { title: 'Rol', key: 'role.name', minWidth: '180px', sortable: false },
-  { title: 'Estado', key: 'isActive', minWidth: '110px', align: 'center' as const },
-  { title: 'Opciones', key: 'actions', minWidth: '120px', align: 'end' as const, sortable: false },
-]
+  { title: "Numero de documento", key: "document_number", minWidth: "180px" },
+  { title: "Nombre", key: "fullName", minWidth: "220px", sortable: false },
+  { title: "Rol", key: "role.name", minWidth: "180px", sortable: false },
+  {
+    title: "Estado",
+    key: "isActive",
+    minWidth: "110px",
+    align: "center" as const,
+  },
+  {
+    title: "Opciones",
+    key: "actions",
+    minWidth: "120px",
+    align: "end" as const,
+    sortable: false,
+  },
+];
 
 function openCreate() {
-  selectedItem.value = null
-  mode.value = 'create'
+  selectedItem.value = null;
+  mode.value = "create";
 }
 
 function openEdit(item: UserItem) {
-  selectedItem.value = item
-  mode.value = 'edit'
+  selectedItem.value = item;
+  mode.value = "edit";
 }
 
 function close() {
-  mode.value = 'list'
-  selectedItem.value = null
+  mode.value = "list";
+  selectedItem.value = null;
 }
 
-const porConfirmar = (val: string | undefined | null) => val || 'por confirmar'
+const porConfirmar = (val: string | undefined | null) => val || "por confirmar";
 
 function onSaved() {
-  close()
-  tableRef.value?.reload()
+  close();
+  tableRef.value?.reload();
 }
 
 async function toggleActive(item: UserItem) {
   try {
-    await usersService.toggleActive(item.id, !item.isActive)
-    tableRef.value?.reload()
+    await usersService.toggleActive(item.id, !item.isActive);
+    tableRef.value?.reload();
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'No se pudo cambiar el estado'
-    alert(msg)
+    const msg = e instanceof Error ? e.message : "No se pudo cambiar el estado";
+    alert(msg);
   }
 }
 </script>
@@ -71,10 +82,16 @@ async function toggleActive(item: UserItem) {
   <AdminLayout>
     <div v-if="mode === 'list'">
       <div class="flex items-center justify-between mb-6">
-        <h1 class="text-2xl font-bold text-gray-800 dark:text-white/90 flex items-center gap-2">
+        <h1
+          class="text-2xl font-bold text-gray-800 dark:text-white/90 flex items-center gap-2"
+        >
           <ShieldCheck class="h-6 w-6 text-gray-500" /> Usuarios
         </h1>
-        <v-btn v-if="can('iam:users:create')" color="success" @click="openCreate">
+        <v-btn
+          v-if="can('iam:users:create')"
+          color="success"
+          @click="openCreate"
+        >
           <Plus class="h-4 w-4 mr-2" /> Crear
         </v-btn>
       </div>
@@ -90,8 +107,12 @@ async function toggleActive(item: UserItem) {
         </template>
 
         <template #[`item.isActive`]="{ item }">
-          <v-chip :color="item.isActive ? 'success' : 'error'" size="small" variant="tonal">
-            {{ item.isActive ? 'Activo' : 'Inactivo' }}
+          <v-chip
+            :color="item.isActive ? 'success' : 'error'"
+            size="small"
+            variant="tonal"
+          >
+            {{ item.isActive ? "Activo" : "Inactivo" }}
           </v-chip>
         </template>
 
@@ -129,7 +150,7 @@ async function toggleActive(item: UserItem) {
     <div v-else-if="mode === 'create' || mode === 'edit'">
       <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-bold text-gray-800 dark:text-white/90">
-          {{ mode === 'edit' ? 'Editar usuario' : 'Crear usuario' }}
+          {{ mode === "edit" ? "Editar usuario" : "Crear usuario" }}
         </h1>
         <v-btn variant="text" icon @click="close"><X class="h-5 w-5" /></v-btn>
       </div>

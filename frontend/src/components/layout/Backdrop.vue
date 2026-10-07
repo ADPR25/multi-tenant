@@ -7,12 +7,12 @@
 </template>
 
 <script setup lang="ts">
-import { useSidebar } from '@/composables/useSidebar'
-const { toggleMobileSidebar, isMobileOpen } = useSidebar()
+import { useSidebar } from "@/composables/useSidebar";
+const { toggleMobileSidebar, isMobileOpen } = useSidebar();
 </script>
 
 <script lang="ts">
 export default {
-  name: 'AppBackdrop',
-}
+  name: "AppBackdrop",
+};
 </script>

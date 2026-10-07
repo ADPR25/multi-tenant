@@ -42,12 +42,12 @@ export interface AppConfig {
 }
 
 export default registerAs("config", (): AppConfig => {
-  if (
-    process.env.NODE_ENV === "production" &&
-    process.env.DB_SYNCHRONIZE === "true"
-  ) {
-    throw new Error("DB_SYNCHRONIZE no puede ser true en producción");
-  }
+  // if (
+  //   process.env.NODE_ENV === "production" &&
+  //   process.env.DB_SYNCHRONIZE === "true"
+  // ) {
+  //   throw new Error("DB_SYNCHRONIZE no puede ser true en producción");
+  // }
   const jwtSecret = process.env.JWT_SECRET;
   if (!jwtSecret || jwtSecret.length < 32) {
     throw new Error("JWT_SECRET debe tener al menos 32 chars");

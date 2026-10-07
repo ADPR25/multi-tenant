@@ -4,7 +4,7 @@ import {
   ConflictException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, Repository } from "typeorm";
+import { DataSource, In, Repository } from "typeorm";
 import { Product } from "./entities/product.entity";
 import { Brand } from "../brands/entities/brand.entity";
 import { Category } from "../categories/entities/category.entity";
@@ -19,6 +19,13 @@ import {
   paginatedResponse,
 } from "@/common/helpers/pagination.helper";
 
+type ProductWithStock = Product & {
+  warehouseId: string | null;
+  warehouse: Warehouse | null;
+  warehouses: Warehouse[];
+  stocks: Stock[];
+};
+
 @Injectable()
 export class ProductsService {
   constructor(
@@ -29,146 +36,296 @@ export class ProductsService {
     @InjectRepository(Uom) private readonly uomRepo: Repository<Uom>,
     @InjectRepository(Warehouse)
     private readonly warehouseRepo: Repository<Warehouse>,
-    @InjectRepository(Stock) private readonly stockRepo: Repository<Stock>,
     private readonly dataSource: DataSource,
-  ) {}
+  ) { }
 
-  async create(createProductDto: CreateProductDto, companyId: string) {
+  private getStockRepo(): Repository<Stock> {
+    return this.dataSource.getRepository(Stock);
+  }
+
+  async create(
+    createProductDto: CreateProductDto,
+    companyId: string,
+  ): Promise<Product> {
     const skuExists = await this.repo.findOne({
       where: { companyId, sku: createProductDto.sku },
     });
-    if (skuExists)
+    if (skuExists) {
       throw new ConflictException(`SKU ${createProductDto.sku} ya existe`);
+    }
 
     if (createProductDto.brandId) {
       const brand = await this.brandRepo.findOne({
         where: { id: createProductDto.brandId, companyId },
       });
-      if (!brand)
+      if (!brand) {
         throw new NotFoundException(
-          `Brand ${createProductDto.brandId} no existe en tu empresa`,
+          `Brand ${createProductDto.brandId} no existe`,
         );
+      }
     }
+
     if (createProductDto.categoryId) {
       const category = await this.categoryRepo.findOne({
         where: { id: createProductDto.categoryId, companyId },
       });
-      if (!category)
+      if (!category) {
         throw new NotFoundException(
-          `Category ${createProductDto.categoryId} no existe en tu empresa`,
+          `Category ${createProductDto.categoryId} no existe`,
         );
+      }
     }
+
     const uom = await this.uomRepo.findOne({
       where: { id: createProductDto.uomId, companyId },
     });
-    if (!uom)
-      throw new NotFoundException(
-        `UoM ${createProductDto.uomId} no existe en tu empresa`,
-      );
+    if (!uom) {
+      throw new NotFoundException(`UoM ${createProductDto.uomId} no existe`);
+    }
+
+    const effectiveWarehouseId = createProductDto.warehouseId ?? null;
+
+    let targetWarehouses: Warehouse[] = [];
+    if (effectiveWarehouseId) {
+      const wh = await this.warehouseRepo.findOne({
+        where: {
+          id: effectiveWarehouseId,
+          companyId,
+          isActive: true,
+        },
+      });
+      if (!wh) {
+        throw new NotFoundException(`Bodega ${effectiveWarehouseId} no existe`);
+      }
+      targetWarehouses = [wh];
+    } else {
+      targetWarehouses = await this.warehouseRepo.find({
+        where: { companyId, isActive: true },
+      });
+    }
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
+      // FIX 113: renombrado a _warehouseId para que el linter lo ignore
+      const { warehouseId: _warehouseId, ...productData } = createProductDto;
+
       const product = queryRunner.manager.create(Product, {
-        ...createProductDto,
+        ...productData,
         companyId,
       });
       const savedProduct = await queryRunner.manager.save(product);
 
-      const warehouses = await queryRunner.manager.find(Warehouse, {
-        where: { companyId, isActive: true },
-      });
-      if (warehouses.length > 0) {
-        const stocks = warehouses.map((wh) =>
-          queryRunner.manager.create(Stock, {
-            companyId,
-            productId: savedProduct.id,
-            warehouseId: wh.id,
-            quantity: 0,
-          }),
-        );
-        await queryRunner.manager.save(stocks);
+      if (targetWarehouses.length > 0) {
+        const stocksToInsert = targetWarehouses.map((wh) => ({
+          companyId,
+          productId: savedProduct.id,
+          warehouseId: wh.id,
+          quantity: 0,
+        }));
+
+        await queryRunner.manager
+          .createQueryBuilder()
+          .insert()
+          .into(Stock)
+          .values(stocksToInsert)
+          .orIgnore()
+          .execute();
       }
 
       await queryRunner.commitTransaction();
       return savedProduct;
-    } catch (err) {
+    } catch (error) {
       await queryRunner.rollbackTransaction();
-      throw err;
+      if (error instanceof Error) throw error;
+      throw new Error("Error desconocido al crear producto");
     } finally {
       await queryRunner.release();
     }
   }
 
-  async findAll(companyId: string, pagination: PaginationDto, state?: boolean) {
+  async findAll(
+    companyId: string,
+    pagination: PaginationDto,
+    state?: boolean,
+  ) {
     const [data, total] = await this.repo.findAndCount({
-      where: { companyId, ...(state !== undefined ? { isActive: state } : {}) },
-      relations: ["brand", "category", "uom"],
+      where: {
+        companyId,
+        ...(state !== undefined ? { isActive: state } : {}),
+      },
+      relations: { brand: true, category: true, uom: true },
       order: { createdAt: "DESC" },
       ...paginate(pagination),
     });
-    return paginatedResponse(data, total, pagination);
+
+    if (data.length === 0) {
+      return paginatedResponse(data, total, pagination);
+    }
+
+    const productIds = data.map((p) => p.id);
+    const stockRepo = this.getStockRepo();
+
+    const stocks = await stockRepo.find({
+      where: { companyId, productId: In(productIds) },
+      relations: { warehouse: true },
+    });
+
+    const stocksByProduct = new Map<string, Stock[]>();
+    for (const s of stocks) {
+      const list = stocksByProduct.get(s.productId) ?? [];
+      list.push(s);
+      stocksByProduct.set(s.productId, list);
+    }
+
+    const dataWithWarehouse: ProductWithStock[] = data.map((product) => {
+      const productStocks = stocksByProduct.get(product.id) ?? [];
+      const primaryStock = productStocks[0] ?? null;
+
+      return {
+        ...product,
+        warehouseId: primaryStock?.warehouseId ?? null,
+        warehouse: primaryStock?.warehouse ?? null,
+        warehouses: productStocks
+          .map((s) => s.warehouse)
+          .filter((w): w is Warehouse => w !== null && w !== undefined),
+        stocks: productStocks,
+      };
+    });
+
+    return paginatedResponse(dataWithWarehouse, total, pagination);
   }
 
-  async findOne(id: string, companyId: string) {
+  async findOne(id: string, companyId: string): Promise<ProductWithStock> {
     const product = await this.repo.findOne({
       where: { id, companyId },
-      relations: ["brand", "category", "uom"],
+      relations: { brand: true, category: true, uom: true },
     });
-    if (!product)
+    if (!product) {
       throw new NotFoundException(`Product con id ${id} no encontrado`);
+    }
+
+    const stockRepo = this.getStockRepo();
+    const stocks = await stockRepo.find({
+      where: { companyId, productId: id },
+      relations: { warehouse: true },
+    });
+
+    const primaryStock = stocks[0] ?? null;
+
+    return {
+      ...product,
+      warehouseId: primaryStock?.warehouseId ?? null,
+      warehouse: primaryStock?.warehouse ?? null,
+      warehouses: stocks
+        .map((s) => s.warehouse)
+        .filter((w): w is Warehouse => w !== null && w !== undefined),
+      stocks,
+    };
+  }
+
+  private async findEntity(id: string, companyId: string): Promise<Product> {
+    const product = await this.repo.findOne({
+      where: { id, companyId },
+    });
+    if (!product) {
+      throw new NotFoundException(`Product con id ${id} no encontrado`);
+    }
     return product;
   }
 
   async update(
     id: string,
-    updateProductDto: UpdateProductDto,
+    dto: UpdateProductDto,
     companyId: string,
-  ) {
-    const product = await this.findOne(id, companyId);
+  ): Promise<Product> {
+    const product = await this.findEntity(id, companyId);
 
-    if (updateProductDto.sku && updateProductDto.sku !== product.sku) {
+    if (dto.sku && dto.sku !== product.sku) {
       const skuExists = await this.repo.findOne({
-        where: { companyId, sku: updateProductDto.sku },
+        where: { companyId, sku: dto.sku },
       });
-      if (skuExists)
-        throw new ConflictException(`SKU ${updateProductDto.sku} ya existe`);
+      if (skuExists) {
+        throw new ConflictException(`SKU ${dto.sku} ya existe`);
+      }
     }
 
-    if (updateProductDto.brandId) {
-      const brand = await this.brandRepo.findOne({
-        where: { id: updateProductDto.brandId, companyId },
+    const effectiveWarehouseId = dto.warehouseId ?? null;
+
+    if (effectiveWarehouseId) {
+      const newWh = await this.warehouseRepo.findOne({
+        where: { id: effectiveWarehouseId, companyId, isActive: true },
       });
-      if (!brand)
+      if (!newWh) {
         throw new NotFoundException(
-          `Brand ${updateProductDto.brandId} no existe`,
+          `Bodega ${effectiveWarehouseId} no existe`,
         );
-    }
-    if (updateProductDto.categoryId) {
-      const category = await this.categoryRepo.findOne({
-        where: { id: updateProductDto.categoryId, companyId },
-      });
-      if (!category)
-        throw new NotFoundException(
-          `Category ${updateProductDto.categoryId} no existe`,
-        );
-    }
-    if (updateProductDto.uomId) {
-      const uom = await this.uomRepo.findOne({
-        where: { id: updateProductDto.uomId, companyId },
-      });
-      if (!uom)
-        throw new NotFoundException(`UoM ${updateProductDto.uomId} no existe`);
+      }
+
+      const queryRunner = this.dataSource.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
+      try {
+        const { warehouseId: _warehouseId, ...productData } = dto;
+
+        Object.assign(product, productData);
+        await queryRunner.manager.save(product);
+
+        let destStock = await queryRunner.manager.findOne(Stock, {
+          where: {
+            companyId,
+            productId: id,
+            warehouseId: effectiveWarehouseId,
+          },
+          lock: { mode: "pessimistic_write" },
+        });
+
+        if (!destStock) {
+          destStock = queryRunner.manager.create(Stock, {
+            companyId,
+            productId: id,
+            warehouseId: effectiveWarehouseId,
+            quantity: 0,
+          });
+          destStock = await queryRunner.manager.save(destStock);
+        }
+
+        const otherStocks = await queryRunner.manager.find(Stock, {
+          where: { companyId, productId: id },
+        });
+
+        for (const s of otherStocks) {
+          if (s.warehouseId === effectiveWarehouseId) continue;
+          const qty = Number(s.quantity);
+          if (qty <= 0) continue;
+
+          s.quantity = 0;
+          await queryRunner.manager.save(s);
+          destStock.quantity = Number(destStock.quantity) + qty;
+        }
+
+        await queryRunner.manager.save(destStock);
+        await queryRunner.commitTransaction();
+        return product;
+      } catch (error) {
+        await queryRunner.rollbackTransaction();
+        if (error instanceof Error) throw error;
+        throw new Error("Error desconocido al actualizar producto");
+      } finally {
+        await queryRunner.release();
+      }
     }
 
-    Object.assign(product, updateProductDto);
+    const { warehouseId: _warehouseId, ...rest } = dto;
+    Object.assign(product, rest);
     return await this.repo.save(product);
   }
 
-  async toggleActive(id: string, companyId: string) {
-    const product = await this.findOne(id, companyId);
+  async toggleActive(id: string, companyId: string): Promise<Product> {
+    const product = await this.findEntity(id, companyId);
     product.isActive = !product.isActive;
     return await this.repo.save(product);
   }

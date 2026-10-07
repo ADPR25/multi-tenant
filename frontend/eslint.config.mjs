@@ -1,18 +1,20 @@
 // @ts-check
-import eslint from '@eslint/js'
-import pluginVue from 'eslint-plugin-vue'
-import { defineConfigWithVueTs, vueTsConfigs } from '@vue/eslint-config-typescript'
-import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended'
-import globals from 'globals'
+import eslint from "@eslint/js";
+import pluginVue from "eslint-plugin-vue";
+import {
+  defineConfigWithVueTs,
+  vueTsConfigs,
+} from "@vue/eslint-config-typescript";
+import globals from "globals";
 
 export default defineConfigWithVueTs(
   {
-    name: 'app/files-to-ignore',
-    ignores: ['**/dist/**', '**/dist-ssr/**', '**/coverage/**'],
+    name: "app/files-to-ignore",
+    ignores: ["**/dist/**", "**/dist-ssr/**", "**/coverage/**"],
   },
   {
-    name: 'app/files-to-lint',
-    files: ['**/*.{ts,mts,tsx,vue}'],
+    name: "app/files-to-lint",
+    files: ["**/*.{ts,mts,tsx,vue}"],
     languageOptions: {
       globals: {
         ...globals.browser,
@@ -25,23 +27,21 @@ export default defineConfigWithVueTs(
   },
 
   eslint.configs.recommended,
-  pluginVue.configs['flat/essential'],
+  pluginVue.configs["flat/essential"],
   vueTsConfigs.recommendedTypeChecked,
-  eslintPluginPrettierRecommended,
 
   {
-    name: 'app/strict-rules',
+    name: "app/strict-rules",
     rules: {
-      '@typescript-eslint/no-explicit-any': 'error',
-      '@typescript-eslint/no-unsafe-assignment': 'error',
-      '@typescript-eslint/no-unsafe-member-access': 'error',
-      '@typescript-eslint/no-unsafe-call': 'error',
-      '@typescript-eslint/no-unsafe-return': 'error',
-      '@typescript-eslint/no-unsafe-argument': 'error',
-      '@typescript-eslint/no-floating-promises': 'error',
-      'prettier/prettier': 'error',
-      'vue/no-unused-vars': 'error',
-      'vue/no-mutating-props': 'error',
+      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-unsafe-assignment": "error",
+      "@typescript-eslint/no-unsafe-member-access": "error",
+      "@typescript-eslint/no-unsafe-call": "error",
+      "@typescript-eslint/no-unsafe-return": "error",
+      "@typescript-eslint/no-unsafe-argument": "error",
+      "@typescript-eslint/no-floating-promises": "error",
+      "vue/no-unused-vars": "error",
+      "vue/no-mutating-props": "error",
     },
   },
-)
+);

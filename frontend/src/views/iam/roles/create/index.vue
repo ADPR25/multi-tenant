@@ -1,119 +1,121 @@
 <script setup lang="ts">
 defineOptions({
-  name: 'RolesCreateView',
-})
+  name: "RolesCreateView",
+});
 
-import { ref, watch, computed, onMounted } from 'vue'
-import { get } from '@/store/authstore'
-import { companiesService, rolesService } from '@/services'
-import { ShieldCheck, X, Save, Loader2, Check } from 'lucide-vue-next'
+import { ref, watch, computed, onMounted } from "vue";
+import { get } from "@/store/authstore";
+import { companiesService, rolesService } from "@/services";
+import { ShieldCheck, X, Save, Loader2, Check } from "lucide-vue-next";
 
 const props = defineProps({
   role: { type: Object, default: null },
   isEdit: { type: Boolean, default: false },
-})
+});
 
-const emit = defineEmits(['close', 'created', 'updated'])
+const emit = defineEmits(["close", "created", "updated"]);
 
-const user = get.useAuth('user')
-const companies = ref([])
+const user = get.useAuth("user");
+const companies = ref([]);
 
-const isSuper = computed(() => user?.roleCode === 'SUPER_ADMIN')
+const isSuper = computed(() => user?.roleCode === "SUPER_ADMIN");
 
 const form = ref({
-  name: '',
-  description: '',
+  name: "",
+  description: "",
   isPrincipal: false,
-  companyId: '',
-})
+  companyId: "",
+});
 
 if (!isSuper.value && user?.companyId) {
-  form.value.companyId = user.companyId
+  form.value.companyId = user.companyId;
 }
 
-const loading = ref(false)
-const error = ref('')
-const errors = ref({})
+const loading = ref(false);
+const error = ref("");
+const errors = ref({});
 
-const isEditMode = computed(() => props.isEdit || !!props.role?.id)
+const isEditMode = computed(() => props.isEdit || !!props.role?.id);
 
 watch(
   () => props.role,
   (val) => {
     if (val) {
       form.value = {
-        name: val.name || '',
-        description: val.description || '',
+        name: val.name || "",
+        description: val.description || "",
         isPrincipal: val.isPrincipal ?? false,
-        companyId: val.companyId || user?.companyId || '',
-      }
+        companyId: val.companyId || user?.companyId || "",
+      };
     } else {
       form.value = {
-        name: '',
-        description: '',
+        name: "",
+        description: "",
         isPrincipal: false,
-        companyId: !isSuper.value ? user?.companyId || '' : '',
-      }
+        companyId: !isSuper.value ? user?.companyId || "" : "",
+      };
     }
   },
   { immediate: true },
-)
+);
 
 const validate = () => {
-  errors.value = {}
+  errors.value = {};
   if (!form.value.name.trim()) {
-    errors.value.name = 'El nombre es obligatorio'
+    errors.value.name = "El nombre es obligatorio";
   } else if (form.value.name.trim().length < 3) {
-    errors.value.name = 'Mínimo 3 caracteres'
+    errors.value.name = "Mínimo 3 caracteres";
   }
   if (isSuper.value && !form.value.companyId) {
-    errors.value.companyId = 'Debes seleccionar una empresa'
+    errors.value.companyId = "Debes seleccionar una empresa";
   }
-  return Object.keys(errors.value).length === 0
-}
+  return Object.keys(errors.value).length === 0;
+};
 
 const submit = async () => {
-  error.value = ''
-  if (!validate()) return
+  error.value = "";
+  if (!validate()) return;
 
-  loading.value = true
+  loading.value = true;
   try {
     const payload = {
       name: form.value.name.trim(),
       description: form.value.description?.trim() || undefined,
       isPrincipal: form.value.isPrincipal,
       companyId: form.value.companyId,
-    }
+    };
 
-    Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k])
+    Object.keys(payload).forEach(
+      (k) => payload[k] === undefined && delete payload[k],
+    );
 
     const data = isEditMode.value
       ? await rolesService.update(props.role.id, payload)
-      : await rolesService.create(payload)
+      : await rolesService.create(payload);
 
     if (isEditMode.value) {
-      emit('updated', data)
+      emit("updated", data);
     } else {
-      emit('created', data)
+      emit("created", data);
     }
   } catch (e) {
-    console.error(e)
-    error.value = e.message || 'Error al guardar el rol'
+    console.error(e);
+    error.value = e.message || "Error al guardar el rol";
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 onMounted(async () => {
   if (isSuper.value) {
     try {
-      const data = await companiesService.list()
-      companies.value = Array.isArray(data) ? data : data.data || []
+      const data = await companiesService.list();
+      companies.value = Array.isArray(data) ? data : data.data || [];
     } catch (e) {
-      console.error('Error cargando empresas', e)
+      console.error("Error cargando empresas", e);
     }
   }
-})
+});
 </script>
 
 <template>
@@ -121,14 +123,18 @@ onMounted(async () => {
     class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03] sm:p-7"
   >
     <div class="flex items-center gap-3 mb-6">
-      <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+      <div
+        class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center"
+      >
         <ShieldCheck class="h-5 w-5 text-primary" />
       </div>
       <div>
         <h2 class="text-lg font-bold text-gray-800 dark:text-white/90">
-          {{ isEditMode ? 'Editar rol' : 'Nuevo rol' }}
+          {{ isEditMode ? "Editar rol" : "Nuevo rol" }}
         </h2>
-        <p class="text-sm text-gray-500">Define el nombre y descripción del rol</p>
+        <p class="text-sm text-gray-500">
+          Define el nombre y descripción del rol
+        </p>
       </div>
     </div>
 
@@ -155,7 +161,9 @@ onMounted(async () => {
           :error="!!errors.name"
           class="rounded-xl"
         />
-        <p v-if="errors.name" class="text-xs text-red-500 mt-1.5">{{ errors.name }}</p>
+        <p v-if="errors.name" class="text-xs text-red-500 mt-1.5">
+          {{ errors.name }}
+        </p>
         <p class="text-xs text-gray-400 mt-1.5">
           Usa mayúsculas sin espacios si es un código interno
         </p>
@@ -174,7 +182,9 @@ onMounted(async () => {
           hide-details
           class="rounded-xl"
         />
-        <p v-if="errors.companyId" class="text-xs text-red-500 mt-1.5">{{ errors.companyId }}</p>
+        <p v-if="errors.companyId" class="text-xs text-red-500 mt-1.5">
+          {{ errors.companyId }}
+        </p>
       </v-col>
       <v-col cols="12">
         <v-label>
@@ -205,17 +215,21 @@ onMounted(async () => {
               </div>
               <div>
                 <div class="flex items-center gap-2">
-                  <p class="text-sm font-semibold text-gray-800 dark:text-white">
+                  <p
+                    class="text-sm font-semibold text-gray-800 dark:text-white"
+                  >
                     ¿Es rol administrador principal?
                   </p>
                 </div>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                <p
+                  class="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed"
+                >
                   Al activarlo, este rol será el
                   <span class="font-semibold text-gray-700 dark:text-gray-300"
                     >administrador principal de la empresa</span
                   >
-                  donde se creó. Tendrá control total y podrá gestionar usuarios, roles y
-                  configuración de esa empresa.
+                  donde se creó. Tendrá control total y podrá gestionar
+                  usuarios, roles y configuración de esa empresa.
                 </p>
               </div>
             </div>
@@ -237,10 +251,15 @@ onMounted(async () => {
           <X class="h-4 w-4 mr-2" /> Cancelar
         </v-btn>
         <v-spacer />
-        <v-btn color="primary" :loading="loading" :disabled="loading" @click="submit">
+        <v-btn
+          color="primary"
+          :loading="loading"
+          :disabled="loading"
+          @click="submit"
+        >
           <Loader2 v-if="loading" class="h-4 w-4 mr-2 animate-spin" />
           <Save v-else class="h-4 w-4 mr-2" />
-          {{ isEditMode ? 'Actualizar' : 'Crear rol' }}
+          {{ isEditMode ? "Actualizar" : "Crear rol" }}
         </v-btn>
       </v-col>
     </v-row>

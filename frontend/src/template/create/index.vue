@@ -1,60 +1,63 @@
 <script setup lang="ts">
 defineOptions({
-  name: 'ModuleCreateView',
-})
+  name: "ModuleCreateView",
+});
 
-import { ref, watch } from 'vue'
-import { __MODULE__Service } from '@/services'
-import { X, Save } from 'lucide-vue-next'
+import { ref, watch } from "vue";
+import { __MODULE__Service } from "@/services";
+import { X, Save } from "lucide-vue-next";
 
 interface TemplateItem {
-  id?: string
-  name?: string
-  documentNumber?: string
-  email?: string
+  id?: string;
+  name?: string;
+  documentNumber?: string;
+  email?: string;
 }
 
 const props = defineProps({
   item: { type: Object as () => TemplateItem | null, default: null },
   isEdit: { type: Boolean, default: false },
-})
-const emit = defineEmits(['close', 'created', 'updated'])
+});
+const emit = defineEmits(["close", "created", "updated"]);
 
-const loading = ref(false)
+const loading = ref(false);
 
-const form = ref<TemplateItem>({})
+const form = ref<TemplateItem>({});
 
 watch(
   () => props.item,
   (val) => {
     if (val) {
       form.value = {
-        name: val.name || '',
-        documentNumber: val.documentNumber || '',
-        email: val.email || '',
-      }
+        name: val.name || "",
+        documentNumber: val.documentNumber || "",
+        email: val.email || "",
+      };
     } else {
-      form.value = { name: '', documentNumber: '', email: '' }
+      form.value = { name: "", documentNumber: "", email: "" };
     }
   },
   { immediate: true },
-)
+);
 
 const submit = async () => {
-  loading.value = true
+  loading.value = true;
   try {
     const data = props.isEdit
-      ? await __MODULE__Service.update((props.item as TemplateItem).id, form.value)
-      : await __MODULE__Service.create(form.value)
+      ? await __MODULE__Service.update(
+          (props.item as TemplateItem).id,
+          form.value,
+        )
+      : await __MODULE__Service.create(form.value);
 
-    emit(props.isEdit ? 'updated' : 'created', data)
+    emit(props.isEdit ? "updated" : "created", data);
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Error al guardar'
-    alert(msg)
+    const msg = e instanceof Error ? e.message : "Error al guardar";
+    alert(msg);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 </script>
 
 <template>
@@ -71,7 +74,8 @@ const submit = async () => {
       </v-btn>
       <v-spacer />
       <v-btn color="primary" :loading="loading" @click="submit">
-        <v-icon :icon="Save" class="h-4 w-4 mr-2" /> {{ isEdit ? 'Actualizar' : 'Crear' }}
+        <v-icon :icon="Save" class="h-4 w-4 mr-2" />
+        {{ isEdit ? "Actualizar" : "Crear" }}
       </v-btn>
     </div>
   </div>

@@ -15,12 +15,12 @@ import { PermissionsGuard } from "@/common/guards/permissions.guard";
 import { JwtAuthGuard } from "@/common/guards/jwt-auth.guard";
 import { RequirePermissions } from "@/common/decorators/permissions.decorator";
 import { CurrentCompanyId } from "@/common/decorators/current-company.decorator";
-import { PaginationDto } from "@/common/dto/pagination.dto";
+import { FilterDto } from "@/common/filters/filter.dto";
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller("warehouses")
 export class WarehousesController {
-  constructor(private readonly warehousesService: WarehousesService) {}
+  constructor(private readonly warehousesService: WarehousesService) { }
 
   @Post()
   @RequirePermissions("inventory:warehouse:create")
@@ -33,13 +33,10 @@ export class WarehousesController {
 
   @Get()
   @RequirePermissions("inventory:warehouse:read")
-  findAll(
-    @CurrentCompanyId() companyId: string,
-    @Query() pagination: PaginationDto,
-    @Query("state") state?: string,
-  ) {
-    const isActive = state !== undefined ? state === "true" : undefined;
-    return this.warehousesService.findAll(companyId, pagination, isActive);
+  findAll(@CurrentCompanyId() companyId: string, @Query() filter: FilterDto) {
+    const isActive =
+      filter.state !== undefined ? filter.state === "true" : undefined;
+    return this.warehousesService.findAll(companyId, filter, isActive, filter.find);
   }
 
   @Get(":id")

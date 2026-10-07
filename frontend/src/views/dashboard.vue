@@ -1,17 +1,17 @@
 <script setup lang="ts">
 defineOptions({
-  name: 'DashboardView',
-})
+  name: "DashboardView",
+});
 
-import AdminLayout from '@/components/layout/AdminLayout.vue'
-import { usePermissions } from '@/composables/usePermissions'
-import { onMounted } from 'vue'
+import AdminLayout from "@/components/layout/AdminLayout.vue";
+import { usePermissions } from "@/composables/usePermissions";
+import { onMounted } from "vue";
 
-const { load } = usePermissions()
+const { load } = usePermissions();
 
 onMounted(async () => {
-  await load()
-})
+  await load();
+});
 </script>
 
 <template>

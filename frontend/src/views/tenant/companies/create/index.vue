@@ -1,106 +1,106 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
-import { companiesService } from '@/services'
+import { ref, computed, watch, onMounted } from "vue";
+import { companiesService } from "@/services";
 
 defineOptions({
-  name: 'CompanyForm',
-})
+  name: "CompanyForm",
+});
 
 interface Company {
-  id: string
-  name: string
-  legal_name?: string
-  tax_id?: string
-  email?: string
-  phone?: string
-  address?: string
+  id: string;
+  name: string;
+  legal_name?: string;
+  tax_id?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
 }
 
 interface CompanyFormData {
-  name: string
-  legal_name: string
-  tax_id: string
-  email: string
-  phone: string
-  address: string
+  name: string;
+  legal_name: string;
+  tax_id: string;
+  email: string;
+  phone: string;
+  address: string;
 }
 
 const props = defineProps<{
-  company?: Company | null
-}>()
+  company?: Company | null;
+}>();
 
 const emit = defineEmits<{
-  (e: 'close'): void
-  (e: 'created', data: Company): void
-  (e: 'updated', data: Company): void
-}>()
+  (e: "close"): void;
+  (e: "created", data: Company): void;
+  (e: "updated", data: Company): void;
+}>();
 
-const errorMsg = ref<string | null>(null)
-const loading = ref(false)
-const isEdit = computed(() => !!props.company)
+const errorMsg = ref<string | null>(null);
+const loading = ref(false);
+const isEdit = computed(() => !!props.company);
 
 const form = ref<CompanyFormData>({
-  name: '',
-  legal_name: '',
-  tax_id: '',
-  email: '',
-  phone: '',
-  address: '',
-})
+  name: "",
+  legal_name: "",
+  tax_id: "",
+  email: "",
+  phone: "",
+  address: "",
+});
 
 const loadFormData = (): void => {
   if (props.company) {
     form.value = {
-      name: props.company.name || '',
-      legal_name: props.company.legal_name || '',
-      tax_id: props.company.tax_id || '',
-      email: props.company.email || '',
-      phone: props.company.phone || '',
-      address: props.company.address || '',
-    }
+      name: props.company.name || "",
+      legal_name: props.company.legal_name || "",
+      tax_id: props.company.tax_id || "",
+      email: props.company.email || "",
+      phone: props.company.phone || "",
+      address: props.company.address || "",
+    };
   } else {
     form.value = {
-      name: '',
-      legal_name: '',
-      tax_id: '',
-      email: '',
-      phone: '',
-      address: '',
-    }
+      name: "",
+      legal_name: "",
+      tax_id: "",
+      email: "",
+      phone: "",
+      address: "",
+    };
   }
-}
+};
 
-watch(() => props.company, loadFormData, { immediate: true })
-onMounted(loadFormData)
+watch(() => props.company, loadFormData, { immediate: true });
+onMounted(loadFormData);
 
 const submit = async (): Promise<void> => {
-  errorMsg.value = null
-  loading.value = true
+  errorMsg.value = null;
+  loading.value = true;
   try {
     const data = isEdit.value
       ? await companiesService.update(props.company!.id, form.value)
-      : await companiesService.create(form.value)
+      : await companiesService.create(form.value);
 
-    type CompanyResponse = { data: Company } | Company
+    type CompanyResponse = { data: Company } | Company;
 
     const isWrapped = (res: CompanyResponse): res is { data: Company } => {
-      return typeof res === 'object' && res !== null && 'data' in res
-    }
+      return typeof res === "object" && res !== null && "data" in res;
+    };
 
-    const companyData = isWrapped(data) ? data.data : (data as Company)
+    const companyData = isWrapped(data) ? data.data : (data as Company);
 
     if (isEdit.value) {
-      emit('updated', companyData)
+      emit("updated", companyData);
     } else {
-      emit('created', companyData)
+      emit("created", companyData);
     }
-    emit('close')
+    emit("close");
   } catch (e: unknown) {
-    errorMsg.value = e instanceof Error ? e.message : 'Error de conexión'
+    errorMsg.value = e instanceof Error ? e.message : "Error de conexión";
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 </script>
 
 <template>
@@ -171,7 +171,7 @@ const submit = async (): Promise<void> => {
         <v-btn color="error" @click="emit('close')"> Cancelar </v-btn>
         <v-spacer />
         <v-btn color="primary" :loading="loading" @click="submit">
-          {{ isEdit ? 'Actualizar' : 'Guardar' }}
+          {{ isEdit ? "Actualizar" : "Guardar" }}
         </v-btn>
       </v-col>
     </v-row>

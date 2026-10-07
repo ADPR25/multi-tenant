@@ -1,109 +1,157 @@
 <script setup lang="ts">
-import AdminLayout from '@/components/layout/AdminLayout.vue'
-import AppDataTable from '@/components/common/AppDataTable.vue'
-import { stocksService } from '@/services'
-import { Boxes, Eye, X, AlertTriangle, AlertCircle, CheckCircle } from 'lucide-vue-next'
-import { ref, computed } from 'vue'
+import AdminLayout from "@/components/layout/AdminLayout.vue";
+import AppDataTable from "@/components/common/AppDataTable.vue";
+import { stocksService } from "@/services";
+import {
+  Boxes,
+  Eye,
+  X,
+  AlertTriangle,
+  AlertCircle,
+  CheckCircle,
+} from "lucide-vue-next";
+import { ref, computed } from "vue";
 
 defineOptions({
-  name: 'StockIndexPage',
-})
+  name: "StockIndexPage",
+});
 
 interface StockProduct {
-  name?: string
-  sku?: string
-  min_stock?: number | string
-  description?: string
-  cost?: number | string
-  price?: number | string
+  name?: string;
+  sku?: string;
+  min_stock?: number | string;
+  description?: string;
+  cost?: number | string;
+  price?: number | string;
 }
 
 interface StockWarehouse {
-  name?: string
-  code?: string
-  address?: string
+  name?: string;
+  code?: string;
+  address?: string;
 }
 
 interface StockItem {
-  quantity: number | string
-  product?: StockProduct
-  productid?: string
-  warehouse?: StockWarehouse
-  warehouseid?: string
-  updatedAt?: string
-  [key: string]: unknown
+  quantity: number | string;
+  product?: StockProduct;
+  productid?: string;
+  warehouse?: StockWarehouse;
+  warehouseid?: string;
+  updatedAt?: string;
+  [key: string]: unknown;
 }
 
 interface FetchParams {
-  page?: number
-  itemsPerPage?: number
-  search?: string
-  sortBy?: unknown
-  [key: string]: unknown
+  page?: number;
+  itemsPerPage?: number;
+  search?: string;
+  sortBy?: unknown;
+  [key: string]: unknown;
 }
 
-const tableRef = ref<InstanceType<typeof AppDataTable>>()
-const detailOpen = ref(false)
-const detailItem = ref<StockItem | null>(null)
-const lastItems = ref<StockItem[]>([])
+const tableRef = ref<InstanceType<typeof AppDataTable>>();
+const detailOpen = ref(false);
+const detailItem = ref<StockItem | null>(null);
+const lastItems = ref<StockItem[]>([]);
 
 function getStockStatus(item: StockItem) {
-  const qty = Number(item.quantity)
-  const min = Number(item.product?.min_stock ?? 0)
-  if (qty <= 0) return { label: 'Agotado', color: 'error', icon: AlertCircle, level: 3 }
-  if (qty <= min) return { label: 'Stock Bajo', color: 'error', icon: AlertTriangle, level: 2 }
+  const qty = Number(item.quantity);
+  const min = Number(item.product?.min_stock ?? 0);
+  if (qty <= 0)
+    return { label: "Agotado", color: "error", icon: AlertCircle, level: 3 };
+  if (qty <= min)
+    return {
+      label: "Stock Bajo",
+      color: "error",
+      icon: AlertTriangle,
+      level: 2,
+    };
   if (min > 0 && qty <= min * 1.2)
-    return { label: 'Por Agotar', color: 'warning', icon: AlertTriangle, level: 1 }
-  return { label: 'OK', color: 'success', icon: CheckCircle, level: 0 }
+    return {
+      label: "Por Agotar",
+      color: "warning",
+      icon: AlertTriangle,
+      level: 1,
+    };
+  return { label: "OK", color: "success", icon: CheckCircle, level: 0 };
 }
 
 const lowCount = computed(
   () =>
     lastItems.value.filter((i) => {
-      const s = getStockStatus(i)
-      return s.level >= 1
+      const s = getStockStatus(i);
+      return s.level >= 1;
     }).length,
-)
+);
 
 const criticalCount = computed(
   () =>
     lastItems.value.filter((i) => {
-      const s = getStockStatus(i)
-      return s.level >= 2
+      const s = getStockStatus(i);
+      return s.level >= 2;
     }).length,
-)
+);
 
 async function fetchWrapper(params: FetchParams) {
-  const res = (await stocksService.list(params)) as { data?: StockItem[] } & StockItem[]
-  const data = res.data || res || []
-  lastItems.value = data
-  return res
+  const res = (await stocksService.list(params)) as {
+    data?: StockItem[];
+  } & StockItem[];
+  const data = res.data || res || [];
+  lastItems.value = data;
+  return res;
 }
 
 function openDetail(item: StockItem) {
-  detailItem.value = item
-  detailOpen.value = true
+  detailItem.value = item;
+  detailOpen.value = true;
 }
 
 const headers = [
-  { title: 'Producto', key: 'product', sortable: false },
-  { title: 'Bodega', key: 'warehouse', sortable: false },
-  { title: 'Cantidad', key: 'quantity', align: 'center' as const, width: '110px' },
-  { title: 'Minimo', key: 'min_stock', align: 'center' as const, width: '110px' },
-  { title: 'Estado', key: 'status', align: 'center' as const, sortable: false, width: '130px' },
-  { title: '', key: 'actions', align: 'end' as const, sortable: false, width: '60px' },
-]
+  { title: "Producto", key: "product", sortable: false },
+  { title: "Bodega", key: "warehouse", sortable: false },
+  {
+    title: "Cantidad",
+    key: "quantity",
+    align: "center" as const,
+    width: "110px",
+  },
+  {
+    title: "Minimo",
+    key: "min_stock",
+    align: "center" as const,
+    width: "110px",
+  },
+  {
+    title: "Estado",
+    key: "status",
+    align: "center" as const,
+    sortable: false,
+    width: "130px",
+  },
+  {
+    title: "",
+    key: "actions",
+    align: "end" as const,
+    sortable: false,
+    width: "60px",
+  },
+];
 </script>
 
 <template>
   <AdminLayout>
     <div class="flex items-center justify-between mb-6">
-      <h1 class="text-2xl font-bold text-gray-800 dark:text-white/90 flex items-center gap-2">
+      <h1
+        class="text-2xl font-bold text-gray-800 dark:text-white/90 flex items-center gap-2"
+      >
         <Boxes class="h-6 w-6" /> Stock Actual
       </h1>
     </div>
 
-    <div v-if="lastItems.length" class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+    <div
+      v-if="lastItems.length"
+      class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6"
+    >
       <div
         v-if="criticalCount > 0"
         class="flex items-center gap-3 p-4 rounded-2xl border bg-red-50 border-red-200 text-red-700 dark:bg-red-500/10 dark:border-red-500/30 dark:text-red-300"
@@ -173,7 +221,10 @@ const headers = [
       <template #[`item.quantity`]="{ item }">
         <span
           class="font-bold text-base"
-          :class="{ 'text-red-600': Number(item.quantity) <= Number(item.product?.min_stock) }"
+          :class="{
+            'text-red-600':
+              Number(item.quantity) <= Number(item.product?.min_stock),
+          }"
         >
           {{ Number(item.quantity).toString() }}
         </span>
@@ -184,12 +235,22 @@ const headers = [
         </span>
       </template>
       <template #[`item.status`]="{ item }">
-        <v-chip :color="getStockStatus(item).color" size="small" variant="tonal">
+        <v-chip
+          :color="getStockStatus(item).color"
+          size="small"
+          variant="tonal"
+        >
           {{ getStockStatus(item).label }}
         </v-chip>
       </template>
       <template #[`item.actions`]="{ item }">
-        <v-btn icon size="x-small" variant="text" color="primary" @click="openDetail(item)">
+        <v-btn
+          icon
+          size="x-small"
+          variant="text"
+          color="primary"
+          @click="openDetail(item)"
+        >
           <Eye class="h-4 w-4" />
         </v-btn>
       </template>
@@ -214,9 +275,11 @@ const headers = [
               <AlertCircle class="h-5 w-5 shrink-0" />
               <span
                 >Este producto está
-                <strong>{{ getStockStatus(detailItem).label.toLowerCase() }}</strong
-                >. Cantidad actual {{ detailItem.quantity }} es menor o igual al mínimo
-                {{ detailItem.product?.min_stock }}.</span
+                <strong>{{
+                  getStockStatus(detailItem).label.toLowerCase()
+                }}</strong
+                >. Cantidad actual {{ detailItem.quantity }} es menor o igual al
+                mínimo {{ detailItem.product?.min_stock }}.</span
               >
             </div>
             <div
@@ -226,52 +289,77 @@ const headers = [
               <AlertTriangle class="h-5 w-5 shrink-0" />
               <span
                 >Este producto está <strong>por agotarse</strong>. Quedan
-                {{ detailItem.quantity }} y el mínimo es {{ detailItem.product?.min_stock }}.</span
+                {{ detailItem.quantity }} y el mínimo es
+                {{ detailItem.product?.min_stock }}.</span
               >
             </div>
 
             <div class="grid grid-cols-2 gap-4 text-sm">
-              <div class="col-span-2 p-3 rounded-xl bg-gray-50 dark:bg-white/[0.05] border">
+              <div
+                class="col-span-2 p-3 rounded-xl bg-gray-50 dark:bg-white/[0.05] border"
+              >
                 <p class="text-xs text-gray-500 uppercase">Producto</p>
-                <p class="font-semibold text-base">{{ detailItem.product?.name }}</p>
+                <p class="font-semibold text-base">
+                  {{ detailItem.product?.name }}
+                </p>
                 <p class="text-xs text-gray-500">
-                  SKU: {{ detailItem.product?.sku }} | {{ detailItem.product?.description }}
+                  SKU: {{ detailItem.product?.sku }} |
+                  {{ detailItem.product?.description }}
                 </p>
               </div>
               <div>
                 <p class="text-xs text-gray-500 uppercase">Costo / Precio</p>
                 <p class="font-medium">
-                  ${{ detailItem.product?.cost }} / ${{ detailItem.product?.price }}
+                  ${{ detailItem.product?.cost }} / ${{
+                    detailItem.product?.price
+                  }}
                 </p>
               </div>
               <div>
                 <p class="text-xs text-gray-500 uppercase">Bodega</p>
                 <p class="font-medium">
-                  {{ detailItem.warehouse?.name }} ({{ detailItem.warehouse?.code }})
+                  {{ detailItem.warehouse?.name }} ({{
+                    detailItem.warehouse?.code
+                  }})
                 </p>
-                <p class="text-xs text-gray-500">{{ detailItem.warehouse?.address }}</p>
+                <p class="text-xs text-gray-500">
+                  {{ detailItem.warehouse?.address }}
+                </p>
               </div>
-              <div class="col-span-2 grid grid-cols-3 gap-2 p-3 rounded-xl border text-center">
+              <div
+                class="col-span-2 grid grid-cols-3 gap-2 p-3 rounded-xl border text-center"
+              >
                 <div>
                   <p class="text-xs text-gray-500">Actual</p>
                   <p class="font-bold text-xl">{{ detailItem.quantity }}</p>
                 </div>
-                <div class="flex items-center justify-center text-gray-300">/</div>
+                <div class="flex items-center justify-center text-gray-300">
+                  /
+                </div>
                 <div>
                   <p class="text-xs text-gray-500">Mínimo</p>
-                  <p class="font-bold text-xl">{{ detailItem.product?.min_stock }}</p>
+                  <p class="font-bold text-xl">
+                    {{ detailItem.product?.min_stock }}
+                  </p>
                 </div>
               </div>
               <div>
                 <p class="text-xs text-gray-500 uppercase">Estado</p>
-                <v-chip :color="getStockStatus(detailItem).color" size="small" class="mt-1">{{
-                  getStockStatus(detailItem).label
-                }}</v-chip>
+                <v-chip
+                  :color="getStockStatus(detailItem).color"
+                  size="small"
+                  class="mt-1"
+                  >{{ getStockStatus(detailItem).label }}</v-chip
+                >
               </div>
               <div>
                 <p class="text-xs text-gray-500 uppercase">Actualizado</p>
                 <p>
-                  {{ detailItem.updatedAt ? new Date(detailItem.updatedAt).toLocaleString() : '-' }}
+                  {{
+                    detailItem.updatedAt
+                      ? new Date(detailItem.updatedAt).toLocaleString()
+                      : "-"
+                  }}
                 </p>
               </div>
             </div>

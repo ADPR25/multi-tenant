@@ -1,162 +1,188 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import AdminLayout from '@/components/layout/AdminLayout.vue'
-import { get } from '@/store/authstore'
-import { companiesService } from '@/services'
-import { Plus, Pencil, Eye, X, Power } from 'lucide-vue-next'
-import CompanyForm from '@/views/tenant/companies/create/index.vue'
-import CompanyView from '@/views/tenant/companies/view/index.vue'
+import { ref, computed, onMounted } from "vue";
+import AdminLayout from "@/components/layout/AdminLayout.vue";
+import { get } from "@/store/authstore";
+import { companiesService } from "@/services";
+import { Plus, Pencil, Eye, X, Power } from "lucide-vue-next";
+import CompanyForm from "@/views/tenant/companies/create/index.vue";
+import CompanyView from "@/views/tenant/companies/view/index.vue";
 
 defineOptions({
-  name: 'CompaniesPage',
-})
+  name: "CompaniesPage",
+});
 
 interface Company {
-  id: string
-  name: string
-  tax_id?: string
-  phone?: string
-  isActive: boolean
-  createdAt?: string
+  id: string;
+  name: string;
+  tax_id?: string;
+  phone?: string;
+  isActive: boolean;
+  createdAt?: string;
 }
 
 interface UserAuth {
-  roleCode?: string
-  role?: string
-  company?: Company | string
-  companyId?: string
-  company_id?: string
+  roleCode?: string;
+  role?: string;
+  company?: Company | string;
+  companyId?: string;
+  company_id?: string;
 }
 
-const user = get.useAuth('user') as unknown as UserAuth
-const companies = ref<Company[]>([])
-const search = ref('')
-const loading = ref(false)
-const mode = ref<'list' | 'create' | 'edit' | 'view'>('list')
-const selectedCompany = ref<Company | null>(null)
-const dialogActive = ref(false)
-const toggling = ref(false)
+const user = get.useAuth("user") as unknown as UserAuth;
+const companies = ref<Company[]>([]);
+const search = ref("");
+const loading = ref(false);
+const mode = ref<"list" | "create" | "edit" | "view">("list");
+const selectedCompany = ref<Company | null>(null);
+const dialogActive = ref(false);
+const toggling = ref(false);
 
 const isSuperAdmin = computed(() => {
-  return user?.roleCode === 'SUPER_ADMIN' || user?.role === 'SUPER_ADMIN'
-})
+  return user?.roleCode === "SUPER_ADMIN" || user?.role === "SUPER_ADMIN";
+});
 
-const isSelectedActive = computed(() => !!selectedCompany.value?.isActive)
+const isSelectedActive = computed(() => !!selectedCompany.value?.isActive);
 
 const fetchCompanies = async (): Promise<void> => {
-  if (!isSuperAdmin.value) return
-  loading.value = true
+  if (!isSuperAdmin.value) return;
+  loading.value = true;
   try {
-    const data = (await companiesService.list()) as Company[] | { data: Company[] }
-    companies.value = Array.isArray(data) ? data : data.data || []
+    const data = (await companiesService.list()) as
+      Company[] | { data: Company[] };
+    companies.value = Array.isArray(data) ? data : data.data || [];
   } catch (e) {
-    console.error(e)
+    console.error(e);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 const fetchMyCompany = async (): Promise<void> => {
-  loading.value = true
+  loading.value = true;
   try {
-    if (user?.company && typeof user.company === 'object') {
-      selectedCompany.value = user.company
-      return
+    if (user?.company && typeof user.company === "object") {
+      selectedCompany.value = user.company;
+      return;
     }
-    const companyId = user?.companyId || (user?.company as string) || user?.company_id
-    if (!companyId) return
+    const companyId =
+      user?.companyId || (user?.company as string) || user?.company_id;
+    if (!companyId) return;
 
-    const data = (await companiesService.getById(companyId)) as { data: Company } | Company
-    selectedCompany.value = (data as { data: Company }).data || (data as Company)
+    const data = (await companiesService.getById(companyId)) as
+      { data: Company } | Company;
+    selectedCompany.value =
+      (data as { data: Company }).data || (data as Company);
   } catch (e) {
-    console.error(e)
+    console.error(e);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 const openCreate = (): void => {
-  selectedCompany.value = null
-  mode.value = 'create'
-}
+  selectedCompany.value = null;
+  mode.value = "create";
+};
 const openEdit = (c: Company): void => {
-  selectedCompany.value = c
-  mode.value = 'edit'
-}
+  selectedCompany.value = c;
+  mode.value = "edit";
+};
 const openView = (c: Company): void => {
-  selectedCompany.value = c
-  mode.value = 'view'
-}
+  selectedCompany.value = c;
+  mode.value = "view";
+};
 const openActive = (c: Company): void => {
-  selectedCompany.value = c
-  dialogActive.value = true
-}
+  selectedCompany.value = c;
+  dialogActive.value = true;
+};
 
 const toggleActiveStatus = async (): Promise<void> => {
-  if (!selectedCompany.value) return
-  toggling.value = true
+  if (!selectedCompany.value) return;
+  toggling.value = true;
   try {
-    await companiesService.toggleActive(selectedCompany.value.id, !selectedCompany.value.isActive)
-    dialogActive.value = false
-    await fetchCompanies()
+    await companiesService.toggleActive(
+      selectedCompany.value.id,
+      !selectedCompany.value.isActive,
+    );
+    dialogActive.value = false;
+    await fetchCompanies();
   } catch (e) {
-    console.error(e)
-    const msg = e instanceof Error ? e.message : 'No se pudo cambiar el estado'
-    alert(msg)
+    console.error(e);
+    const msg = e instanceof Error ? e.message : "No se pudo cambiar el estado";
+    alert(msg);
   } finally {
-    toggling.value = false
+    toggling.value = false;
   }
-}
+};
 
 const close = (): void => {
   if (!isSuperAdmin.value) {
-    mode.value = 'view'
-    return
+    mode.value = "view";
+    return;
   }
-  mode.value = 'list'
-  selectedCompany.value = null
-}
+  mode.value = "list";
+  selectedCompany.value = null;
+};
 
 const onSaved = async (): Promise<void> => {
   if (isSuperAdmin.value) {
-    close()
-    await fetchCompanies()
+    close();
+    await fetchCompanies();
   } else {
-    mode.value = 'view'
-    await fetchMyCompany()
+    mode.value = "view";
+    await fetchMyCompany();
   }
-}
+};
 
 const headers = [
-  { title: 'Nombre', key: 'name', minWidth: '160px' },
-  { title: 'NIT', key: 'tax_id', minWidth: '130px' },
-  { title: 'Teléfono', key: 'phone', minWidth: '140px' },
-  { title: 'Estado', key: 'isActive', minWidth: '110px', align: 'center' as const },
-  { title: 'Creado', key: 'createdAt', minWidth: '130px' },
-  { title: 'Opciones', key: 'actions', minWidth: '120px', align: 'end' as const, sortable: false },
-]
+  { title: "Nombre", key: "name", minWidth: "160px" },
+  { title: "NIT", key: "tax_id", minWidth: "130px" },
+  { title: "Teléfono", key: "phone", minWidth: "140px" },
+  {
+    title: "Estado",
+    key: "isActive",
+    minWidth: "110px",
+    align: "center" as const,
+  },
+  { title: "Creado", key: "createdAt", minWidth: "130px" },
+  {
+    title: "Opciones",
+    key: "actions",
+    minWidth: "120px",
+    align: "end" as const,
+    sortable: false,
+  },
+];
 
 const formatDate = (d?: string): string =>
   d
-    ? new Date(d).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric' })
-    : '-'
+    ? new Date(d).toLocaleDateString("es-CO", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    : "-";
 
 onMounted(async () => {
   if (isSuperAdmin.value) {
-    await fetchCompanies()
+    await fetchCompanies();
   } else {
-    mode.value = 'view'
-    await fetchMyCompany()
+    mode.value = "view";
+    await fetchMyCompany();
   }
-})
+});
 </script>
 
 <template>
   <AdminLayout>
     <div v-if="mode === 'list' && isSuperAdmin">
       <div class="flex items-center justify-between mb-6">
-        <h1 class="text-2xl font-bold text-gray-800 dark:text-white/90">Empresas</h1>
-        <v-btn color="success" @click="openCreate"><Plus class="h-4 w-4 mr-2" /> Crear</v-btn>
+        <h1 class="text-2xl font-bold text-gray-800 dark:text-white/90">
+          Empresas
+        </h1>
+        <v-btn color="success" @click="openCreate"
+          ><Plus class="h-4 w-4 mr-2" /> Crear</v-btn
+        >
       </div>
 
       <div
@@ -171,7 +197,9 @@ onMounted(async () => {
           hide-details
           class="mb-6 w-full sm:max-w-sm"
         />
-        <div class="w-full overflow-x-auto rounded-xl border border-gray-100 dark:border-gray-800">
+        <div
+          class="w-full overflow-x-auto rounded-xl border border-gray-100 dark:border-gray-800"
+        >
           <v-data-table
             :headers="headers"
             :items="companies"
@@ -187,13 +215,16 @@ onMounted(async () => {
               <span
                 class="font-medium whitespace-nowrap"
                 :class="{ 'text-gray-400 italic': !item.name }"
-                >{{ item.name || '(Sin nombre)' }}</span
+                >{{ item.name || "(Sin nombre)" }}</span
               >
             </template>
             <template #[`item.isActive`]="{ item }">
-              <v-chip :color="item.isActive ? 'success' : 'error'" size="small" variant="tonal">{{
-                item.isActive ? 'Activa' : 'Inactiva'
-              }}</v-chip>
+              <v-chip
+                :color="item.isActive ? 'success' : 'error'"
+                size="small"
+                variant="tonal"
+                >{{ item.isActive ? "Activa" : "Inactiva" }}</v-chip
+              >
             </template>
             <template #[`item.createdAt`]="{ item }">
               <span class="text-sm text-gray-500 whitespace-nowrap">{{
@@ -202,10 +233,20 @@ onMounted(async () => {
             </template>
             <template #[`item.actions`]="{ item }">
               <div class="flex justify-end gap-1">
-                <v-btn icon size="x-small" variant="text" color="primary" @click="openView(item)"
+                <v-btn
+                  icon
+                  size="x-small"
+                  variant="text"
+                  color="primary"
+                  @click="openView(item)"
                   ><Eye class="h-4 w-4"
                 /></v-btn>
-                <v-btn icon size="x-small" variant="text" color="warning" @click="openEdit(item)"
+                <v-btn
+                  icon
+                  size="x-small"
+                  variant="text"
+                  color="warning"
+                  @click="openEdit(item)"
                   ><Pencil class="h-4 w-4"
                 /></v-btn>
                 <v-btn
@@ -227,7 +268,7 @@ onMounted(async () => {
     <div v-else-if="mode === 'create' || mode === 'edit'">
       <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-bold text-gray-800 dark:text-white/90">
-          {{ mode === 'edit' ? 'Editar empresa' : 'Crear empresa' }}
+          {{ mode === "edit" ? "Editar empresa" : "Crear empresa" }}
         </h1>
         <v-btn variant="text" icon @click="close"><X class="h-5 w-5" /></v-btn>
       </div>
@@ -242,9 +283,11 @@ onMounted(async () => {
     <div v-else-if="mode === 'view'">
       <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-bold text-gray-800 dark:text-white/90">
-          {{ isSuperAdmin ? 'Detalle empresa' : 'Mi empresa' }}
+          {{ isSuperAdmin ? "Detalle empresa" : "Mi empresa" }}
         </h1>
-        <v-btn v-if="isSuperAdmin" variant="text" icon @click="close"><X class="h-5 w-5" /></v-btn>
+        <v-btn v-if="isSuperAdmin" variant="text" icon @click="close"
+          ><X class="h-5 w-5"
+        /></v-btn>
       </div>
       <CompanyView
         v-if="selectedCompany"
@@ -261,32 +304,36 @@ onMounted(async () => {
         <div
           :class="[
             'w-10 h-10 rounded-full flex items-center justify-center',
-            isSelectedActive ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600',
+            isSelectedActive
+              ? 'bg-red-100 text-red-600'
+              : 'bg-green-100 text-green-600',
           ]"
         >
           <Power class="h-5 w-5" />
         </div>
         <span class="text-lg font-bold">
-          {{ isSelectedActive ? '¿Inactivar empresa?' : '¿Activar empresa?' }}
+          {{ isSelectedActive ? "¿Inactivar empresa?" : "¿Activar empresa?" }}
         </span>
       </v-card-title>
 
       <v-card-text class="px-6 pb-2 text-gray-600">
         <p v-if="isSelectedActive">
-          Estás a punto de <strong class="text-red-600">inactivar</strong> la empresa
-          <strong>{{ selectedCompany?.name }}</strong
+          Estás a punto de <strong class="text-red-600">inactivar</strong> la
+          empresa <strong>{{ selectedCompany?.name }}</strong
           >. Los usuarios de esta empresa no podrán acceder al sistema.
         </p>
         <p v-else>
-          Estás a punto de <strong class="text-green-600">activar</strong> la empresa
-          <strong>{{ selectedCompany?.name }}</strong
+          Estás a punto de <strong class="text-green-600">activar</strong> la
+          empresa <strong>{{ selectedCompany?.name }}</strong
           >. Los usuarios volverán a tener acceso.
         </p>
         <p class="mt-3 text-sm">¿Deseas continuar?</p>
       </v-card-text>
 
       <v-card-actions class="p-6 pt-4">
-        <v-btn variant="text" @click="dialogActive = false" :disabled="toggling">Cancelar</v-btn>
+        <v-btn variant="text" @click="dialogActive = false" :disabled="toggling"
+          >Cancelar</v-btn
+        >
         <v-spacer />
         <v-btn
           :color="isSelectedActive ? 'error' : 'success'"
@@ -294,7 +341,7 @@ onMounted(async () => {
           :loading="toggling"
           @click="toggleActiveStatus"
         >
-          {{ isSelectedActive ? 'Sí, inactivar' : 'Sí, activar' }}
+          {{ isSelectedActive ? "Sí, inactivar" : "Sí, activar" }}
         </v-btn>
       </v-card-actions>
     </v-card>

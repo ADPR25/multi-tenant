@@ -1,12 +1,12 @@
 <script setup lang="ts">
 defineOptions({
-  name: 'DriveOpcion3View',
-})
+  name: "DriveOpcion3View",
+});
 
-import { ref, onMounted, computed } from 'vue'
-import type { Ref } from 'vue'
-import { foldersService, documentsService } from '@/services'
-import { get } from '@/store/authstore'
+import { ref, onMounted, computed } from "vue";
+import type { Ref } from "vue";
+import { foldersService, documentsService } from "@/services";
+import { get } from "@/store/authstore";
 import {
   Folder,
   ArrowLeft,
@@ -22,88 +22,89 @@ import {
   Users,
   X,
   TrashIcon,
-} from 'lucide-vue-next'
+} from "lucide-vue-next";
 
 interface FolderItem {
-  id: string
-  name: string
-  ownerFolderName?: string | null
-  createdBy?: string
-  parentId?: string | null
+  id: string;
+  name: string;
+  ownerFolderName?: string | null;
+  createdBy?: string;
+  parentId?: string | null;
 }
 
 interface DocItem {
-  id: string
-  fileName: string
-  storageKey?: string | null
-  mimeType?: string
-  categoryId?: string
-  typeId?: string
-  title?: string
+  id: string;
+  fileName: string;
+  storageKey?: string | null;
+  mimeType?: string;
+  categoryId?: string;
+  typeId?: string;
+  title?: string;
 }
 
 interface StoredUser {
-  id?: string
-  sub?: string
-  _id?: string
-  userId?: string
+  id?: string;
+  sub?: string;
+  _id?: string;
+  userId?: string;
 }
 
-const breadcrumb = ref<FolderItem[]>([])
-const currentFolderId = ref<string | null>(null)
-const folders = ref<FolderItem[]>([])
-const docs = ref<DocItem[]>([])
-const loading = ref(false)
-const uploading = ref(false)
-const fileInputRef = ref<HTMLInputElement | null>(null)
-const parentRequirement = ref<DocItem | null>(null)
-const searchQuery = ref('')
-const isDragging = ref(false)
+const breadcrumb = ref<FolderItem[]>([]);
+const currentFolderId = ref<string | null>(null);
+const folders = ref<FolderItem[]>([]);
+const docs = ref<DocItem[]>([]);
+const loading = ref(false);
+const uploading = ref(false);
+const fileInputRef = ref<HTMLInputElement | null>(null);
+const parentRequirement = ref<DocItem | null>(null);
+const searchQuery = ref("");
+const isDragging = ref(false);
 
-const previewDoc = ref<DocItem | null>(null)
-const showPreview = ref(false)
-const previewBlobUrl = ref(null) as Ref<string | null>
-const previewLoading = ref(false)
+const previewDoc = ref<DocItem | null>(null);
+const showPreview = ref(false);
+const previewBlobUrl = ref(null) as Ref<string | null>;
+const previewLoading = ref(false);
 
-const showDelete = ref(false)
-const deleteDoc = ref<DocItem | null>(null)
+const showDelete = ref(false);
+const deleteDoc = ref<DocItem | null>(null);
 
 const storedUser = computed<StoredUser>(() => {
   try {
-    const authStore = get as unknown as Record<string, unknown>
-    const useAuth = authStore['useAuth']
-    if (typeof useAuth === 'function') {
-      const u = (useAuth as (k: string) => StoredUser)('user')
-      if (u?.id) return u
+    const authStore = get as unknown as Record<string, unknown>;
+    const useAuth = authStore["useAuth"];
+    if (typeof useAuth === "function") {
+      const u = (useAuth as (k: string) => StoredUser)("user");
+      if (u?.id) return u;
     }
-    const useAuthObj = authStore['useAuth'] as { user?: StoredUser } | undefined
-    if (useAuthObj?.user?.id) return useAuthObj.user
+    const useAuthObj = authStore["useAuth"] as
+      { user?: StoredUser } | undefined;
+    if (useAuthObj?.user?.id) return useAuthObj.user;
   } catch {
     // ignore auth store error
   }
   try {
-    const r = localStorage.getItem('user')
-    if (r) return JSON.parse(r) as StoredUser
+    const r = localStorage.getItem("user");
+    if (r) return JSON.parse(r) as StoredUser;
   } catch {
     // ignore parse error
   }
   try {
-    const r = localStorage.getItem('auth_user')
-    if (r) return JSON.parse(r) as StoredUser
+    const r = localStorage.getItem("auth_user");
+    if (r) return JSON.parse(r) as StoredUser;
   } catch {
     // ignore parse error
   }
   try {
-    const r = localStorage.getItem('auth')
+    const r = localStorage.getItem("auth");
     if (r) {
-      const j = JSON.parse(r) as { user?: StoredUser } & StoredUser
-      return j.user || j
+      const j = JSON.parse(r) as { user?: StoredUser } & StoredUser;
+      return j.user || j;
     }
   } catch {
     // ignore parse error
   }
-  return {}
-})
+  return {};
+});
 
 const currentUserId = computed(
   () =>
@@ -111,251 +112,265 @@ const currentUserId = computed(
     storedUser.value?.sub ||
     storedUser.value?._id ||
     storedUser.value?.userId ||
-    '',
-)
+    "",
+);
 
-const currentFolder = computed(() => breadcrumb.value[breadcrumb.value.length - 1] || null)
-const isRoot = computed(() => !currentFolder.value)
+const currentFolder = computed(
+  () => breadcrumb.value[breadcrumb.value.length - 1] || null,
+);
+const isRoot = computed(() => !currentFolder.value);
 const isInsideMyPersonalFolder = computed(
   () =>
     !!currentFolder.value?.ownerFolderName &&
     currentFolder.value?.createdBy === currentUserId.value,
-)
+);
 const hasMyPersonalFolder = computed(() =>
-  folders.value.some((f) => f.createdBy === currentUserId.value && !!f.ownerFolderName),
-)
-const hasStructuralChild = computed(() => folders.value.some((f) => !f.ownerFolderName))
+  folders.value.some(
+    (f) => f.createdBy === currentUserId.value && !!f.ownerFolderName,
+  ),
+);
+const hasStructuralChild = computed(() =>
+  folders.value.some((f) => !f.ownerFolderName),
+);
 const canCreatePersonal = computed(() => {
-  if (isRoot.value) return false
-  if (isInsideMyPersonalFolder.value) return false
-  if (currentFolder.value?.ownerFolderName) return false
-  if (hasMyPersonalFolder.value) return false
-  if (hasStructuralChild.value) return false
-  return !!currentFolder.value
-})
-const canUploadHere = computed(() => isInsideMyPersonalFolder.value)
+  if (isRoot.value) return false;
+  if (isInsideMyPersonalFolder.value) return false;
+  if (currentFolder.value?.ownerFolderName) return false;
+  if (hasMyPersonalFolder.value) return false;
+  if (hasStructuralChild.value) return false;
+  return !!currentFolder.value;
+});
+const canUploadHere = computed(() => isInsideMyPersonalFolder.value);
 
-const requiredDocs = computed(() => docs.value.filter((d) => !d.storageKey))
-const uploadedDocs = computed(() => docs.value.filter((d) => !!d.storageKey))
+const requiredDocs = computed(() => docs.value.filter((d) => !d.storageKey));
+const uploadedDocs = computed(() => docs.value.filter((d) => !!d.storageKey));
 const filteredDocs = computed(() => {
-  let l = uploadedDocs.value
+  let l = uploadedDocs.value;
   if (searchQuery.value) {
-    const q = searchQuery.value.toLowerCase()
-    l = l.filter((d) => (d.fileName || '').toLowerCase().includes(q))
+    const q = searchQuery.value.toLowerCase();
+    l = l.filter((d) => (d.fileName || "").toLowerCase().includes(q));
   }
-  return l
-})
+  return l;
+});
 
 function getFileUrl(k: string): string {
-  return documentsService.downloadUrl(k, true)
+  return documentsService.downloadUrl(k, true);
 }
 
 function isPdf(doc: DocItem): boolean {
-  return !!doc.mimeType?.includes('pdf') || !!doc.fileName?.toLowerCase().endsWith('.pdf')
+  return (
+    !!doc.mimeType?.includes("pdf") ||
+    !!doc.fileName?.toLowerCase().endsWith(".pdf")
+  );
 }
 
 async function load(id: string | null): Promise<void> {
-  loading.value = true
+  loading.value = true;
   try {
     const [f, d] = await Promise.all([
       foldersService
-        .list({ parentId: id ?? 'null', limit: 100, state: true })
+        .list({ parentId: id ?? "null", limit: 100, state: true })
         .then((r: { data?: FolderItem[] } | FolderItem[]) => {
-          if (Array.isArray(r)) return r
-          return r.data || []
+          if (Array.isArray(r)) return r;
+          return r.data || [];
         })
         .catch(() => [] as FolderItem[]),
       id
         ? documentsService
             .list({ folderId: id, limit: 100 })
             .then((r: { data?: DocItem[] } | DocItem[]) => {
-              if (Array.isArray(r)) return r
-              return r.data || []
+              if (Array.isArray(r)) return r;
+              return r.data || [];
             })
             .catch(() => [] as DocItem[])
         : Promise.resolve([] as DocItem[]),
-    ])
-    folders.value = f || []
-    docs.value = d || []
-    const tpl = d.find((x) => !x.storageKey && x.categoryId && x.typeId)
-    if (tpl) parentRequirement.value = tpl
-    else if (!id) parentRequirement.value = null
+    ]);
+    folders.value = f || [];
+    docs.value = d || [];
+    const tpl = d.find((x) => !x.storageKey && x.categoryId && x.typeId);
+    if (tpl) parentRequirement.value = tpl;
+    else if (!id) parentRequirement.value = null;
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
 function enter(f: FolderItem): void {
-  breadcrumb.value.push(f)
-  currentFolderId.value = f.id
-  void load(f.id)
+  breadcrumb.value.push(f);
+  currentFolderId.value = f.id;
+  void load(f.id);
 }
 
 function back(): void {
-  breadcrumb.value.pop()
+  breadcrumb.value.pop();
   currentFolderId.value = breadcrumb.value.length
     ? breadcrumb.value[breadcrumb.value.length - 1].id
-    : null
-  if (!breadcrumb.value.length) parentRequirement.value = null
-  void load(currentFolderId.value)
+    : null;
+  if (!breadcrumb.value.length) parentRequirement.value = null;
+  void load(currentFolderId.value);
 }
 
 function goRoot(): void {
-  breadcrumb.value = []
-  currentFolderId.value = null
-  parentRequirement.value = null
-  void load(null)
+  breadcrumb.value = [];
+  currentFolderId.value = null;
+  parentRequirement.value = null;
+  void load(null);
 }
 
 function goTo(i: number): void {
-  breadcrumb.value = breadcrumb.value.slice(0, i + 1)
-  currentFolderId.value = breadcrumb.value[i].id
-  void load(currentFolderId.value)
+  breadcrumb.value = breadcrumb.value.slice(0, i + 1);
+  currentFolderId.value = breadcrumb.value[i].id;
+  void load(currentFolderId.value);
 }
 
 async function createPersonal(): Promise<void> {
-  if (!currentFolderId.value) return
+  if (!currentFolderId.value) return;
   try {
-    await foldersService.createPersonal({ parentId: currentFolderId.value })
-    await load(currentFolderId.value)
+    await foldersService.createPersonal({ parentId: currentFolderId.value });
+    await load(currentFolderId.value);
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Error al crear carpeta'
-    alert(msg)
+    const msg = e instanceof Error ? e.message : "Error al crear carpeta";
+    alert(msg);
   }
 }
 
 function triggerUpload(): void {
-  fileInputRef.value?.click()
+  fileInputRef.value?.click();
 }
 
 async function uploadFile(file: File): Promise<void> {
-  if (!currentFolderId.value) return
-  const template = requiredDocs.value[0] || parentRequirement.value
+  if (!currentFolderId.value) return;
+  const template = requiredDocs.value[0] || parentRequirement.value;
   if (!template?.categoryId || !template?.typeId) {
-    alert('La carpeta padre no tiene configurada categoria y tipo')
-    return
+    alert("La carpeta padre no tiene configurada categoria y tipo");
+    return;
   }
-  const fd = new FormData()
-  fd.append('file', file)
-  fd.append('title', currentFolder.value?.name || 'doc')
+  const fd = new FormData();
+  fd.append("file", file);
+  fd.append("title", currentFolder.value?.name || "doc");
   fd.append(
-    'description',
+    "description",
     `Archivo de ${currentFolder.value?.name} - ${new Date().toLocaleDateString()}`,
-  )
-  fd.append('folderId', currentFolderId.value)
-  fd.append('categoryId', template.categoryId)
-  fd.append('typeId', template.typeId)
+  );
+  fd.append("folderId", currentFolderId.value);
+  fd.append("categoryId", template.categoryId);
+  fd.append("typeId", template.typeId);
   try {
-    uploading.value = true
-    await documentsService.upload(fd)
-    await load(currentFolderId.value)
+    uploading.value = true;
+    await documentsService.upload(fd);
+    await load(currentFolderId.value);
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Error al subir'
-    alert(msg)
+    const msg = err instanceof Error ? err.message : "Error al subir";
+    alert(msg);
   } finally {
-    uploading.value = false
+    uploading.value = false;
   }
 }
 
 async function onFilePicked(e: Event): Promise<void> {
-  const input = e.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file) return
-  await uploadFile(file)
-  input.value = ''
+  const input = e.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+  await uploadFile(file);
+  input.value = "";
 }
 
 function onDragOver(e: DragEvent): void {
-  e.preventDefault()
-  if (canUploadHere.value) isDragging.value = true
+  e.preventDefault();
+  if (canUploadHere.value) isDragging.value = true;
 }
 
 function onDragLeave(e: DragEvent): void {
-  e.preventDefault()
-  isDragging.value = false
+  e.preventDefault();
+  isDragging.value = false;
 }
 
 function onDrop(e: DragEvent): void {
-  e.preventDefault()
-  isDragging.value = false
-  if (!canUploadHere.value) return
-  const f = e.dataTransfer?.files?.[0]
-  if (f) void uploadFile(f)
+  e.preventDefault();
+  isDragging.value = false;
+  if (!canUploadHere.value) return;
+  const f = e.dataTransfer?.files?.[0];
+  if (f) void uploadFile(f);
 }
 
 async function openPreview(doc: DocItem): Promise<void> {
-  previewDoc.value = doc
-  showPreview.value = true
-  previewLoading.value = true
+  previewDoc.value = doc;
+  showPreview.value = true;
+  previewLoading.value = true;
   if (previewBlobUrl.value) {
-    URL.revokeObjectURL(previewBlobUrl.value)
-    previewBlobUrl.value = null
+    URL.revokeObjectURL(previewBlobUrl.value);
+    previewBlobUrl.value = null;
   }
   try {
-    if (!doc.storageKey) throw new Error('Sin storageKey')
-    const url = getFileUrl(doc.storageKey)
-    const res = await fetch(url)
-    if (!res.ok) throw new Error(`Error ${res.status}`)
-    const blob = await res.blob()
-    previewBlobUrl.value = URL.createObjectURL(blob)
+    if (!doc.storageKey) throw new Error("Sin storageKey");
+    const url = getFileUrl(doc.storageKey);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Error ${res.status}`);
+    const blob = await res.blob();
+    previewBlobUrl.value = URL.createObjectURL(blob);
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Error desconocido'
-    alert('No se pudo abrir: ' + msg)
-    showPreview.value = false
+    const msg = e instanceof Error ? e.message : "Error desconocido";
+    alert("No se pudo abrir: " + msg);
+    showPreview.value = false;
   } finally {
-    previewLoading.value = false
+    previewLoading.value = false;
   }
 }
 
 function closePreview(): void {
-  showPreview.value = false
+  showPreview.value = false;
   if (previewBlobUrl.value) {
-    URL.revokeObjectURL(previewBlobUrl.value)
-    previewBlobUrl.value = null
+    URL.revokeObjectURL(previewBlobUrl.value);
+    previewBlobUrl.value = null;
   }
 }
 
 function openDelete(doc: DocItem): void {
-  deleteDoc.value = doc
-  showDelete.value = true
+  deleteDoc.value = doc;
+  showDelete.value = true;
 }
 
 function cancelDelete(): void {
-  showDelete.value = false
-  deleteDoc.value = null
+  showDelete.value = false;
+  deleteDoc.value = null;
 }
 
 const confirmDelete = async (): Promise<void> => {
-  if (!deleteDoc.value?.id) return
+  if (!deleteDoc.value?.id) return;
   try {
-    await documentsService.delete(deleteDoc.value.id)
-    await load(currentFolderId.value)
+    await documentsService.delete(deleteDoc.value.id);
+    await load(currentFolderId.value);
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Error al eliminar'
-    alert(msg)
+    const msg = e instanceof Error ? e.message : "Error al eliminar";
+    alert(msg);
   } finally {
-    showDelete.value = false
-    deleteDoc.value = null
+    showDelete.value = false;
+    deleteDoc.value = null;
   }
-}
+};
 
 onMounted(() => {
-  void load(null)
-})
+  void load(null);
+});
 
 function folderGradient(i: number): string {
   const g = [
-    'from-violet-100 to-indigo-100 border-violet-200',
-    'from-amber-100 to-orange-100 border-amber-200',
-    'from-emerald-100 to-teal-100 border-emerald-200',
-    'from-pink-100 to-rose-100 border-pink-200',
-  ]
-  return g[i % g.length]
+    "from-violet-100 to-indigo-100 border-violet-200",
+    "from-amber-100 to-orange-100 border-amber-200",
+    "from-emerald-100 to-teal-100 border-emerald-200",
+    "from-pink-100 to-rose-100 border-pink-200",
+  ];
+  return g[i % g.length];
 }
 
 function folderIconColor(i: number): string {
-  const c = ['text-violet-600', 'text-amber-600', 'text-emerald-600', 'text-pink-600']
-  return c[i % c.length]
+  const c = [
+    "text-violet-600",
+    "text-amber-600",
+    "text-emerald-600",
+    "text-pink-600",
+  ];
+  return c[i % c.length];
 }
 </script>
 
@@ -373,11 +388,15 @@ function folderIconColor(i: number): string {
       <div
         class="bg-white rounded- p-10 shadow-2xl border-4 border-dashed border-violet-300 flex flex-col items-center"
       >
-        <div class="h-20 w-20 rounded- bg-violet-600 flex items-center justify-center mb-4">
+        <div
+          class="h-20 w-20 rounded- bg-violet-600 flex items-center justify-center mb-4"
+        >
           <Upload class="h-8 w-8 text-white" />
         </div>
         <h3 class="text- font-bold">¡Suelta aquí!</h3>
-        <p class="text- text-zinc-500 mt-1">Subiremos tu archivo automáticamente</p>
+        <p class="text- text-zinc-500 mt-1">
+          Subiremos tu archivo automáticamente
+        </p>
       </div>
     </div>
 
@@ -398,7 +417,11 @@ function folderIconColor(i: number): string {
           >
             <HardDrive class="h-4 w-4 text-violet-600" /> Mi Drive
           </button>
-          <span v-for="(b, i) in breadcrumb" :key="b.id" class="flex items-center gap-2">
+          <span
+            v-for="(b, i) in breadcrumb"
+            :key="b.id"
+            class="flex items-center gap-2"
+          >
             <span class="text-zinc-300">/</span>
             <button
               class="px-3 py-1.5 rounded-full bg-white border hover:shadow-sm text-zinc-600 font-medium"
@@ -411,7 +434,8 @@ function folderIconColor(i: number): string {
         <div
           class="hidden md:flex items-center gap-2 text- font-medium text-zinc-500 bg-white border px-3 py-1.5 rounded-full shadow-sm"
         >
-          <Users class="h-3 w-3" /> {{ folders.length }} carpetas · Workspace empresarial
+          <Users class="h-3 w-3" /> {{ folders.length }} carpetas · Workspace
+          empresarial
         </div>
       </div>
 
@@ -433,7 +457,7 @@ function folderIconColor(i: number): string {
             <div>
               <div class="flex items-center gap-3">
                 <h1 class="text- font-[800] tracking-tight leading-none">
-                  {{ currentFolder?.name || 'Drive Empresarial' }}
+                  {{ currentFolder?.name || "Drive Empresarial" }}
                 </h1>
                 <span
                   v-if="!currentFolder"
@@ -448,9 +472,11 @@ function folderIconColor(i: number): string {
                   <Shield class="h-3 w-3" /> PRIVADO
                 </span>
               </div>
-              <p class="mt-3 text-[13.5px] text-zinc-500 max-w- leading-relaxed">
-                Organiza todo en un lugar colorido, buscable y seguro. Arrastra archivos,
-                previsualiza y comparte en segundos.
+              <p
+                class="mt-3 text-[13.5px] text-zinc-500 max-w- leading-relaxed"
+              >
+                Organiza todo en un lugar colorido, buscable y seguro. Arrastra
+                archivos, previsualiza y comparte en segundos.
               </p>
             </div>
           </div>
@@ -468,7 +494,8 @@ function folderIconColor(i: number): string {
               class="h-12 px-7 rounded-full bg-violet-600 text-white text- font-semibold shadow-[0_10px_20px_rgba(124,58,237,0.3)] hover:bg-violet-700 transition flex items-center disabled:opacity-60"
               @click="triggerUpload"
             >
-              <Upload class="h-4 w-4 mr-2" /> {{ uploading ? 'Subiendo...' : 'Subir' }}
+              <Upload class="h-4 w-4 mr-2" />
+              {{ uploading ? "Subiendo..." : "Subir" }}
             </button>
           </div>
         </div>
@@ -493,7 +520,10 @@ function folderIconColor(i: number): string {
               <div
                 class="h-14 w-14 rounded- bg-white shadow-sm border flex items-center justify-center group-hover:scale-110 transition"
               >
-                <Folder class="h-7 w-7 fill-current" :class="folderIconColor(i)" />
+                <Folder
+                  class="h-7 w-7 fill-current"
+                  :class="folderIconColor(i)"
+                />
               </div>
               <div
                 v-if="f.createdBy === currentUserId"
@@ -504,9 +534,15 @@ function folderIconColor(i: number): string {
             </div>
             <p class="font-bold text- text-zinc-900">{{ f.name }}</p>
             <p class="text- text-zinc-600 mt-1">
-              {{ f.ownerFolderName ? `De ${f.ownerFolderName}` : 'Carpeta del equipo' }}
+              {{
+                f.ownerFolderName
+                  ? `De ${f.ownerFolderName}`
+                  : "Carpeta del equipo"
+              }}
             </p>
-            <div class="mt-4 flex items-center gap-2 text- font-medium text-zinc-500">
+            <div
+              class="mt-4 flex items-center gap-2 text- font-medium text-zinc-500"
+            >
               <span class="h-1 w-1 rounded-full bg-zinc-400" /> Abrir carpeta
             </div>
           </div>
@@ -523,10 +559,13 @@ function folderIconColor(i: number): string {
               >
                 <FileText class="h-3.5 w-3.5" />
               </span>
-              ARCHIVOS EN {{ currentFolder?.name?.toUpperCase() }} · {{ filteredDocs.length }}
+              ARCHIVOS EN {{ currentFolder?.name?.toUpperCase() }} ·
+              {{ filteredDocs.length }}
             </h3>
             <div class="relative">
-              <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+              <Search
+                class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400"
+              />
               <input
                 v-model="searchQuery"
                 placeholder="Buscar..."
@@ -534,7 +573,9 @@ function folderIconColor(i: number): string {
               />
             </div>
           </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-0 divide-y md:divide-y-0">
+          <div
+            class="grid grid-cols-1 md:grid-cols-2 gap-0 divide-y md:divide-y-0"
+          >
             <div
               v-for="doc in filteredDocs"
               :key="doc.id"
@@ -546,8 +587,12 @@ function folderIconColor(i: number): string {
                 <FileText class="h-5 w-5 text-zinc-700" />
               </div>
               <div class="flex-1 min-w-0">
-                <p class="font-semibold text-[13.5px] truncate">{{ doc.fileName }}</p>
-                <p class="text- text-zinc-500 mt-0.5 truncate">{{ doc.mimeType }}</p>
+                <p class="font-semibold text-[13.5px] truncate">
+                  {{ doc.fileName }}
+                </p>
+                <p class="text- text-zinc-500 mt-0.5 truncate">
+                  {{ doc.mimeType }}
+                </p>
               </div>
               <div class="flex gap-1.5">
                 <button
@@ -606,7 +651,9 @@ function folderIconColor(i: number): string {
               <FileText class="h-4 w-4" />
             </div>
             <div class="min-w-0">
-              <p class="font-semibold text- truncate">{{ previewDoc?.fileName }}</p>
+              <p class="font-semibold text- truncate">
+                {{ previewDoc?.fileName }}
+              </p>
               <p class="text- text-zinc-500 truncate uppercase tracking-widest">
                 {{ previewDoc?.title }}
               </p>
@@ -619,7 +666,9 @@ function folderIconColor(i: number): string {
             <X class="h-4 w-4" />
           </button>
         </div>
-        <div class="flex-1 overflow-hidden flex items-center justify-center p-4 sm:p-8">
+        <div
+          class="flex-1 overflow-hidden flex items-center justify-center p-4 sm:p-8"
+        >
           <div
             v-if="previewLoading"
             class="h-6 w-6 border-2 border-white/20 border-t-white rounded-full animate-spin"
@@ -646,7 +695,10 @@ function folderIconColor(i: number): string {
       </v-card-title>
       <v-card-text class="px-6 pb-2 text-gray-600">
         <p class="text-">
-          ¿Eliminar <span class="font-semibold text-zinc-900">{{ deleteDoc?.fileName }}</span
+          ¿Eliminar
+          <span class="font-semibold text-zinc-900">{{
+            deleteDoc?.fileName
+          }}</span
           >?
         </p>
         <p class="mt-2 text- tracking-widest uppercase text-zinc-400">
@@ -656,7 +708,11 @@ function folderIconColor(i: number): string {
       <v-card-actions class="p-6 pt-4">
         <v-btn variant="text" @click="cancelDelete">Cancelar</v-btn>
         <v-spacer />
-        <v-btn color="red" variant="flat" class="rounded-full" @click="() => void confirmDelete()"
+        <v-btn
+          color="red"
+          variant="flat"
+          class="rounded-full"
+          @click="() => void confirmDelete()"
           >Confirmar</v-btn
         >
       </v-card-actions>

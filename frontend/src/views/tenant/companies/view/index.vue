@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed } from "vue";
 import {
   Building2,
   FileText,
@@ -14,36 +14,40 @@ import {
   X,
   Pencil,
   IdCard,
-} from 'lucide-vue-next'
+} from "lucide-vue-next";
 
 defineOptions({
-  name: 'CompanyDetailView',
-})
+  name: "CompanyDetailView",
+});
 
 const props = defineProps({
   company: { type: Object, required: true },
-})
+});
 
-const emit = defineEmits(['close', 'edit'])
+const emit = defineEmits(["close", "edit"]);
 
 const formatDate = (dateStr: string | number | Date, withTime = false) => {
-  if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleString('es-CO', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    ...(withTime ? { hour: '2-digit', minute: '2-digit' } : {}),
-  })
-}
+  if (!dateStr) return "-";
+  return new Date(dateStr).toLocaleString("es-CO", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}),
+  });
+};
 
-const initial = computed(() => props.company?.name?.charAt(0)?.toUpperCase() || 'C')
+const initial = computed(
+  () => props.company?.name?.charAt(0)?.toUpperCase() || "C",
+);
 </script>
 
 <template>
   <div
     class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/3 overflow-hidden"
   >
-    <div class="bg-linear-to-r from-indigo-500 to-violet-600 p-6 sm:p-8 text-white">
+    <div
+      class="bg-linear-to-r from-indigo-500 to-violet-600 p-6 sm:p-8 text-white"
+    >
       <div class="flex items-start justify-between gap-4">
         <div class="flex items-center gap-4">
           <div
@@ -52,16 +56,23 @@ const initial = computed(() => props.company?.name?.charAt(0)?.toUpperCase() || 
             {{ initial }}
           </div>
           <div>
-            <h2 class="text-2xl font-bold">{{ company.name || 'Sin nombre' }}</h2>
+            <h2 class="text-2xl font-bold">
+              {{ company.name || "Sin nombre" }}
+            </h2>
             <p class="text-white/80 flex items-center gap-2 mt-1">
-              <FileText class="h-4 w-4" /> {{ company.legal_name || 'Sin razón social' }}
+              <FileText class="h-4 w-4" />
+              {{ company.legal_name || "Sin razón social" }}
             </p>
           </div>
         </div>
-        <v-chip :color="company.isActive ? 'success' : 'error'" variant="flat" class="text-white!">
+        <v-chip
+          :color="company.isActive ? 'success' : 'error'"
+          variant="flat"
+          class="text-white!"
+        >
           <ShieldCheck v-if="company.isActive" class="h-4 w-4 mr-1" />
           <ShieldX v-else class="h-4 w-4 mr-1" />
-          {{ company.isActive ? 'Activa' : 'Inactiva' }}
+          {{ company.isActive ? "Activa" : "Inactiva" }}
         </v-chip>
       </div>
     </div>
@@ -71,7 +82,9 @@ const initial = computed(() => props.company?.name?.charAt(0)?.toUpperCase() || 
         <div
           class="rounded-xl border border-gray-100 bg-gray-50/50 p-5 dark:border-gray-800 dark:bg-white/2"
         >
-          <h3 class="mb-4 flex items-center gap-2 font-semibold text-gray-700 dark:text-white/90">
+          <h3
+            class="mb-4 flex items-center gap-2 font-semibold text-gray-700 dark:text-white/90"
+          >
             <Building2 class="h-5 w-5 text-indigo-500" /> Información General
           </h3>
           <div class="space-y-4">
@@ -83,7 +96,9 @@ const initial = computed(() => props.company?.name?.charAt(0)?.toUpperCase() || 
               </div>
               <div>
                 <p class="text-xs text-gray-500">Nombre</p>
-                <p class="font-medium text-gray-900 dark:text-white">{{ company.name || '-' }}</p>
+                <p class="font-medium text-gray-900 dark:text-white">
+                  {{ company.name || "-" }}
+                </p>
               </div>
             </div>
             <div class="flex gap-3">
@@ -95,7 +110,7 @@ const initial = computed(() => props.company?.name?.charAt(0)?.toUpperCase() || 
               <div>
                 <p class="text-xs text-gray-500">Razón Social</p>
                 <p class="font-medium text-gray-900 dark:text-white">
-                  {{ company.legal_name || '-' }}
+                  {{ company.legal_name || "-" }}
                 </p>
               </div>
             </div>
@@ -107,7 +122,9 @@ const initial = computed(() => props.company?.name?.charAt(0)?.toUpperCase() || 
               </div>
               <div>
                 <p class="text-xs text-gray-500">NIT</p>
-                <p class="font-medium text-gray-900 dark:text-white">{{ company.tax_id || '-' }}</p>
+                <p class="font-medium text-gray-900 dark:text-white">
+                  {{ company.tax_id || "-" }}
+                </p>
               </div>
             </div>
           </div>
@@ -116,7 +133,9 @@ const initial = computed(() => props.company?.name?.charAt(0)?.toUpperCase() || 
         <div
           class="rounded-xl border border-gray-100 bg-gray-50/50 p-5 dark:border-gray-800 dark:bg-white/2"
         >
-          <h3 class="mb-4 flex items-center gap-2 font-semibold text-gray-700 dark:text-white/90">
+          <h3
+            class="mb-4 flex items-center gap-2 font-semibold text-gray-700 dark:text-white/90"
+          >
             <Phone class="h-5 w-5 text-emerald-500" /> Contacto
           </h3>
           <div class="space-y-4">
@@ -131,7 +150,7 @@ const initial = computed(() => props.company?.name?.charAt(0)?.toUpperCase() || 
                 <a
                   :href="`mailto:${company.email}`"
                   class="font-medium text-indigo-600 hover:underline dark:text-indigo-400"
-                  >{{ company.email || '-' }}</a
+                  >{{ company.email || "-" }}</a
                 >
               </div>
             </div>
@@ -146,7 +165,7 @@ const initial = computed(() => props.company?.name?.charAt(0)?.toUpperCase() || 
                 <a
                   :href="`tel:${company.phone}`"
                   class="font-medium text-gray-900 dark:text-white"
-                  >{{ company.phone || '-' }}</a
+                  >{{ company.phone || "-" }}</a
                 >
               </div>
             </div>
@@ -159,7 +178,7 @@ const initial = computed(() => props.company?.name?.charAt(0)?.toUpperCase() || 
               <div>
                 <p class="text-xs text-gray-500">Dirección</p>
                 <p class="font-medium text-gray-900 dark:text-white">
-                  {{ company.address || '-' }}
+                  {{ company.address || "-" }}
                 </p>
               </div>
             </div>
@@ -171,22 +190,35 @@ const initial = computed(() => props.company?.name?.charAt(0)?.toUpperCase() || 
         >
           <div class="flex flex-wrap gap-6">
             <div class="flex items-center gap-2 text-sm">
-              <Calendar class="h-4 w-4 text-gray-400" /><span class="text-gray-500">Creado:</span>
-              <span class="font-medium">{{ formatDate(company.createdAt) }}</span>
+              <Calendar class="h-4 w-4 text-gray-400" /><span
+                class="text-gray-500"
+                >Creado:</span
+              >
+              <span class="font-medium">{{
+                formatDate(company.createdAt)
+              }}</span>
             </div>
             <div class="flex items-center gap-2 text-sm">
-              <Clock class="h-4 w-4 text-gray-400" /><span class="text-gray-500">Actualizado:</span>
-              <span class="font-medium">{{ formatDate(company.updatedAt, true) }}</span>
+              <Clock class="h-4 w-4 text-gray-400" /><span class="text-gray-500"
+                >Actualizado:</span
+              >
+              <span class="font-medium">{{
+                formatDate(company.updatedAt, true)
+              }}</span>
             </div>
             <div class="flex items-center gap-2 text-sm">
-              <Hash class="h-4 w-4 text-gray-400" /><span class="text-gray-500">ID:</span>
+              <Hash class="h-4 w-4 text-gray-400" /><span class="text-gray-500"
+                >ID:</span
+              >
               <span class="font-mono text-xs">{{ company.id }}</span>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="mt-8 flex justify-between border-t border-gray-100 pt-6 dark:border-gray-800">
+      <div
+        class="mt-8 flex justify-between border-t border-gray-100 pt-6 dark:border-gray-800"
+      >
         <v-btn color="error" variant="outlined" @click="emit('close')"
           ><X class="h-4 w-4 mr-2" /> Cerrar</v-btn
         >

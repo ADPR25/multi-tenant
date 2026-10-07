@@ -8,22 +8,46 @@ import {
 import { Type } from "class-transformer";
 
 export class CreateProductDto {
-  @IsNotEmpty() @IsString() sku: string;
-  @IsNotEmpty() @IsString() name: string;
-  @IsOptional() @IsString() description?: string;
+  @IsNotEmpty() 
+  @IsString() 
+  sku: string;
 
-  @IsOptional() @IsUUID() brandId?: string;
-  @IsOptional() @IsUUID() categoryId?: string;
+  @IsNotEmpty() 
+  @IsString() 
+  name: string;
 
-  @IsNotEmpty() @IsUUID() uomId: string;
+  @IsOptional() 
+  @IsString() 
+  description?: string;
+
+  @IsOptional() 
+  @IsUUID() 
+  brandId?: string;
+
+  @IsOptional() 
+  @IsUUID() 
+  categoryId?: string;
+
+  @IsNotEmpty() 
+  @IsUUID() 
+  uomId: string;
 
   @IsNotEmpty()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Type(() => Number)
   cost: number;
+
   @IsNotEmpty()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Type(() => Number)
   price: number;
-  @IsNotEmpty() @IsNumber() @Type(() => Number) min_stock: number;
+
+  @IsNotEmpty() 
+  @IsNumber() 
+  @Type(() => Number) 
+  min_stock: number;
+
+  @IsOptional() 
+  @IsUUID() 
+  warehouseId?: string;
 }

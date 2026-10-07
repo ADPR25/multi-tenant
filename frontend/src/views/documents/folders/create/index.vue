@@ -1,68 +1,71 @@
 <script setup lang="ts">
 defineOptions({
-  name: 'FoldersCreateView',
-})
+  name: "FoldersCreateView",
+});
 
-import { ref, onMounted } from 'vue'
-import { foldersService } from '@/services'
-import { Save, X } from 'lucide-vue-next'
+import { ref, onMounted } from "vue";
+import { foldersService } from "@/services";
+import { Save, X } from "lucide-vue-next";
 
 interface FolderItem {
-  id?: string
-  name: string
-  description?: string
-  parentid?: string | null
+  id?: string;
+  name: string;
+  description?: string;
+  parentid?: string | null;
 }
 
 interface ParentFolder {
-  id: string
-  name: string
+  id: string;
+  name: string;
 }
 
-const props = defineProps<{ item?: FolderItem | null }>()
-const emit = defineEmits(['close', 'created'])
+const props = defineProps<{ item?: FolderItem | null }>();
+const emit = defineEmits(["close", "created"]);
 
-const formRef = ref<{ validate: () => Promise<{ valid: boolean }> } | null>(null)
-const saving = ref(false)
-const parents = ref<ParentFolder[]>([])
+const formRef = ref<{ validate: () => Promise<{ valid: boolean }> } | null>(
+  null,
+);
+const saving = ref(false);
+const parents = ref<ParentFolder[]>([]);
 
 const form = ref({
-  name: props.item?.name || '',
-  description: props.item?.description || '',
+  name: props.item?.name || "",
+  description: props.item?.description || "",
   parentId: (props.item?.parentId as string | number | null) || null,
-})
+});
 
 async function submit() {
-  const result = await formRef.value?.validate()
-  if (!result?.valid) return
-  saving.value = true
+  const result = await formRef.value?.validate();
+  if (!result?.valid) return;
+  saving.value = true;
   try {
-    const payload: Record<string, unknown> = { ...form.value }
-    if (!payload.parentId) delete payload.parentId
-    if (props.item?.id) await foldersService.update(props.item.id, payload)
-    else await foldersService.create(payload)
-    emit('created')
+    const payload: Record<string, unknown> = { ...form.value };
+    if (!payload.parentId) delete payload.parentId;
+    if (props.item?.id) await foldersService.update(props.item.id, payload);
+    else await foldersService.create(payload);
+    emit("created");
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Error al guardar'
-    alert(msg)
+    const msg = e instanceof Error ? e.message : "Error al guardar";
+    alert(msg);
   } finally {
-    saving.value = false
+    saving.value = false;
   }
 }
 
 onMounted(async () => {
   try {
-    const res = (await foldersService.list({ limit: 'all', find: 'list' }).catch(() => [])) as
-      { data?: ParentFolder[] } | ParentFolder[]
+    const res = (await foldersService
+      .list({ limit: "all", find: "list" })
+      .catch(() => [])) as { data?: ParentFolder[] } | ParentFolder[];
     if (Array.isArray(res)) {
-      parents.value = res
+      parents.value = res;
     } else {
-      parents.value = res.data || []
+      parents.value = res.data || [];
     }
   } catch {
-    parents.value = []
+    parents.value = [];
   }
-})
+});
 </script>
 
 <template>
@@ -92,14 +95,20 @@ onMounted(async () => {
         </v-col>
         <v-col cols="12">
           <v-label>Descripción</v-label>
-          <v-textarea v-model="form.description" variant="outlined" density="comfortable" />
+          <v-textarea
+            v-model="form.description"
+            variant="outlined"
+            density="comfortable"
+          />
         </v-col>
       </v-row>
       <div class="flex mt-6">
-        <v-btn color="warning" @click="emit('close')"><X class="h-4 w-4 mr-2" />Cancelar</v-btn>
+        <v-btn color="warning" @click="emit('close')"
+          ><X class="h-4 w-4 mr-2" />Cancelar</v-btn
+        >
         <v-spacer />
         <v-btn color="primary" :loading="saving" @click="submit">
-          <Save class="h-4 w-4 mr-2" />{{ props.item ? 'Actualizar' : 'Crear' }}
+          <Save class="h-4 w-4 mr-2" />{{ props.item ? "Actualizar" : "Crear" }}
         </v-btn>
       </div>
     </v-form>

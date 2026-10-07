@@ -15,9 +15,9 @@
 </template>
 
 <script setup lang="ts">
-import AppSidebar from './AppSidebar.vue'
-import AppHeader from './AppHeader.vue'
-import { useSidebar } from '@/composables/useSidebar'
-import Backdrop from './Backdrop.vue'
-const { isExpanded, isHovered } = useSidebar()
+import AppSidebar from "./AppSidebar.vue";
+import AppHeader from "./AppHeader.vue";
+import { useSidebar } from "@/composables/useSidebar";
+import Backdrop from "./Backdrop.vue";
+const { isExpanded, isHovered } = useSidebar();
 </script>
