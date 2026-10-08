@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from "vue";
+import { ref, onMounted, watch, computed } from "vue";
 import {
   stockMovementsService,
   productsService,
@@ -30,6 +30,17 @@ interface ServiceListResponse<T> {
   data?: T[];
 }
 
+type MovementType = "IN" | "OUT" | "ADJUSTMENT" | "TRANSFER_OUT";
+
+interface MovementForm {
+  productId: string;
+  warehouseId: string;
+  toWarehouseId: string;
+  type: MovementType;
+  quantity: number;
+  reason: string;
+}
+
 const emit = defineEmits(["close", "created"]);
 const formRef = ref<{ validate: () => Promise<{ valid: boolean }> } | null>(
   null,
@@ -37,13 +48,17 @@ const formRef = ref<{ validate: () => Promise<{ valid: boolean }> } | null>(
 const saving = ref(false);
 const products = ref<ProductOption[]>([]);
 const warehouses = ref<WarehouseOption[]>([]);
-const form = ref({
+const form = ref<MovementForm>({
   productId: "",
   warehouseId: "",
+  toWarehouseId: "",
   type: "IN",
   quantity: 0,
   reason: "",
 });
+const destinationWarehouses = computed(() =>
+  warehouses.value.filter((warehouse) => warehouse.id !== form.value.warehouseId),
+);
 
 async function submit() {
   if (!formRef.value) return;
@@ -51,10 +66,13 @@ async function submit() {
   if (!valid) return;
   saving.value = true;
   try {
-    await stockMovementsService.create({
+    const payload = {
       ...form.value,
       quantity: Number(form.value.quantity),
-    });
+      toWarehouseId:
+        form.value.type === "TRANSFER_OUT" ? form.value.toWarehouseId : undefined,
+    };
+    await stockMovementsService.create(payload);
     emit("created");
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Error al crear movimiento";
@@ -84,14 +102,19 @@ watch(
 
     const selected = products.value.find((p) => p.id === newProductId);
     if (!selected) return;
-
-    console.log("Producto seleccionado:", selected);
     const whId =
       (selected).warehouseId ||
       (selected).warehouses?.[0]?.id ||
       (selected).warehouse?.id ||
-      ""
+      "";
     form.value.warehouseId = whId;
+  },
+);
+
+watch(
+  () => form.value.type,
+  (type) => {
+    if (type !== "TRANSFER_OUT") form.value.toWarehouseId = "";
   },
 );
 </script>
@@ -114,7 +137,7 @@ watch(
         <v-col cols="12" md="4"
           ><v-label>Bodega *</v-label
           ><v-autocomplete
-            readonly
+            :readonly="form.type !== 'TRANSFER_OUT'"
             v-model="form.warehouseId"
             :items="warehouses"
             item-title="name"
@@ -131,10 +154,21 @@ watch(
               { title: 'Entrada IN', value: 'IN' },
               { title: 'Salida OUT', value: 'OUT' },
               { title: 'Ajuste', value: 'ADJUSTMENT' },
-              { title: 'Transferencia', value: 'TRANSFER_OUT' },
+              { title: 'Traslado entre bodegas', value: 'TRANSFER_OUT' },
             ]"
             variant="outlined"
             density="comfortable"
+        /></v-col>
+        <v-col v-if="form.type === 'TRANSFER_OUT'" cols="12" md="6"
+          ><v-label>Bodega destino *</v-label
+          ><v-autocomplete
+            v-model="form.toWarehouseId"
+            :items="destinationWarehouses"
+            item-title="name"
+            item-value="id"
+            variant="outlined"
+            density="comfortable"
+            :rules="[(v: string) => !!v || 'Selecciona la bodega destino']"
         /></v-col>
         <v-col cols="12" md="5"
           ><v-label>Cantidad *</v-label

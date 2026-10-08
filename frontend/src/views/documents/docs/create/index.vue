@@ -10,15 +10,16 @@ import {
   documentCategoriesService,
   documentTypesService,
 } from "@/services";
+import type { DocumentPayload } from "@/services/logic/document/documents.service";
 import { Save, X } from "lucide-vue-next";
 
 interface DocFormItem {
   id?: string;
   title?: string;
   description?: string;
-  folderid?: string;
-  categoryid?: string;
-  typeid?: string;
+  folderId?: string;
+  categoryId?: string;
+  typeId?: string;
   content?: string;
   expiresAt?: string;
 }
@@ -47,9 +48,9 @@ const types = ref<SelectItem[]>([]);
 const form = ref({
   title: props.item?.title || "",
   description: props.item?.description || "",
-  folderId: (props.item?.folderId as string | number) || "",
-  categoryId: (props.item?.categoryId as string | number) || "",
-  typeId: (props.item?.typeId as string | number) || "",
+  folderId: props.item?.folderId || "",
+  categoryId: props.item?.categoryId || "",
+  typeId: props.item?.typeId || "",
   content: props.item?.content || "",
   expiresAt: props.item?.expiresAt ? props.item.expiresAt.substring(0, 10) : "",
 });
@@ -59,10 +60,14 @@ async function submit() {
   if (!result?.valid) return;
   saving.value = true;
   try {
-    const payload: Record<string, unknown> = { ...form.value };
-    if (!payload.expiresAt) delete payload.expiresAt;
-    else
-      payload.expiresAt = new Date(payload.expiresAt as string).toISOString();
+    const payload: DocumentPayload = {
+      ...form.value,
+      description: form.value.description || undefined,
+      content: form.value.content || undefined,
+      expiresAt: form.value.expiresAt
+        ? new Date(form.value.expiresAt).toISOString()
+        : undefined,
+    };
     if (props.item?.id) await documentsService.update(props.item.id, payload);
     else await documentsService.create(payload);
     emit("created");

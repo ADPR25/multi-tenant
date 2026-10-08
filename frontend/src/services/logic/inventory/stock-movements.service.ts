@@ -8,16 +8,17 @@ export interface StockMovementQuery {
   type?: string;
   page?: number;
   limit?: number | string;
-  [key: string]: unknown;
+  [key: string]: string | number | boolean | null | undefined;
 }
 
 export interface StockMovementPayload {
   productId: string;
   warehouseId: string;
   quantity: number;
-  type: string;
-  reason?: string;
-  [key: string]: unknown;
+  type: "IN" | "OUT" | "ADJUSTMENT" | "TRANSFER_OUT";
+  reason: string;
+  toWarehouseId?: string;
+  referenceId?: string;
 }
 
 export interface StockMovement {

@@ -9,23 +9,25 @@ export interface DocumentQuery {
   page?: number;
   limit?: number | string;
   isActive?: boolean;
-  [key: string]: unknown;
+  [key: string]: string | number | boolean | null | undefined;
 }
 
 export interface DocumentPayload {
-  name: string;
-  folderId?: string;
-  typeId?: string;
+  title: string;
+  folderId: string;
+  typeId: string;
+  categoryId: string;
   description?: string;
+  content?: string;
+  expiresAt?: string;
   storageKey?: string;
   isActive?: boolean;
-  [key: string]: unknown;
 }
 
 export interface Document {
   id: string;
-  name: string;
-  storageKey: string;
+  title: string;
+  storageKey?: string | null;
   folderId?: string;
   isActive: boolean;
   [key: string]: unknown;
@@ -41,6 +43,11 @@ export const documentsService = {
   list(p?: DocumentQuery) {
     return api.request<DocumentsResponse>(
       `/document_management/documents/docs${buildQuery(p)}`,
+    );
+  },
+  trash(p?: DocumentQuery) {
+    return api.request<DocumentsResponse>(
+      `/document_management/documents/docs/trash${buildQuery(p)}`,
     );
   },
   getById(id: string) {
@@ -73,11 +80,17 @@ export const documentsService = {
     );
   },
   delete(id: string) {
-    return api.request<{ success: boolean }>(
+    return api.request<{ deleted: boolean; id: string }>(
       `/document_management/documents/docs/${id}`,
       {
         method: "DELETE",
       },
+    );
+  },
+  restore(id: string) {
+    return api.request<Document>(
+      `/document_management/documents/docs/${id}/restore`,
+      { method: "PATCH" },
     );
   },
   downloadUrl(storageKey: string, withToken = true) {

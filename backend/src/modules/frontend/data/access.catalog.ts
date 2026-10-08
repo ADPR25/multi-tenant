@@ -144,6 +144,24 @@ export const ACCESS_CATALOG: CatalogModule[] = [
     ],
   },
   {
+    name: "Contratación",
+    icon: "FileSignature",
+    children: [
+      {
+        path: "/contracting",
+        name: "Contratos",
+        title: "Contratación",
+        componentPath: "@/views/contracting/index.vue",
+        icon: "FileSignature",
+        permissions: [
+          "contracting:read",
+          "contracting:write",
+          "contracting:admin",
+        ],
+      },
+    ],
+  },
+  {
     name: "Documental",
     icon: "FolderArchive",
     children: [
@@ -198,6 +216,7 @@ export const ACCESS_CATALOG: CatalogModule[] = [
           "documents:docs:update",
           "documents:docs:state",
           "documents:docs:delete",
+          "documents:docs:restore",
         ],
       },
       {

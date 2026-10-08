@@ -85,6 +85,21 @@ export class DocsController {
     return this.docsService.findAll(companyId, pagination, isActive, search);
   }
 
+  @Get("trash")
+  @RequirePermissions("documents:docs:read")
+  findTrash(
+    @CurrentCompanyId() companyId: string,
+    @Query() pagination: DocsFilterDto,
+  ) {
+    return this.docsService.findTrash(companyId, pagination);
+  }
+
+  @Patch(":id/restore")
+  @RequirePermissions("documents:docs:restore")
+  restore(@Param("id") id: string, @CurrentCompanyId() companyId: string) {
+    return this.docsService.restore(id, companyId);
+  }
+
   @Get(":id")
   @RequirePermissions("documents:docs:read")
   findOne(@Param("id") id: string, @CurrentCompanyId() companyId: string) {

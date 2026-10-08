@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AdminLayout from "@/components/layout/AdminLayout.vue";
 import AppDataTable from "@/components/common/AppDataTable.vue";
+import type { FetchParams } from "@/components/common/AppDataTable.vue";
 import CreateView from "./create/index.vue";
 import { stockMovementsService } from "@/services";
 import { usePermissions } from "@/composables/usePermissions";
@@ -25,6 +26,7 @@ interface MovementWarehouse {
 interface StockMovementItem {
   product?: MovementProduct;
   warehouse?: MovementWarehouse;
+  toWarehouse?: MovementWarehouse | null;
   type?: "IN" | "OUT" | (string & {});
   quantity?: number | string;
   createdAt?: string;
@@ -32,13 +34,13 @@ interface StockMovementItem {
   previousQuantity?: number | string;
   newQuantity?: number | string;
   referenceId?: string;
-  toWarehouseid?: string;
+  toWarehouseId?: string;
   [key: string]: unknown;
 }
 
 const { can } = usePermissions();
 const mode = ref<"list" | "create">("list");
-const tableRef = ref<InstanceType<typeof AppDataTable>>();
+const tableRef = ref<{ reload: () => void } | null>(null);
 
 // Modal detalle
 const detailOpen = ref(false);
@@ -63,6 +65,14 @@ const headers = [
     width: "60px",
   },
 ];
+
+function fetchMovements(params: FetchParams) {
+  return stockMovementsService.list({
+    search: params.search,
+    page: params.page,
+    limit: params.limit,
+  });
+}
 
 function closeList() {
   mode.value = "list";
@@ -91,7 +101,7 @@ function closeList() {
       <AppDataTable
         ref="tableRef"
         :headers="headers"
-        :fetch-fn="stockMovementsService.list"
+        :fetch-fn="fetchMovements"
         search-placeholder="Buscar producto, bodega..."
       >
         <template #[`item.product`]="{ item }">
@@ -245,7 +255,7 @@ function closeList() {
               <p class="text-xs text-gray-500 uppercase">
                 Bodega Destino (Traslado)
               </p>
-              <p>{{ detailItem.toWarehouseId }}</p>
+              <p>{{ detailItem.toWarehouse?.name || detailItem.toWarehouseId }}</p>
             </div>
           </div>
         </v-card-text>

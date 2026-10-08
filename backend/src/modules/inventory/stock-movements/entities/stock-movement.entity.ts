@@ -40,5 +40,9 @@ export class StockMovement extends BaseTenantEntity {
   @Column({ name: "reference_id", type: "uuid", nullable: true })
   referenceId: string;
   @Column({ name: "to_warehouse_id", type: "uuid", nullable: true })
-  toWarehouseId: string;
+  toWarehouseId: string | null;
+
+  @ManyToOne(() => Warehouse, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "to_warehouse_id" })
+  toWarehouse: Warehouse | null;
 }

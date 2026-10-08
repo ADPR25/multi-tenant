@@ -17,5 +17,6 @@ export { default as categoriesService } from "./logic/inventory/categories.servi
 export * from "./logic/document/documents.service";
 export * from "./logic/document/types.service";
 export * from "./logic/document/folders.service";
+export * from "./logic/contracting/contracting.service";
 export { documentCategoriesService } from "./logic/document/categories.service";
 export { documentCategoriesService as documentCategoriesServiceAlias } from "./logic/document/categories.service";

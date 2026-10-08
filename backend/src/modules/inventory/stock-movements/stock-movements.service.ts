@@ -172,7 +172,7 @@ export class StockMovementsService {
 
     const [data, total] = await this.movementRepo.findAndCount({
       where,
-      relations: ["product", "warehouse"],
+      relations: ["product", "warehouse", "toWarehouse"],
       order: { createdAt: "DESC" },
       ...paginate(pagination),
     });
@@ -182,7 +182,7 @@ export class StockMovementsService {
   async findOne(id: string, companyId: string) {
     const one = await this.movementRepo.findOne({
       where: { id, companyId },
-      relations: ["product", "warehouse"],
+      relations: ["product", "warehouse", "toWarehouse"],
     });
     if (!one) throw new NotFoundException(`Movement ${id} not found`);
     return one;

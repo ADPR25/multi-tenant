@@ -3,7 +3,9 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Logger,
 } from "@nestjs/common";
+import { Cron } from "@nestjs/schedule";
 import { CreateDocDto } from "./dto/create-doc.dto";
 import { UpdateDocDto } from "./dto/update-doc.dto";
 import { PaginationDto } from "@/common/dto/pagination.dto";
@@ -12,7 +14,7 @@ import { Doc } from "./entities/doc.entity";
 import { Folder } from "../folders/entities/folder.entity";
 import { Category } from "../categories/entities/category.entity";
 import { Type } from "../types/entities/type.entity";
-import { Repository } from "typeorm";
+import { In, LessThan, Repository } from "typeorm";
 import {
   paginate,
   paginatedResponse,
@@ -26,6 +28,8 @@ type DocsFilterDto = PaginationDto & FilterDto;
 
 @Injectable()
 export class DocsService {
+  private readonly logger = new Logger(DocsService.name);
+
   constructor(
     @InjectRepository(Doc) private readonly repoService: Repository<Doc>,
     @InjectRepository(Folder) private readonly folderRepo: Repository<Folder>,
@@ -155,6 +159,31 @@ export class DocsService {
     return paginatedResponse(data, total, pagination as PaginationDto);
   }
 
+  async findTrash(companyId: string, pagination: DocsFilterDto) {
+    const { skip, take } = paginate(pagination);
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 30);
+    const qb = this.repoService
+      .createQueryBuilder("d")
+      .withDeleted()
+      .leftJoinAndSelect("d.folder", "folder")
+      .leftJoinAndSelect("d.category", "category")
+      .leftJoinAndSelect("d.type", "type")
+      .where("d.companyId = :companyId", { companyId })
+      .andWhere("d.deletedAt IS NOT NULL")
+      .andWhere("d.deletedAt >= :cutoff", { cutoff });
+
+    if (pagination.search) {
+      qb.andWhere("d.title ILIKE :search", {
+        search: `%${pagination.search}%`,
+      });
+    }
+
+    qb.orderBy("d.deletedAt", "DESC").skip(skip).take(take);
+    const [data, total] = await qb.getManyAndCount();
+    return paginatedResponse(data, total, pagination as PaginationDto);
+  }
+
   async findOne(id: string, companyId: string) {
     const doc = await this.repoService.findOne({
       where: { id, companyId },
@@ -197,8 +226,45 @@ export class DocsService {
       }
     }
 
-    if (doc.storageKey) this.uploadsService.deleteFile(doc.storageKey);
-    await this.repoService.remove(doc);
+    await this.repoService.softRemove(doc);
     return { deleted: true, id };
+  }
+
+  async restore(id: string, companyId: string) {
+    const doc = await this.repoService.findOne({
+      where: { id, companyId },
+      relations: ["folder"],
+      withDeleted: true,
+    });
+    if (!doc?.deletedAt) {
+      throw new NotFoundException("Documento no encontrado en papelera");
+    }
+
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 30);
+    if (doc.deletedAt < cutoff) {
+      throw new BadRequestException("El plazo de restauración de 30 días expiró");
+    }
+
+    await this.repoService.restore({ id, companyId });
+    return this.findOne(id, companyId);
+  }
+
+  @Cron("0 3 * * *")
+  async purgeExpiredTrash() {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 30);
+    const expired = await this.repoService.find({
+      where: { deletedAt: LessThan(cutoff) },
+      withDeleted: true,
+    });
+
+    if (expired.length === 0) return;
+    for (const doc of expired) {
+      if (doc.storageKey) this.uploadsService.deleteFile(doc.storageKey);
+    }
+
+    await this.repoService.delete({ id: In(expired.map(({ id }) => id)) });
+    this.logger.log(`Documentos purgados de papelera: ${expired.length}`);
   }
 }
