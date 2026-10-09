@@ -5,7 +5,7 @@ import {
 } from "vue-router";
 import { get } from "@/store/authstore";
 import { usePermissions } from "@/composables/usePermissions";
-import { useMenuStore } from "@/store/menu.store";
+import { useMenuStore } from "@/store/menu.store.ts";
 
 interface DynamicRoute {
   name: string;

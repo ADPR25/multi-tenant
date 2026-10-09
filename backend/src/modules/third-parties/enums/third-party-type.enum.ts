@@ -1,0 +1,7 @@
+export enum ThirdPartyType {
+  CLIENTE = "CLIENTE",
+  PROVEEDOR = "PROVEEDOR",
+  CONTRATISTA = "CONTRATISTA",
+  EMPLEADO = "EMPLEADO",
+  AMBOS = "AMBOS",
+}

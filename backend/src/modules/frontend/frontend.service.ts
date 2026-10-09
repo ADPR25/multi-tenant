@@ -105,7 +105,7 @@ export class FrontendService {
           return routes.length
             ? routes.flatMap((r) => r.permissions ?? [])
             : (mod.permissions ?? []);
-        }),
+        }).filter((n) => !!n), 
       ),
     ];
     if (!allNames.length) return;
@@ -127,6 +127,20 @@ export class FrontendService {
         ),
       );
     }
+  }
+
+  private getCatalogForPermissions(
+    source: CatalogModule[] = ACCESS_CATALOG,
+  ): CatalogModule[] {
+    return source
+      .map((mod) => {
+        if (!mod.children) {
+          return mod.permissions?.length ? mod : null;
+        }
+        const withPerms = mod.children.filter((c) => c.permissions?.length);
+        return withPerms.length ? { ...mod, children: withPerms } : null;
+      })
+      .filter((m): m is CatalogModule => m !== null);
   }
 
   async getForRole(
@@ -181,7 +195,7 @@ export class FrontendService {
 
     if (targetRole.code === "SUPER_ADMIN" && !targetCompanyId) {
       return {
-        catalog: [...ACCESS_CATALOG],
+        catalog: this.getCatalogForPermissions([...ACCESS_CATALOG]),
         allSidebar: DEFAULT_SIDEBAR,
         assignedSidebar: SUPER_ADMIN_SIDEBAR,
         allRoutes: DEFAULT_ROUTES,
@@ -206,7 +220,7 @@ export class FrontendService {
         order: { name: "ASC" },
       });
       return {
-        catalog: [...ACCESS_CATALOG],
+        catalog: this.getCatalogForPermissions([...ACCESS_CATALOG]),
         allSidebar: DEFAULT_SIDEBAR,
         assignedSidebar: target?.sidebar ?? [],
         allRoutes: DEFAULT_ROUTES,
@@ -243,13 +257,16 @@ export class FrontendService {
     const allRoutes = (DEFAULT_ROUTES as RouteItem[]).filter((r) =>
       allowedMyPaths.has(r.path),
     );
-    const catalog = ACCESS_CATALOG.map((mod) => {
+
+    const filteredAccessCatalog = ACCESS_CATALOG.map((mod) => {
       if (mod.children) {
         const filtered = mod.children.filter((c) => allowedMyPaths.has(c.path));
         return filtered.length ? { ...mod, children: filtered } : null;
       }
       return mod.path && allowedMyPaths.has(mod.path) ? mod : null;
     }).filter((m): m is CatalogModule => m !== null);
+
+    const catalog = this.getCatalogForPermissions(filteredAccessCatalog);
 
     const myPerms = await this.rolePermRepo.find({
       where: {

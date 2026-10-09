@@ -57,6 +57,25 @@ export const ACCESS_CATALOG: CatalogModule[] = [
     ],
   },
   {
+    name: "Terceros",
+    icon: "Handshake",
+    children: [
+      {
+        path: "/third-parties",
+        name: "Terceros",
+        title: "Terceros",
+        componentPath: "@/views/third-parties/index.vue",
+        icon: "UsersRound",
+        permissions: [
+          "third-parties:create",
+          "third-parties:read",
+          "third-parties:update",
+          "third-parties:state",
+        ],
+      },
+    ],
+  },
+  {
     name: "Inventario",
     icon: "Boxes",
     children: [
@@ -131,7 +150,7 @@ export const ACCESS_CATALOG: CatalogModule[] = [
         title: "Stock Actual",
         componentPath: "@/views/inventory/stocks/index.vue",
         icon: "Boxes",
-        permissions: ["inventory:stocks:create", "inventory:stocks:read"],
+        permissions: ["inventory:stocks:read"],
       },
       {
         path: "/stock-movements",
@@ -144,19 +163,41 @@ export const ACCESS_CATALOG: CatalogModule[] = [
     ],
   },
   {
+    name: "Proyectos",
+    icon: "FolderKanban",
+    children: [
+      {
+        path: "/projects",
+        name: "Proyectos",
+        title: "Proyectos",
+        componentPath: "@/views/projects/index.vue",
+        icon: "Briefcase",
+        permissions: [
+          "projects:create",
+          "projects:read",
+          "projects:update",
+          "projects:state",
+          "projects:delete",
+        ],
+      },
+    ],
+  },
+  {
     name: "Contratación",
     icon: "FileSignature",
     children: [
       {
-        path: "/contracting",
+        path: "/contracts",
         name: "Contratos",
-        title: "Contratación",
-        componentPath: "@/views/contracting/index.vue",
-        icon: "FileSignature",
+        title: "Contratos",
+        componentPath: "@/views/hiring/contracts/index.vue",
+        icon: "FileText",
         permissions: [
-          "contracting:read",
-          "contracting:write",
-          "contracting:admin",
+          "hiring:contract:create",
+          "hiring:contract:read",
+          "hiring:contract:update",
+          "hiring:contract:state",
+          "hiring:contract:delete",
         ],
       },
     ],
@@ -225,14 +266,7 @@ export const ACCESS_CATALOG: CatalogModule[] = [
         title: "Mi Drive Empresarial",
         componentPath: "@/views/documents/drive/index.vue",
         icon: "HardDrive",
-        permissions: [
-          "documents:folders:create",
-          "documents:folders:read",
-          "documents:docs:create",
-          "documents:docs:read",
-          "documents:docs:update",
-          "documents:docs:delete",
-        ],
+        permissions: [], // vista virtual, sin permisos propios
       },
     ],
   },

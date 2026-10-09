@@ -1,0 +1,8 @@
+
+export enum ContractStatus {
+  EN_ELABORACION = "EN_ELABORACION",
+  LISTO_FIRMA = "LISTO_FIRMA",
+  FIRMADO = "FIRMADO",
+  OFICIAL = "OFICIAL",
+  ANULADO = "ANULADO",
+}

@@ -213,7 +213,6 @@ const getIcon = (name?: string) => {
     Confi: "Settings2",
     Config: "Settings2",
     IAM: "ShieldCheck",
-    Contratacion: "Users",
     Documentos: "FileText",
     Inventario: "Package",
     Terceros: "Users",
