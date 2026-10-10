@@ -5,57 +5,58 @@ import { ThirdParty } from "@/modules/third-parties/entities/third-party.entity"
 import { User } from "@/core/iam/users/entities/user.entity";
 
 @Entity("projects")
-@Index(["companyId", "codigo"], { unique: true })
-@Index(["companyId", "estado"])
+@Index(["companyId", "code"], { unique: true })
+@Index(["companyId", "status"])
 export class Project extends BaseTenantEntity {
-  @Column({ length: 50 })
-  codigo!: string;
+  @Column({ name: "code", length: 50 })
+  code!: string;
 
-  @Column({ length: 200 })
-  nombre!: string;
+  @Column({ name: "name", length: 200 })
+  name!: string;
 
-  @Column({ type: "text", nullable: true })
-  descripcion!: string | null;
+  @Column({ name: "description", type: "text", nullable: true })
+  description!: string | null;
 
   @Column({
+    name: "status",
     type: "enum",
     enum: ProjectStatus,
-    default: ProjectStatus.EN_PLANEACION,
+    default: ProjectStatus.PLANNING,
   })
-  estado!: ProjectStatus;
+  status!: ProjectStatus;
 
-  @Column({ name: "fecha_inicio", type: "date", nullable: true })
-  fechaInicio!: Date | null;
+  @Column({ name: "start_date", type: "date", nullable: true })
+  startDate!: Date | null;
 
-  @Column({ name: "fecha_fin", type: "date", nullable: true })
-  fechaFin!: Date | null;
+  @Column({ name: "end_date", type: "date", nullable: true })
+  endDate!: Date | null;
 
   @Column({
-    name: "presupuesto",
+    name: "budget",
     type: "decimal",
     precision: 18,
     scale: 2,
     nullable: true,
   })
-  presupuesto!: string | null;
+  budget!: string | null;
 
-  @Column({ type: "int", default: 0 })
-  avance!: number;
+  @Column({ name: "progress", type: "int", default: 0 })
+  progress!: number;
 
-  @Column({ name: "cliente_id", type: "uuid", nullable: true })
-  clienteId!: string | null;
+  @Column({ name: "client_id", type: "uuid", nullable: true })
+  clientId!: string | null;
 
   @ManyToOne(() => ThirdParty, { onDelete: "SET NULL", nullable: true })
-  @JoinColumn({ name: "cliente_id" })
-  cliente?: ThirdParty | null;
+  @JoinColumn({ name: "client_id" })
+  client?: ThirdParty | null;
 
-  @Column({ name: "responsable_id", type: "uuid", nullable: true })
-  responsableId!: string | null;
+  @Column({ name: "responsible_id", type: "uuid", nullable: true })
+  responsibleId!: string | null;
 
   @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
-  @JoinColumn({ name: "responsable_id" })
-  responsable?: User | null;
+  @JoinColumn({ name: "responsible_id" })
+  responsible?: User | null;
 
-  @Column({ default: true })
+  @Column({ name: "is_active", default: true })
   isActive!: boolean;
 }

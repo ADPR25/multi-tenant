@@ -1,0 +1,317 @@
+.aura-dashboard-host {
+  --aura-ink: #0f1a15;
+  --aura-muted: #7a8a82;
+  --aura-line: #e3ebe5;
+  --aura-paper: #fdfefd;
+  --aura-green: #123a2e;
+  --aura-green-2: #1a5c49;
+  --aura-mint: #e9f3ec;
+  --aura-coral: #e36f55;
+  --aura-yellow: #c9a227;
+  --aura-shadow: 0 20px 50px rgba(15, 26, 21, 0.08);
+  --aura-card: 0 8px 24px rgba(15, 26, 21, 0.06);
+  max-width: 1160px;
+  margin: 28px auto;
+  color: var(--aura-ink);
+  font-family:
+    ui-sans-system,
+    -apple-system,
+    BlinkMacSystemFont,
+    "SF Pro Display",
+    "Segoe UI",
+    Inter,
+    Roboto,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.aura-dashboard {
+  background: var(--aura-paper);
+  border: 1px solid var(--aura-line);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: var(--aura-shadow);
+}
+.aura-dash-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 28px 32px 22px;
+  background: linear-gradient(180deg, #f5faf6 0%, #ffffff 100%);
+  border-bottom: 1px solid var(--aura-line);
+}
+.aura-dash-header h1 {
+  margin: 8px 0 6px;
+  font-size: 30px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.aura-dash-header p {
+  margin: 0;
+  color: var(--aura-muted);
+  font-size: 13.5px;
+  line-height: 1.5;
+  max-width: 520px;
+}
+.aura-dash-kicker {
+  color: var(--aura-coral);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+}
+.aura-dash-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.aura-dash-btn {
+  border: 1px solid var(--aura-line);
+  background: #fff;
+  color: var(--aura-green);
+  border-radius: 999px;
+  padding: 9px 14px;
+  cursor: pointer;
+  font: 600 12px/1 inherit;
+  transition: 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.aura-dash-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--aura-card);
+  border-color: #c9d8cc;
+}
+.aura-dash-btn.primary {
+  background: var(--aura-ink);
+  color: #fff;
+  border-color: var(--aura-ink);
+}
+.aura-dash-btn.green {
+  background: var(--aura-green);
+  color: #fff;
+  border-color: var(--aura-green);
+}
+.aura-dash-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  padding: 18px 32px;
+  background: #fff;
+  border-bottom: 1px solid var(--aura-line);
+}
+.aura-dash-stat {
+  background: linear-gradient(180deg, #f8fbf8, #f2f6f2);
+  border: 1px solid var(--aura-line);
+  border-radius: 14px;
+  padding: 14px 16px;
+  position: relative;
+  overflow: hidden;
+}
+.aura-dash-stat b {
+  display: block;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--aura-green);
+  line-height: 1;
+}
+.aura-dash-stat span {
+  color: var(--aura-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+}
+.aura-dash-stat:after {
+  content: "";
+  position: absolute;
+  right: -10px;
+  top: -10px;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 30%,
+    var(--aura-mint),
+    transparent 70%
+  );
+  opacity: 0.9;
+}
+.aura-dash-toolbar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 14px 32px;
+  background: #fbfdfb;
+  border-bottom: 1px solid var(--aura-line);
+  align-items: center;
+}
+.aura-dash-toolbar input {
+  padding: 9px 14px;
+  border: 1px solid var(--aura-line);
+  border-radius: 999px;
+  min-width: 260px;
+  outline: 0;
+  font: 500 13px inherit;
+  background: #fff;
+}
+.aura-dash-toolbar input:focus {
+  border-color: var(--aura-green-2);
+  box-shadow: 0 0 0 4px var(--aura-mint);
+}
+.aura-dash-body {
+  padding: 24px 32px 36px;
+  display: grid;
+  gap: 18px;
+  background: #f6f9f6;
+}
+.aura-dash-card {
+  background: #fff;
+  border: 1px solid var(--aura-line);
+  border-radius: 16px;
+  padding: 18px 18px 16px;
+  box-shadow: var(--aura-card);
+}
+.aura-dash-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+.aura-dash-card-head h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+.aura-dash-card-head small {
+  color: var(--aura-muted);
+  font-size: 11px;
+  display: block;
+  margin-top: 4px;
+  font-weight: 500;
+}
+.aura-dash-card-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.aura-chart-select {
+  border: 1px solid var(--aura-line);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font: 600 11px inherit;
+  background: #f8fbf8;
+  color: var(--aura-green);
+  cursor: pointer;
+  outline: 0;
+}
+.aura-dash-canvas {
+  width: 100%;
+  height: 240px;
+  display: block;
+  background: linear-gradient(180deg, #fbfdfb, #f7f9f7);
+  border: 1px solid #eef3ee;
+  border-radius: 12px;
+}
+.aura-dash-bar {
+  display: grid;
+  gap: 9px;
+  margin-top: 12px;
+}
+.aura-dash-bar-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  font-size: 13px;
+}
+.aura-dash-bar-track {
+  height: 8px;
+  background: #eef3ef;
+  border-radius: 999px;
+  overflow: hidden;
+  grid-column: 1 / -1;
+}
+.aura-dash-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--aura-green), var(--aura-green-2));
+  border-radius: 999px;
+  transition: width 0.5s;
+}
+.aura-dash-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.aura-dash-table th,
+.aura-dash-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #eef2ee;
+  text-align: left;
+}
+.aura-dash-table th {
+  background: #f3f7f3;
+  font-size: 10px;
+  letter-spacing: 0.6px;
+  color: var(--aura-muted);
+  text-transform: uppercase;
+}
+.aura-dash-empty {
+  padding: 28px;
+  text-align: center;
+  color: var(--aura-muted);
+  border: 1px dashed var(--aura-line);
+  border-radius: 12px;
+  background: #fff;
+}
+.aura-dash-text-list {
+  display: grid;
+  gap: 8px;
+  max-height: 300px;
+  overflow: auto;
+  padding-right: 4px;
+}
+.aura-dash-text-item {
+  padding: 10px 12px;
+  background: #f6f9f6;
+  border: 1px solid #eef3ee;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+@media (max-width: 900px) {
+  .aura-dash-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 700px) {
+  .aura-dash-header,
+  .aura-dash-stats,
+  .aura-dash-toolbar,
+  .aura-dash-body {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+@media print {
+  .aura-dash-toolbar,
+  .aura-dash-actions,
+  .aura-chart-select {
+    display: none !important;
+  }
+  .aura-dashboard {
+    box-shadow: none;
+    border: 0;
+  }
+  .aura-dash-body {
+    background: #fff;
+  }
+}

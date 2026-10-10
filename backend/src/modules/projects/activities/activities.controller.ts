@@ -27,7 +27,7 @@ export class ActivitiesController {
     @Body() dto: CreateActivityDto,
     @CurrentCompanyId() companyId: string,
   ) {
-    if (!companyId) throw new Error("companyId requerido");
+    if (!companyId) throw new Error("companyId is required");
     return this.service.create(dto, companyId);
   }
 
@@ -37,7 +37,7 @@ export class ActivitiesController {
     @Param("projectId") projectId: string,
     @CurrentCompanyId() companyId: string,
   ) {
-    if (!companyId) throw new Error("companyId requerido");
+    if (!companyId) throw new Error("companyId is required");
     return this.service.findByProject(projectId, companyId);
   }
 
@@ -47,14 +47,14 @@ export class ActivitiesController {
     @Param("phaseId") phaseId: string,
     @CurrentCompanyId() companyId: string,
   ) {
-    if (!companyId) throw new Error("companyId requerido");
+    if (!companyId) throw new Error("companyId is required");
     return this.service.findByPhase(phaseId, companyId);
   }
 
   @Get(":id")
   @RequirePermissions("projects:read")
   findOne(@Param("id") id: string, @CurrentCompanyId() companyId: string) {
-    if (!companyId) throw new Error("companyId requerido");
+    if (!companyId) throw new Error("companyId is required");
     return this.service.findOne(id, companyId);
   }
 
@@ -65,14 +65,14 @@ export class ActivitiesController {
     @Body() dto: UpdateActivityDto,
     @CurrentCompanyId() companyId: string,
   ) {
-    if (!companyId) throw new Error("companyId requerido");
+    if (!companyId) throw new Error("companyId is required");
     return this.service.update(id, dto, companyId);
   }
 
   @Delete(":id")
   @RequirePermissions("projects:delete")
   remove(@Param("id") id: string, @CurrentCompanyId() companyId: string) {
-    if (!companyId) throw new Error("companyId requerido");
+    if (!companyId) throw new Error("companyId is required");
     return this.service.remove(id, companyId);
   }
 }

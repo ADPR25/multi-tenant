@@ -23,6 +23,7 @@ import {
   Pencil,
   Key,
   Power,
+  FileCheck,
 } from "lucide-vue-next";
 
 const props = defineProps({ role: Object });
@@ -51,6 +52,7 @@ const ACTION_LABELS = {
   delete: { label: "Eliminar", icon: Trash2 },
   "assign-permissions": { label: "Asignar", icon: Key },
   inactive: { label: "Activar/Inactivar", icon: Power },
+  revisor: { label: "Revisor", icon: FileCheck }, 
 };
 
 const resourceMap = computed(() => {

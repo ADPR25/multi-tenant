@@ -9,6 +9,7 @@ import {
   Min,
 } from "class-validator";
 import { ProjectStatus } from "../../enums/project-status.enum";
+
 export class CreateActivityDto {
   @IsUUID()
   projectId!: string;
@@ -18,30 +19,30 @@ export class CreateActivityDto {
 
   @IsString()
   @MaxLength(200)
-  nombre!: string;
+  name!: string;
 
   @IsOptional()
   @IsString()
-  descripcion?: string | null;
+  description?: string | null;
 
   @IsOptional()
   @IsInt()
   @Min(0)
-  orden?: number;
+  sortOrder?: number;
 
   @IsOptional()
   @IsEnum(ProjectStatus)
-  estado?: ProjectStatus;
+  status?: ProjectStatus;
 
   @IsOptional()
   @IsUUID()
-  responsableId?: string | null;
+  responsibleId?: string | null;
 
   @IsOptional()
   @IsDateString()
-  fechaInicio?: string | null;
+  startDate?: string | null;
 
   @IsOptional()
   @IsDateString()
-  fechaFin?: string | null;
+  endDate?: string | null;
 }

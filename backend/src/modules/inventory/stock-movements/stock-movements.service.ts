@@ -26,7 +26,7 @@ export class StockMovementsService {
 
   async create(dto: CreateStockMovementDto, companyId: string) {
     if (dto.toWarehouseId && dto.toWarehouseId === dto.warehouseId) {
-      throw new BadRequestException("No puedes transferir a la misma bodega");
+      throw new BadRequestException("You cannot transfer to the same warehouse");
     }
 
     const queryRunner = this.dataSource.createQueryRunner();
@@ -37,12 +37,12 @@ export class StockMovementsService {
         where: { id: dto.productId, companyId },
       });
       if (!product)
-        throw new NotFoundException(`Producto ${dto.productId} no existe`);
+        throw new NotFoundException(`Product ${dto.productId} does not exist`);
       const warehouse = await queryRunner.manager.findOne(Warehouse, {
         where: { id: dto.warehouseId, companyId, isActive: true },
       });
       if (!warehouse)
-        throw new NotFoundException(`Bodega ${dto.warehouseId} no existe`);
+        throw new NotFoundException(`Warehouse ${dto.warehouseId} does not exist`);
 
       if (dto.toWarehouseId) {
         const destWh = await queryRunner.manager.findOne(Warehouse, {
@@ -50,11 +50,11 @@ export class StockMovementsService {
         });
         if (!destWh)
           throw new NotFoundException(
-            `Bodega destino ${dto.toWarehouseId} no existe`,
+            `Destination warehouse ${dto.toWarehouseId} does not exist`,
           );
       }
 
-      // LOCK PESIMISTA - evita race condition
+      // PESSIMISTIC LOCK - prevents race condition
       let stock = await queryRunner.manager.findOne(Stock, {
         where: {
           companyId,
@@ -88,7 +88,7 @@ export class StockMovementsService {
       ) {
         if (previousQuantity < dto.quantity) {
           throw new BadRequestException(
-            `Stock insuficiente. Disponible: ${previousQuantity}, solicitado: ${dto.quantity}`,
+            `Insufficient stock. Available: ${previousQuantity}, requested: ${dto.quantity}`,
           );
         }
         newQuantity = previousQuantity - dto.quantity;
@@ -114,7 +114,7 @@ export class StockMovementsService {
       const savedMovement = await queryRunner.manager.save(movement);
 
       if (dto.type === MovementType.TRANSFER_OUT && dto.toWarehouseId) {
-        // TRANSFER IN atómico
+        // Atomic TRANSFER IN
         let destStock = await queryRunner.manager.findOne(Stock, {
           where: {
             companyId,
@@ -143,7 +143,7 @@ export class StockMovementsService {
           quantity: dto.quantity,
           previousQuantity: prev,
           newQuantity: destStock.quantity,
-          reason: `Transferencia desde ${dto.warehouseId} - ${dto.reason}`,
+          reason: `Transfer from ${dto.warehouseId} - ${dto.reason}`,
           referenceId: dto.referenceId,
           toWarehouseId: dto.warehouseId,
         });

@@ -30,7 +30,7 @@ export class FoldersService {
         where: { id: dto.parentId, companyId, isActive: true },
       });
       if (!parent)
-        throw new NotFoundException(`Carpeta padre ${dto.parentId} no existe`);
+        throw new NotFoundException(`Parent folder ${dto.parentId} does not exist`);
     }
     const data = this.repo.create({
       ...dto,
@@ -46,7 +46,7 @@ export class FoldersService {
     user: CurrentUserPayload,
   ) {
     const userId = user.id || user.sub;
-    if (!userId) throw new NotFoundException("Usuario no identificado");
+    if (!userId) throw new NotFoundException("User not identified");
 
     const userSelected = await this.userService.findOne(userId, companyId);
     const fullName =
@@ -55,11 +55,11 @@ export class FoldersService {
     const exists = await this.repo.findOne({
       where: { companyId, parentId, name: fullName },
     });
-    if (exists) throw new ConflictException(`Ya tienes tu carpeta ${fullName}`);
+    if (exists) throw new ConflictException(`You already have your folder ${fullName}`);
 
     const data = this.repo.create({
       name: fullName,
-      description: `Documentos de ${fullName}`,
+      description: `Documents of ${fullName}`,
       parentId,
       companyId,
       ownerFolderName: fullName,
@@ -122,7 +122,7 @@ export class FoldersService {
 
   async findOne(id: string, companyId: string) {
     const folder = await this.repo.findOne({ where: { id, companyId } });
-    if (!folder) throw new NotFoundException(`folder ${id} not found`);
+    if (!folder) throw new NotFoundException(`Folder ${id} not found`);
     return folder;
   }
 
@@ -148,15 +148,15 @@ export class FoldersService {
     if (dto.parentId) {
       if (dto.parentId === id)
         throw new BadRequestException(
-          "Una carpeta no puede ser su propio padre",
+          "A folder cannot be its own parent",
         );
       const willBeCycle = await this.isDescendant(dto.parentId, id, companyId);
-      if (willBeCycle) throw new BadRequestException("Ciclo detectado");
+      if (willBeCycle) throw new BadRequestException("Cycle detected");
       const parent = await this.repo.findOne({
         where: { id: dto.parentId, companyId },
       });
       if (!parent)
-        throw new NotFoundException(`Carpeta padre ${dto.parentId} no existe`);
+        throw new NotFoundException(`Parent folder ${dto.parentId} does not exist`);
     }
     const folder = await this.findOne(id, companyId);
     Object.assign(folder, dto);

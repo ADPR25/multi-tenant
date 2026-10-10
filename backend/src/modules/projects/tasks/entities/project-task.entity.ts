@@ -9,7 +9,7 @@ import { TaskStatus, TaskPriority } from "../../enums/task-status.enum";
 @Entity("project_tasks")
 @Index(["companyId", "activityId"])
 @Index(["companyId", "projectId"])
-@Index(["companyId", "estado"])
+@Index(["companyId", "status"])
 export class ProjectTask extends BaseTenantEntity {
   @Column({ name: "project_id", type: "uuid" })
   projectId!: string;
@@ -32,49 +32,49 @@ export class ProjectTask extends BaseTenantEntity {
   @JoinColumn({ name: "activity_id" })
   activity?: ProjectActivity;
 
-  @Column({ length: 200 })
-  titulo!: string;
+  @Column({ name: "title", length: 200 })
+  title!: string;
 
-  @Column({ type: "text", nullable: true })
-  descripcion!: string | null;
+  @Column({ name: "description", type: "text", nullable: true })
+  description!: string | null;
 
-  @Column({ type: "enum", enum: TaskStatus, default: TaskStatus.TODO })
-  estado!: TaskStatus;
+  @Column({ name: "status", type: "enum", enum: TaskStatus, default: TaskStatus.TODO })
+  status!: TaskStatus;
 
-  @Column({ type: "enum", enum: TaskPriority, default: TaskPriority.MEDIUM })
-  prioridad!: TaskPriority;
+  @Column({ name: "priority", type: "enum", enum: TaskPriority, default: TaskPriority.MEDIUM })
+  priority!: TaskPriority;
 
-  @Column({ name: "responsable_id", type: "uuid", nullable: true })
-  responsableId!: string | null;
+  @Column({ name: "responsible_id", type: "uuid", nullable: true })
+  responsibleId!: string | null;
 
   @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
-  @JoinColumn({ name: "responsable_id" })
-  responsable?: User | null;
+  @JoinColumn({ name: "responsible_id" })
+  responsible?: User | null;
 
-  @Column({ name: "fecha_vencimiento", type: "date", nullable: true })
-  fechaVencimiento!: Date | null;
+  @Column({ name: "due_date", type: "date", nullable: true })
+  dueDate!: Date | null;
 
   @Column({
-    name: "horas_estimadas",
+    name: "estimated_hours",
     type: "decimal",
     precision: 10,
     scale: 2,
     nullable: true,
   })
-  horasEstimadas!: string | null;
+  estimatedHours!: string | null;
 
   @Column({
-    name: "horas_reales",
+    name: "actual_hours",
     type: "decimal",
     precision: 10,
     scale: 2,
     nullable: true,
   })
-  horasReales!: string | null;
+  actualHours!: string | null;
 
-  @Column({ type: "int", default: 0 })
-  orden!: number;
+  @Column({ name: "sort_order", type: "int", default: 0 })
+  sortOrder!: number;
 
-  @Column({ default: true })
+  @Column({ name: "is_active", default: true })
   isActive!: boolean;
 }

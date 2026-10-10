@@ -14,7 +14,7 @@ export class PaginationDto {
     return Number(value);
   })
   @ValidateIf((o: PaginationDto) => o.limit !== "all")
-  @IsInt({ message: "El límite debe ser un número entero o 'all'" })
+  @IsInt({ message: "Limit must be an integer or 'all'" })
   @Min(1)
   limit: number | "all" = 20;
 

@@ -9,6 +9,7 @@ import {
   Min,
 } from "class-validator";
 import { TaskStatus, TaskPriority } from "../../enums/task-status.enum";
+
 export class CreateTaskDto {
   @IsUUID()
   projectId!: string;
@@ -22,38 +23,38 @@ export class CreateTaskDto {
 
   @IsString()
   @MaxLength(200)
-  titulo!: string;
+  title!: string;
 
   @IsOptional()
   @IsString()
-  descripcion?: string | null;
+  description?: string | null;
 
   @IsOptional()
   @IsEnum(TaskStatus)
-  estado?: TaskStatus;
+  status?: TaskStatus;
 
   @IsOptional()
   @IsEnum(TaskPriority)
-  prioridad?: TaskPriority;
+  priority?: TaskPriority;
 
   @IsOptional()
   @IsUUID()
-  responsableId?: string | null;
+  responsibleId?: string | null;
 
   @IsOptional()
   @IsDateString()
-  fechaVencimiento?: string | null;
+  dueDate?: string | null;
 
   @IsOptional()
   @IsString()
-  horasEstimadas?: string | null;
+  estimatedHours?: string | null;
 
   @IsOptional()
   @IsString()
-  horasReales?: string | null;
+  actualHours?: string | null;
 
   @IsOptional()
   @IsInt()
   @Min(0)
-  orden?: number;
+  sortOrder?: number;
 }

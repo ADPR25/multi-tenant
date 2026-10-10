@@ -37,7 +37,7 @@ export class ProductsService {
     @InjectRepository(Warehouse)
     private readonly warehouseRepo: Repository<Warehouse>,
     private readonly dataSource: DataSource,
-  ) { }
+  ) {}
 
   private getStockRepo(): Repository<Stock> {
     return this.dataSource.getRepository(Stock);
@@ -51,7 +51,7 @@ export class ProductsService {
       where: { companyId, sku: createProductDto.sku },
     });
     if (skuExists) {
-      throw new ConflictException(`SKU ${createProductDto.sku} ya existe`);
+      throw new ConflictException(`SKU ${createProductDto.sku} already exists`);
     }
 
     if (createProductDto.brandId) {
@@ -60,7 +60,7 @@ export class ProductsService {
       });
       if (!brand) {
         throw new NotFoundException(
-          `Brand ${createProductDto.brandId} no existe`,
+          `Brand ${createProductDto.brandId} does not exist`,
         );
       }
     }
@@ -71,7 +71,7 @@ export class ProductsService {
       });
       if (!category) {
         throw new NotFoundException(
-          `Category ${createProductDto.categoryId} no existe`,
+          `Category ${createProductDto.categoryId} does not exist`,
         );
       }
     }
@@ -80,7 +80,9 @@ export class ProductsService {
       where: { id: createProductDto.uomId, companyId },
     });
     if (!uom) {
-      throw new NotFoundException(`UoM ${createProductDto.uomId} no existe`);
+      throw new NotFoundException(
+        `UoM ${createProductDto.uomId} does not exist`,
+      );
     }
 
     const effectiveWarehouseId = createProductDto.warehouseId ?? null;
@@ -95,7 +97,9 @@ export class ProductsService {
         },
       });
       if (!wh) {
-        throw new NotFoundException(`Bodega ${effectiveWarehouseId} no existe`);
+        throw new NotFoundException(
+          `Warehouse ${effectiveWarehouseId} does not exist`,
+        );
       }
       targetWarehouses = [wh];
     } else {
@@ -109,7 +113,6 @@ export class ProductsService {
     await queryRunner.startTransaction();
 
     try {
-      // FIX 113: renombrado a _warehouseId para que el linter lo ignore
       const { warehouseId: _warehouseId, ...productData } = createProductDto;
 
       const product = queryRunner.manager.create(Product, {
@@ -140,17 +143,13 @@ export class ProductsService {
     } catch (error) {
       await queryRunner.rollbackTransaction();
       if (error instanceof Error) throw error;
-      throw new Error("Error desconocido al crear producto");
+      throw new Error("Unknown error while creating product");
     } finally {
       await queryRunner.release();
     }
   }
 
-  async findAll(
-    companyId: string,
-    pagination: PaginationDto,
-    state?: boolean,
-  ) {
+  async findAll(companyId: string, pagination: PaginationDto, state?: boolean) {
     const [data, total] = await this.repo.findAndCount({
       where: {
         companyId,
@@ -204,7 +203,7 @@ export class ProductsService {
       relations: { brand: true, category: true, uom: true },
     });
     if (!product) {
-      throw new NotFoundException(`Product con id ${id} no encontrado`);
+      throw new NotFoundException(`Product with id ${id} not found`);
     }
 
     const stockRepo = this.getStockRepo();
@@ -231,7 +230,7 @@ export class ProductsService {
       where: { id, companyId },
     });
     if (!product) {
-      throw new NotFoundException(`Product con id ${id} no encontrado`);
+      throw new NotFoundException(`Product with id ${id} not found`);
     }
     return product;
   }
@@ -248,7 +247,7 @@ export class ProductsService {
         where: { companyId, sku: dto.sku },
       });
       if (skuExists) {
-        throw new ConflictException(`SKU ${dto.sku} ya existe`);
+        throw new ConflictException(`SKU ${dto.sku} already exists`);
       }
     }
 
@@ -260,7 +259,7 @@ export class ProductsService {
       });
       if (!newWh) {
         throw new NotFoundException(
-          `Bodega ${effectiveWarehouseId} no existe`,
+          `Warehouse ${effectiveWarehouseId} does not exist`,
         );
       }
 
@@ -313,7 +312,7 @@ export class ProductsService {
       } catch (error) {
         await queryRunner.rollbackTransaction();
         if (error instanceof Error) throw error;
-        throw new Error("Error desconocido al actualizar producto");
+        throw new Error("Unknown error while updating product");
       } finally {
         await queryRunner.release();
       }

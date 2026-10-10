@@ -16,14 +16,14 @@ export class ActivitiesService {
     const entity = this.repo.create({
       projectId: dto.projectId,
       phaseId: dto.phaseId,
-      nombre: dto.nombre,
+      name: dto.name,
       companyId,
-      descripcion: dto.descripcion ?? null,
-      orden: dto.orden ?? 0,
-      estado: dto.estado,
-      responsableId: dto.responsableId ?? null,
-      fechaInicio: dto.fechaInicio ? new Date(dto.fechaInicio) : null,
-      fechaFin: dto.fechaFin ? new Date(dto.fechaFin) : null,
+      description: dto.description ?? null,
+      sortOrder: dto.sortOrder ?? 0,
+      status: dto.status,
+      responsibleId: dto.responsibleId ?? null,
+      startDate: dto.startDate ? new Date(dto.startDate) : null,
+      endDate: dto.endDate ? new Date(dto.endDate) : null,
     });
     return this.repo.save(entity);
   }
@@ -31,36 +31,36 @@ export class ActivitiesService {
   async findByProject(projectId: string, companyId: string): Promise<ProjectActivity[]> {
     return this.repo.find({
       where: { projectId, companyId },
-      order: { orden: "ASC", createdAt: "ASC" },
+      order: { sortOrder: "ASC", createdAt: "ASC" },
     });
   }
 
   async findByPhase(phaseId: string, companyId: string): Promise<ProjectActivity[]> {
     return this.repo.find({
       where: { phaseId, companyId },
-      order: { orden: "ASC" },
+      order: { sortOrder: "ASC" },
     });
   }
 
   async findOne(id: string, companyId: string): Promise<ProjectActivity> {
-    const e = await this.repo.findOne({ where: { id, companyId } });
-    if (!e) throw new NotFoundException(`Actividad ${id} no encontrada`);
-    return e;
+    const entity = await this.repo.findOne({ where: { id, companyId } });
+    if (!entity) throw new NotFoundException(`Activity ${id} not found`);
+    return entity;
   }
 
   async update(id: string, dto: UpdateActivityDto, companyId: string): Promise<ProjectActivity> {
-    const e = await this.findOne(id, companyId);
-    Object.assign(e, {
+    const entity = await this.findOne(id, companyId);
+    Object.assign(entity, {
       ...dto,
-      ...(dto.fechaInicio !== undefined ? { fechaInicio: dto.fechaInicio ? new Date(dto.fechaInicio) : null } : {}),
-      ...(dto.fechaFin !== undefined ? { fechaFin: dto.fechaFin ? new Date(dto.fechaFin) : null } : {}),
+      ...(dto.startDate !== undefined ? { startDate: dto.startDate ? new Date(dto.startDate) : null } : {}),
+      ...(dto.endDate !== undefined ? { endDate: dto.endDate ? new Date(dto.endDate) : null } : {}),
     });
-    return this.repo.save(e);
+    return this.repo.save(entity);
   }
 
   async remove(id: string, companyId: string): Promise<{ message: string }> {
-    const e = await this.findOne(id, companyId);
-    await this.repo.remove(e);
-    return { message: `Actividad ${id} eliminada` };
+    const entity = await this.findOne(id, companyId);
+    await this.repo.remove(entity);
+    return { message: `Activity ${id} deleted` };
   }
 }

@@ -33,7 +33,7 @@ export class ProjectsController {
     @Body() dto: CreateProjectDto,
     @CurrentCompanyId() companyId: string,
   ): Promise<Project> {
-    if (!companyId) throw new Error("companyId requerido");
+    if (!companyId) throw new Error("companyId is required");
     return this.service.create(dto, companyId);
   }
 
@@ -44,7 +44,7 @@ export class ProjectsController {
     @Query() pagination: PaginationDto,
     @Query("search") search?: string,
   ): Promise<PaginatedResponseDto<Project>> {
-    if (!companyId) throw new Error("companyId requerido");
+    if (!companyId) throw new Error("companyId is required");
     return this.service.findAll(companyId, pagination, search);
   }
 
@@ -54,7 +54,7 @@ export class ProjectsController {
     @Param("id") id: string,
     @CurrentCompanyId() companyId: string,
   ): Promise<Project> {
-    if (!companyId) throw new Error("companyId requerido");
+    if (!companyId) throw new Error("companyId is required");
     return this.service.toggleActive(id, companyId);
   }
 
@@ -64,7 +64,7 @@ export class ProjectsController {
     @Param("id") id: string,
     @CurrentCompanyId() companyId: string,
   ): Promise<Project> {
-    if (!companyId) throw new Error("companyId requerido");
+    if (!companyId) throw new Error("companyId is required");
     return this.service.findOne(id, companyId);
   }
 
@@ -75,7 +75,7 @@ export class ProjectsController {
     @Body() dto: UpdateProjectDto,
     @CurrentCompanyId() companyId: string,
   ): Promise<Project> {
-    if (!companyId) throw new Error("companyId requerido");
+    if (!companyId) throw new Error("companyId is required");
     return this.service.update(id, dto, companyId);
   }
 
@@ -85,7 +85,7 @@ export class ProjectsController {
     @Param("id") id: string,
     @CurrentCompanyId() companyId: string,
   ): Promise<{ message: string }> {
-    if (!companyId) throw new Error("companyId requerido");
+    if (!companyId) throw new Error("companyId is required");
     return this.service.remove(id, companyId);
   }
 }

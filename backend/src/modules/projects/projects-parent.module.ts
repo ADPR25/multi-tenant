@@ -4,21 +4,21 @@ import { ProjectsModule } from "./projects/projects.module";
 import { PhasesModule } from "./phases/phases.module";
 import { ActivitiesModule } from "./activities/activities.module";
 import { TasksModule } from "./tasks/tasks.module";
-// import { SurveysModule } from "./surveys/surveys.module";
+import { SurveyModule } from "./survey/survey.module";
 
 @Module({
   imports: [
+    SurveyModule,
     ProjectsModule,
     PhasesModule,
     ActivitiesModule,
     TasksModule,
-    // SurveysModule,
     RouterModule.register([
-      { path: "", module: ProjectsModule },
+      { path: "projects", module: SurveyModule },
       { path: "projects", module: PhasesModule },
       { path: "projects", module: ActivitiesModule },
       { path: "projects", module: TasksModule },
-      // { path: "projects", module: SurveysModule },
+      { path: "", module: ProjectsModule },
     ]),
   ],
   exports: [
@@ -26,7 +26,7 @@ import { TasksModule } from "./tasks/tasks.module";
     PhasesModule,
     ActivitiesModule,
     TasksModule,
-    // SurveysModule
+    SurveyModule,
   ],
 })
 export class ProjectsParentModule {}

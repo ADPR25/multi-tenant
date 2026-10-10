@@ -26,7 +26,7 @@ export class TasksController {
   @Post()
   @RequirePermissions("projects:create")
   create(@Body() dto: CreateTaskDto, @CurrentCompanyId() companyId: string) {
-    if (!companyId) throw new Error("companyId requerido");
+    if (!companyId) throw new Error("companyId is required");
     return this.service.create(dto, companyId);
   }
 
@@ -37,7 +37,7 @@ export class TasksController {
     @CurrentCompanyId() companyId: string,
     @Query() query: FilterDto,
   ) {
-    if (!companyId) throw new Error("companyId requerido");
+    if (!companyId) throw new Error("companyId is required");
     return this.service.findByProject(projectId, companyId, query);
   }
 
@@ -47,21 +47,21 @@ export class TasksController {
     @Param("activityId") activityId: string,
     @CurrentCompanyId() companyId: string,
   ) {
-    if (!companyId) throw new Error("companyId requerido");
+    if (!companyId) throw new Error("companyId is required");
     return this.service.findByActivity(activityId, companyId);
   }
 
   @Patch("active/:id")
   @RequirePermissions("projects:state")
   toggleActive(@Param("id") id: string, @CurrentCompanyId() companyId: string) {
-    if (!companyId) throw new Error("companyId requerido");
+    if (!companyId) throw new Error("companyId is required");
     return this.service.toggleActive(id, companyId);
   }
 
   @Get(":id")
   @RequirePermissions("projects:read")
   findOne(@Param("id") id: string, @CurrentCompanyId() companyId: string) {
-    if (!companyId) throw new Error("companyId requerido");
+    if (!companyId) throw new Error("companyId is required");
     return this.service.findOne(id, companyId);
   }
 
@@ -72,14 +72,14 @@ export class TasksController {
     @Body() dto: UpdateTaskDto,
     @CurrentCompanyId() companyId: string,
   ) {
-    if (!companyId) throw new Error("companyId requerido");
+    if (!companyId) throw new Error("companyId is required");
     return this.service.update(id, dto, companyId);
   }
 
   @Delete(":id")
   @RequirePermissions("projects:delete")
   remove(@Param("id") id: string, @CurrentCompanyId() companyId: string) {
-    if (!companyId) throw new Error("companyId requerido");
+    if (!companyId) throw new Error("companyId is required");
     return this.service.remove(id, companyId);
   }
 }

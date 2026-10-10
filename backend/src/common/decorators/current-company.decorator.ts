@@ -25,7 +25,7 @@ export const CurrentCompanyId = createParamDecorator(
     const request = ctx.switchToHttp().getRequest<RequestWithUser>();
     const user = request.user;
 
-    if (!user) throw new UnauthorizedException("Usuario no autenticado");
+    if (!user) throw new UnauthorizedException("User not authenticated");
 
     const isSuper =
       user.roleCode === "SUPER_ADMIN" ||
@@ -38,7 +38,7 @@ export const CurrentCompanyId = createParamDecorator(
 
     const companyId = user.companyId;
     if (!companyId) {
-      throw new UnauthorizedException("companyId no presente en token");
+      throw new UnauthorizedException("companyId not present in token");
     }
     return companyId;
   },
@@ -55,7 +55,7 @@ export const CurrentUser = createParamDecorator(
   (data: unknown, ctx: ExecutionContext): CurrentUserPayload => {
     const request = ctx.switchToHttp().getRequest<RequestWithUser>();
     if (!request.user) {
-      throw new UnauthorizedException("Usuario no autenticado");
+      throw new UnauthorizedException("User not authenticated");
     }
     return request.user;
   },

@@ -20,11 +20,11 @@ import {
 } from "@/common/helpers/pagination.helper";
 
 interface SignData {
-  firma: string;
-  firmaHash: string;
-  firmaIp: string;
-  firmaMetodo: string;
-  firmaMetadata: Record<string, unknown>;
+  signature: string;
+  signatureHash: string;
+  signatureIp: string;
+  signatureMethod: string;
+  signatureMetadata: Record<string, unknown>;
 }
 
 @Injectable()
@@ -38,9 +38,10 @@ export class ContractsService {
   async create(dto: CreateContractDto, companyId: string): Promise<Contract> {
     await this.thirdPartiesService.findOne(dto.thirdPartyId, companyId);
     const exists = await this.repo.findOne({
-      where: { companyId, codigo: dto.codigo },
+      where: { companyId, code: dto.code },
     });
-    if (exists) throw new ConflictException(`Contrato ${dto.codigo} ya existe`);
+    if (exists)
+      throw new ConflictException(`Contract ${dto.code} already exists`);
     const data = this.repo.create({ ...dto, companyId });
     return this.repo.save(data);
   }
@@ -75,7 +76,7 @@ export class ContractsService {
       .leftJoinAndSelect("contract.supervisor", "supervisor")
       .where("contract.companyId = :companyId", { companyId })
       .andWhere(
-        "(contract.codigo ILIKE :search OR contract.numeroContrato ILIKE :search OR contract.objeto ILIKE :search)",
+        "(contract.code ILIKE :search OR contract.contractNumber ILIKE :search OR contract.purpose ILIKE :search)",
         { search: `%${search}%` },
       )
       .orderBy("contract.createdAt", "DESC")
@@ -91,7 +92,7 @@ export class ContractsService {
       where: { id, companyId },
       relations: ["thirdParty", "supervisor"],
     });
-    if (!one) throw new NotFoundException(`Contrato ${id} no encontrado`);
+    if (!one) throw new NotFoundException(`Contract ${id} not found`);
     return one;
   }
 
@@ -104,12 +105,12 @@ export class ContractsService {
     if (dto.thirdPartyId && dto.thirdPartyId !== entity.thirdPartyId) {
       await this.thirdPartiesService.findOne(dto.thirdPartyId, companyId);
     }
-    if (dto.codigo && dto.codigo !== entity.codigo) {
+    if (dto.code && dto.code !== entity.code) {
       const exists = await this.repo.findOne({
-        where: { companyId, codigo: dto.codigo },
+        where: { companyId, code: dto.code },
       });
       if (exists)
-        throw new ConflictException(`Contrato ${dto.codigo} ya existe`);
+        throw new ConflictException(`Contract ${dto.code} already exists`);
     }
     Object.assign(entity, dto);
     return this.repo.save(entity);
@@ -121,7 +122,7 @@ export class ContractsService {
     companyId: string,
   ): Promise<Contract> {
     const entity = await this.findOne(id, companyId);
-    entity.estado = status;
+    entity.status = status;
     return this.repo.save(entity);
   }
 
@@ -134,25 +135,24 @@ export class ContractsService {
   async remove(id: string, companyId: string): Promise<{ message: string }> {
     const entity = await this.findOne(id, companyId);
     await this.repo.remove(entity);
-    return { message: `Contrato ${id} eliminado` };
+    return { message: `Contract ${id} deleted` };
   }
 
   async markAsSigned(
-    codigo: string,
+    code: string,
     signData: SignData,
     companyId: string,
   ): Promise<Contract> {
-    const contract = await this.repo.findOne({ where: { codigo, companyId } });
-    if (!contract)
-      throw new NotFoundException(`Contrato ${codigo} no encontrado`);
-    contract.firma = signData.firma;
-    contract.firmaHash = signData.firmaHash;
-    contract.firmaIp = signData.firmaIp;
-    contract.firmaMetodo = signData.firmaMetodo;
-    contract.firmaMetadata = signData.firmaMetadata;
-    contract.firmadoEn = new Date();
-    contract.estado = ContractStatus.FIRMADO;
-    contract.estadoFirma = "firmado";
+    const contract = await this.repo.findOne({ where: { code, companyId } });
+    if (!contract) throw new NotFoundException(`Contract ${code} not found`);
+    contract.signature = signData.signature;
+    contract.signatureHash = signData.signatureHash;
+    contract.signatureIp = signData.signatureIp;
+    contract.signatureMethod = signData.signatureMethod;
+    contract.signatureMetadata = signData.signatureMetadata;
+    contract.signedAt = new Date();
+    contract.status = ContractStatus.SIGNED;
+    contract.signatureStatus = "signed";
     return this.repo.save(contract);
   }
 }

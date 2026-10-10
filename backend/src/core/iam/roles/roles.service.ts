@@ -30,7 +30,7 @@ export class RolesService {
   async create(dto: CreateRoleDto & { companyId: string }) {
     return this.dataSource.transaction(async (manager) => {
       const code = this.getCode(dto);
-      if (!code) throw new ConflictException("El código del rol no es válido");
+      if (!code) throw new ConflictException("Role code is not valid");
 
       const exists = await manager.findOne(Role, {
         where: [
@@ -39,7 +39,7 @@ export class RolesService {
         ],
       });
       if (exists)
-        throw new ConflictException(`El rol ${dto.name} / ${code} ya existe`);
+        throw new ConflictException(`Role ${dto.name} / ${code} already exists`);
 
       if (dto.isPrincipal) {
         await manager.update(
@@ -69,14 +69,14 @@ export class RolesService {
 
   async findOne(id: string, companyId: string) {
     const role = await this.repo.findOne({ where: { id, companyId } });
-    if (!role) throw new NotFoundException("Rol no encontrado");
+    if (!role) throw new NotFoundException(`Role ${id} not found`);
     return role;
   }
 
   async update(id: string, companyId: string, dto: UpdateRoleDto) {
     return this.dataSource.transaction(async (manager) => {
       const role = await manager.findOne(Role, { where: { id, companyId } });
-      if (!role) throw new NotFoundException("Rol no encontrado");
+      if (!role) throw new NotFoundException(`Role ${id} not found`);
 
       if (dto.name || dto.code) {
         const newCode = this.getCode({
@@ -87,7 +87,7 @@ export class RolesService {
           where: { companyId, code: newCode },
         });
         if (conflict && conflict.id !== id) {
-          throw new ConflictException(`El código ${newCode} ya existe`);
+          throw new ConflictException(`Code ${newCode} already exists`);
         }
         role.code = newCode;
       }
@@ -125,7 +125,7 @@ export class RolesService {
         companyId,
         name: "SUPER ADMIN",
         code: "SUPER_ADMIN",
-        description: "Rol con acceso total al sistema",
+        description: "Role with full system access",
         isPrincipal: true,
         isActive: true,
       });

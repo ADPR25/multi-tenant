@@ -76,22 +76,22 @@ export class AuthService {
     const user = await this.usersService.findByDocumentNumber(
       dto.document_number,
     );
-    if (!user) throw new UnauthorizedException("Credenciales inválidas");
-    if (!user.isActive) throw new UnauthorizedException("Usuario inactivo");
+    if (!user) throw new UnauthorizedException("Invalid credentials");
+    if (!user.isActive) throw new UnauthorizedException("Inactive user");
     if (!user.roleId)
-      throw new UnauthorizedException("Usuario sin rol asignado");
+      throw new UnauthorizedException("Usuario No role assigned");
 
     const isValid = await bcrypt.compare(dto.password, user.password);
-    if (!isValid) throw new UnauthorizedException("Credenciales inválidas");
+    if (!isValid) throw new UnauthorizedException("Invalid credentials");
 
     const role = await this.roleRepo.findOne({ where: { id: user.roleId } });
     if (!role || !role.isActive)
-      throw new UnauthorizedException("Rol inactivo");
+      throw new UnauthorizedException("Rol inactive");
 
     const isSuperAdmin = role.code === "SUPER_ADMIN";
     if (!isSuperAdmin) {
       if (!user.companyId)
-        throw new UnauthorizedException("Usuario sin empresa asignada");
+        throw new UnauthorizedException("User without company assigned");
       const company = await this.companyRepo.findOne({
         where: { id: user.companyId },
       });
@@ -148,12 +148,12 @@ export class AuthService {
   async refresh(refreshToken: string): Promise<RefreshResponseDto> {
     const [sessionId, secret] = refreshToken.split(".");
     if (!sessionId || !secret)
-      throw new UnauthorizedException("Refresh inválido");
+      throw new UnauthorizedException("Refresh Invalid");
 
     const session = await this.sessionRepo.findOne({
       where: { id: sessionId },
     });
-    if (!session) throw new UnauthorizedException("Refresh inválido");
+    if (!session) throw new UnauthorizedException("Refresh Invalid");
 
     if (session.revoked) {
       await this.sessionRepo.update(
@@ -161,14 +161,14 @@ export class AuthService {
         { revoked: true, revokedReason: "reuse_detected" },
       );
       throw new UnauthorizedException(
-        "Refresh revocado por seguridad - posible robo",
+        "Refresh Revoked for security",
       );
     }
     if (session.expiresAt < new Date())
-      throw new UnauthorizedException("Refresh expirado");
+      throw new UnauthorizedException("Expired refresh token");
 
     const isValid = await bcrypt.compare(secret, session.refreshTokenHash);
-    if (!isValid) throw new UnauthorizedException("Refresh inválido");
+    if (!isValid) throw new UnauthorizedException("Refresh Invalid");
 
     return this.dataSource.transaction(async (manager) => {
       let user: User | null;
@@ -189,7 +189,7 @@ export class AuthService {
       }
 
       if (!user || !user.isActive)
-        throw new UnauthorizedException("Usuario inactivo");
+        throw new UnauthorizedException("Inactive user");
 
       if (session.companyId) {
         const company = await manager.findOne(Company, {
@@ -200,7 +200,7 @@ export class AuthService {
       }
 
       const role = await manager.findOne(Role, { where: { id: user.roleId } });
-      if (!role?.isActive) throw new UnauthorizedException("Rol inactivo");
+      if (!role?.isActive) throw new UnauthorizedException("Rol inactive");
 
       const jti = crypto.randomUUID();
       const payload: JwtPayload = {

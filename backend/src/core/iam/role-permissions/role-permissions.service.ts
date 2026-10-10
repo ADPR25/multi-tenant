@@ -35,7 +35,7 @@ export class RolePermissionsService {
       .findOne({ where: { id: roleId } });
     if (!role?.companyId)
       throw new NotFoundException(
-        "No se pudo resolver companyId para rol global",
+        "Could not resolve companyId for global role",
       );
     return role.companyId;
   }
@@ -48,7 +48,7 @@ export class RolePermissionsService {
         permissionId: dto.permissionId,
       },
     });
-    if (exists) throw new ConflictException("Ese permiso ya está asignado");
+    if (exists) throw new ConflictException("This permission is already assigned");
     const rp = this.repo.create(dto);
     const saved = await this.repo.save(rp);
     await this.clearCache(dto.companyId, dto.roleId);
@@ -75,7 +75,7 @@ export class RolePermissionsService {
       where: { id, companyId },
       relations: { role: true, permission: true },
     });
-    if (!rp) throw new NotFoundException("RolePermission no encontrado");
+    if (!rp) throw new NotFoundException(`RolePermission ${id} not found`);
     return rp;
   }
 

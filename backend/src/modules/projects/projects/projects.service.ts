@@ -22,21 +22,22 @@ export class ProjectsService {
 
   async create(dto: CreateProjectDto, companyId: string): Promise<Project> {
     const exists = await this.repo.findOne({
-      where: { companyId, codigo: dto.codigo },
+      where: { companyId, code: dto.code },
     });
-    if (exists) throw new ConflictException(`Proyecto ${dto.codigo} ya existe`);
+    if (exists)
+      throw new ConflictException(`Project ${dto.code} already exists`);
     const entity = this.repo.create({
-      codigo: dto.codigo,
-      nombre: dto.nombre,
+      code: dto.code,
+      name: dto.name,
       companyId,
-      descripcion: dto.descripcion ?? null,
-      estado: dto.estado,
-      fechaInicio: dto.fechaInicio ? new Date(dto.fechaInicio) : null,
-      fechaFin: dto.fechaFin ? new Date(dto.fechaFin) : null,
-      presupuesto: dto.presupuesto ?? null,
-      avance: dto.avance ?? 0,
-      clienteId: dto.clienteId ?? null,
-      responsableId: dto.responsableId ?? null,
+      description: dto.description ?? null,
+      status: dto.status,
+      startDate: dto.startDate ? new Date(dto.startDate) : null,
+      endDate: dto.endDate ? new Date(dto.endDate) : null,
+      budget: dto.budget ?? null,
+      progress: dto.progress ?? 0,
+      clientId: dto.clientId ?? null,
+      responsibleId: dto.responsibleId ?? null,
     });
     return this.repo.save(entity);
   }
@@ -48,14 +49,14 @@ export class ProjectsService {
   ): Promise<PaginatedResponseDto<Project>> {
     const qb = this.repo
       .createQueryBuilder("project")
-      .leftJoinAndSelect("project.cliente", "cliente")
-      .leftJoinAndSelect("project.responsable", "responsable")
+      .leftJoinAndSelect("project.client", "client")
+      .leftJoinAndSelect("project.responsible", "responsible")
       .where("project.companyId = :companyId", { companyId })
       .orderBy("project.createdAt", "DESC");
 
     if (search?.trim()) {
       qb.andWhere(
-        "(project.codigo ILIKE :s OR project.nombre ILIKE :s OR project.descripcion ILIKE :s)",
+        "(project.code ILIKE :s OR project.name ILIKE :s OR project.description ILIKE :s)",
         { s: `%${search}%` },
       );
     }
@@ -69,12 +70,12 @@ export class ProjectsService {
   }
 
   async findOne(id: string, companyId: string): Promise<Project> {
-    const p = await this.repo.findOne({
+    const project = await this.repo.findOne({
       where: { id, companyId },
-      relations: ["cliente", "responsable"],
+      relations: ["client", "responsible"],
     });
-    if (!p) throw new NotFoundException(`Proyecto ${id} no encontrado`);
-    return p;
+    if (!project) throw new NotFoundException(`Project ${id} not found`);
+    return project;
   }
 
   async update(
@@ -84,41 +85,37 @@ export class ProjectsService {
   ): Promise<Project> {
     const entity = await this.findOne(id, companyId);
     Object.assign(entity, {
-      ...(dto.codigo !== undefined ? { codigo: dto.codigo } : {}),
-      ...(dto.nombre !== undefined ? { nombre: dto.nombre } : {}),
-      ...(dto.descripcion !== undefined
-        ? { descripcion: dto.descripcion ?? null }
+      ...(dto.code !== undefined ? { code: dto.code } : {}),
+      ...(dto.name !== undefined ? { name: dto.name } : {}),
+      ...(dto.description !== undefined
+        ? { description: dto.description ?? null }
         : {}),
-      ...(dto.estado !== undefined ? { estado: dto.estado } : {}),
-      ...(dto.fechaInicio !== undefined
-        ? { fechaInicio: dto.fechaInicio ? new Date(dto.fechaInicio) : null }
+      ...(dto.status !== undefined ? { status: dto.status } : {}),
+      ...(dto.startDate !== undefined
+        ? { startDate: dto.startDate ? new Date(dto.startDate) : null }
         : {}),
-      ...(dto.fechaFin !== undefined
-        ? { fechaFin: dto.fechaFin ? new Date(dto.fechaFin) : null }
+      ...(dto.endDate !== undefined
+        ? { endDate: dto.endDate ? new Date(dto.endDate) : null }
         : {}),
-      ...(dto.presupuesto !== undefined
-        ? { presupuesto: dto.presupuesto ?? null }
-        : {}),
-      ...(dto.avance !== undefined ? { avance: dto.avance } : {}),
-      ...(dto.clienteId !== undefined
-        ? { clienteId: dto.clienteId ?? null }
-        : {}),
-      ...(dto.responsableId !== undefined
-        ? { responsableId: dto.responsableId ?? null }
+      ...(dto.budget !== undefined ? { budget: dto.budget ?? null } : {}),
+      ...(dto.progress !== undefined ? { progress: dto.progress } : {}),
+      ...(dto.clientId !== undefined ? { clientId: dto.clientId ?? null } : {}),
+      ...(dto.responsibleId !== undefined
+        ? { responsibleId: dto.responsibleId ?? null }
         : {}),
     });
     return this.repo.save(entity);
   }
 
   async toggleActive(id: string, companyId: string): Promise<Project> {
-    const e = await this.findOne(id, companyId);
-    e.isActive = !e.isActive;
-    return this.repo.save(e);
+    const entity = await this.findOne(id, companyId);
+    entity.isActive = !entity.isActive;
+    return this.repo.save(entity);
   }
 
   async remove(id: string, companyId: string): Promise<{ message: string }> {
-    const e = await this.findOne(id, companyId);
-    await this.repo.remove(e);
-    return { message: `Proyecto ${id} eliminado` };
+    const entity = await this.findOne(id, companyId);
+    await this.repo.remove(entity);
+    return { message: `Project ${id} deleted` };
   }
 }

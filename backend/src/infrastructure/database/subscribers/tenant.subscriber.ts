@@ -47,7 +47,7 @@ export class TenantSubscriber implements EntitySubscriberInterface<BaseTenantEnt
 
     if (!entity?.companyId) {
       throw new BadRequestException(
-        `TenantSubscriber: companyId es requerido para ${event.metadata.name}`,
+        `TenantSubscriber: companyId companyId is required for ${event.metadata.name}`,
       );
     }
   }

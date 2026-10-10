@@ -22,7 +22,7 @@ export class PermissionsService {
     const exists = await this.repo.findOne({
       where: { companyId: dto.companyId, name: dto.name },
     });
-    if (exists) throw new ConflictException(`El permiso ${dto.name} ya existe`);
+    if (exists) throw new ConflictException(`Permission ${dto.name} already exists`);
     const perm = this.repo.create(dto);
     return this.repo.save(perm);
   }
@@ -36,7 +36,7 @@ export class PermissionsService {
 
   async findOne(id: string, companyId: string) {
     const perm = await this.repo.findOne({ where: { id, companyId } });
-    if (!perm) throw new NotFoundException("Permiso no encontrado");
+    if (!perm) throw new NotFoundException(`Permission ${id} not found`);
     return perm;
   }
 
@@ -48,11 +48,11 @@ export class PermissionsService {
 
   private getAllPermissionNames(): string[] {
     return [
-      ...new Set(
+     ...new Set(
         ACCESS_CATALOG.flatMap((m) =>
           m.children
-            ? m.children.flatMap((c) => c.permissions ?? [])
-            : (m.permissions ?? []),
+           ? m.children.flatMap((c) => c.permissions?? [])
+            : (m.permissions?? []),
         ),
       ),
     ];
@@ -68,7 +68,7 @@ export class PermissionsService {
       where: { companyId, name: In(allNames) },
     });
     const existingNames = new Set(existing.map((p) => p.name));
-    const missing = allNames.filter((n) => !existingNames.has(n));
+    const missing = allNames.filter((n) =>!existingNames.has(n));
 
     if (missing.length) {
       const toCreate = missing.map((name) =>

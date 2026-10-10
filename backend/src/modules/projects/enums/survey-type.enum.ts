@@ -1,15 +1,17 @@
 export enum SurveyType {
-  SATISFACCION = "SATISFACCION",
-  EVALUACION = "EVALUACION",
+  SATISFACTION = "SATISFACTION",
+  EVALUATION = "EVALUATION",
   CHECKLIST = "CHECKLIST",
-  AVANCE = "AVANCE",
-  OTRO = "OTRO",
+  PROGRESS = "PROGRESS",
+  OTHER = "OTHER",
 }
+
 export enum SurveyStatus {
-  BORRADOR = "BORRADOR",
-  ACTIVA = "ACTIVA",
-  CERRADA = "CERRADA",
+  DRAFT = "DRAFT",
+  ACTIVE = "ACTIVE",
+  CLOSED = "CLOSED",
 }
+
 export enum QuestionType {
   TEXT = "TEXT",
   TEXTAREA = "TEXTAREA",

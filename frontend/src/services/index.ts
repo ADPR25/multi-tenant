@@ -18,12 +18,15 @@ export * from "./logic/document/documents.service";
 export * from "./logic/document/types.service";
 export * from "./logic/document/folders.service";
 export { documentCategoriesService } from "./logic/document/categories.service";
-export { documentCategoriesService as documentCategoriesServiceAlias } from "./logic/document/categories.service";
 export * from "./logic/projects/projects.service";
 export * from "./logic/projects/phases.service";
 export * from "./logic/projects/activities.service";
 export * from "./logic/projects/tasks.service";
-export * from "./logic/projects/surveys.service";
 export * from "./logic/third-parties/third-parties.service";
 export * from "./logic/hiring/contracts.service";
-export * from "./logic/hiring/hiring-extras.service";
+export {
+  addendumsService,
+  obligationsService,
+  requirementsService,
+} from "./logic/hiring/hiring-extras.service";
+export * from "./logic/projects/survei.service";

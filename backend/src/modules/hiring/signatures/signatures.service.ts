@@ -31,26 +31,26 @@ export class SignaturesService {
   }
 
   async getPublicContract(
-    codigo: string,
-  ): Promise<Contract & { yaFirmado?: boolean }> {
+    code: string,
+  ): Promise<Contract & { alreadySigned?: boolean }> {
     const contract = await this.contractRepo.findOne({
-      where: { codigo },
+      where: { code },
       relations: ["thirdParty", "supervisor"],
     });
     if (!contract) {
-      throw new NotFoundException("Contrato no encontrado");
+      throw new NotFoundException("Contract not found");
     }
 
     if (
-      contract.estado === ContractStatus.FIRMADO ||
-      contract.estado === ContractStatus.OFICIAL
+      contract.status === ContractStatus.SIGNED ||
+      contract.status === ContractStatus.OFFICIAL
     ) {
-      return { ...contract, yaFirmado: true };
+      return { ...contract, alreadySigned: true };
     }
 
-    if (contract.estado !== ContractStatus.LISTO_FIRMA) {
+    if (contract.status !== ContractStatus.READY_TO_SIGN) {
       throw new BadRequestException(
-        "Contrato aún no está habilitado para firma",
+        "Contract not yet enabled for signing",
       );
     }
 
@@ -58,115 +58,112 @@ export class SignaturesService {
   }
 
   async requestCode(
-    codigo: string,
+    code: string,
     email: string,
     ip: string,
     _companyId?: string,
-  ): Promise<{ message: string; dev_otp: string; expiraEn: Date }> {
+  ): Promise<{ message: string; devOtp: string; expiresAt: Date }> {
     const contract = await this.contractRepo.findOne({
-      where: { codigo },
+      where: { code },
       relations: ["thirdParty"],
     });
     if (!contract) {
-      throw new NotFoundException("Contrato no encontrado");
+      throw new NotFoundException("Contract not found");
     }
 
-    if (contract.estado !== ContractStatus.LISTO_FIRMA) {
-      throw new BadRequestException("Contrato no habilitado para firma");
+    if (contract.status !== ContractStatus.READY_TO_SIGN) {
+      throw new BadRequestException("Contract not enabled for signing");
     }
 
-    // Validar email del tercero si existe
-    const terceroEmail = contract.thirdParty?.email;
-    if (terceroEmail) {
-      if (terceroEmail.toLowerCase() !== email.toLowerCase()) {
+    const thirdPartyEmail = contract.thirdParty?.email;
+    if (thirdPartyEmail) {
+      if (thirdPartyEmail.toLowerCase() !== email.toLowerCase()) {
         throw new ForbiddenException(
-          "El correo no coincide con el contratista",
+          "Email does not match contractor",
         );
       }
     }
 
-    // invalidar anteriores
     await this.codeRepo.update(
-      { contractId: contract.id, usado: false },
-      { usado: true },
+      { contractId: contract.id, isUsed: false },
+      { isUsed: true },
     );
 
     const otp = this.generateOTP();
     const entity = this.codeRepo.create({
       contractId: contract.id,
       companyId: contract.companyId,
-      codigoHash: this.hash(otp),
-      expiraEn: new Date(Date.now() + 10 * 60 * 1000),
-      ipSolicitud: ip,
-      intentos: 0,
+      codeHash: this.hash(otp),
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+      requestIp: ip,
+      attempts: 0,
     });
     await this.codeRepo.save(entity);
 
-    // Aquí integras tu MailService. Por ahora retornamos OTP para dev (quitar en prod)
     return {
-      message: "Código enviado al correo",
-      dev_otp: otp,
-      expiraEn: entity.expiraEn,
+      message: "Code sent to email",
+      devOtp: otp,
+      expiresAt: entity.expiresAt,
     };
   }
 
   async verifyCode(
-    codigo: string,
+    code: string,
     otp: string,
     ip: string,
-    firmaBase64?: string,
+    signatureBase64?: string,
   ): Promise<{ message: string; contract: Contract }> {
     const contract = await this.contractRepo.findOne({
-      where: { codigo },
+      where: { code },
       relations: ["thirdParty"],
     });
     if (!contract) {
-      throw new NotFoundException("Contrato no encontrado");
+      throw new NotFoundException("Contract not found");
     }
 
     const activeCode = await this.codeRepo.findOne({
-      where: { contractId: contract.id, usado: false },
+      where: { contractId: contract.id, isUsed: false },
       order: { createdAt: "DESC" },
     });
     if (!activeCode) {
-      throw new BadRequestException("No hay código activo. Solicite uno nuevo");
+      throw new BadRequestException("No active code. Request a new one");
     }
 
-    if (new Date() > activeCode.expiraEn) {
-      activeCode.usado = true;
+    if (new Date() > activeCode.expiresAt) {
+      activeCode.isUsed = true;
       await this.codeRepo.save(activeCode);
-      throw new BadRequestException("Código expirado");
+      throw new BadRequestException("Code expired");
     }
 
-    if (activeCode.intentos >= 3) {
-      activeCode.usado = true;
+    if (activeCode.attempts >= 3) {
+      activeCode.isUsed = true;
       await this.codeRepo.save(activeCode);
-      throw new BadRequestException("Demasiados intentos");
+      throw new BadRequestException("Too many attempts");
     }
 
-    if (activeCode.codigoHash !== this.hash(otp)) {
-      activeCode.intentos += 1;
+    if (activeCode.codeHash !== this.hash(otp)) {
+      activeCode.attempts += 1;
       await this.codeRepo.save(activeCode);
-      throw new BadRequestException("Código incorrecto");
+      throw new BadRequestException("Invalid code");
     }
 
-    activeCode.verificado = true;
-    activeCode.usado = true;
-    activeCode.verificadoEn = new Date();
+    activeCode.isVerified = true;
+    activeCode.isUsed = true;
+    activeCode.verifiedAt = new Date();
     await this.codeRepo.save(activeCode);
 
-    const firmado = await this.contractsService.markAsSigned(
-      codigo,
+    const signed = await this.contractsService.markAsSigned(
+      code,
       {
-        firma: firmaBase64 ?? "firma_otp_verificada",
-        firmaHash: this.hash(codigo + otp + Date.now().toString()),
-        firmaIp: ip,
-        firmaMetodo: "electronica_otp",
-        firmaMetadata: { emailVerificado: true, ip },
+        signature: signatureBase64 ?? "otp_verified_signature",
+        signatureHash: this.hash(code + otp + Date.now().toString()),
+        signatureIp: ip,
+        signatureMethod: "electronic_otp",
+        signatureMetadata: { emailVerified: true, ip },
       },
       contract.companyId,
     );
 
-    return { message: "Contrato firmado con éxito", contract: firmado };
+    return { message: "Contract signed successfully", contract: signed };
   }
 }

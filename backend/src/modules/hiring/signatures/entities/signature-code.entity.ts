@@ -4,6 +4,8 @@ import { Contract } from "../../contracts/entities/contract.entity";
 
 @Entity("hiring_signature_codes")
 @Index(["contractId"])
+@Index(["companyId"])
+@Index(["expiresAt"])
 export class SignatureCode extends BaseEntity {
   @Column({ name: "contract_id", type: "uuid" })
   contractId!: string;
@@ -12,26 +14,26 @@ export class SignatureCode extends BaseEntity {
   @JoinColumn({ name: "contract_id" })
   contract?: Contract;
 
-  @Column({ name: "codigo_hash" })
-  codigoHash!: string;
+  @Column({ name: "code_hash", length: 255 })
+  codeHash!: string;
 
-  @Column({ default: false })
-  usado!: boolean;
+  @Column({ name: "is_used", default: false })
+  isUsed!: boolean;
 
-  @Column({ default: false })
-  verificado!: boolean;
+  @Column({ name: "is_verified", default: false })
+  isVerified!: boolean;
 
-  @Column({ type: "int", default: 0 })
-  intentos!: number;
+  @Column({ name: "attempts", type: "int", default: 0 })
+  attempts!: number;
 
-  @Column({ name: "expira_en", type: "timestamp" })
-  expiraEn!: Date;
+  @Column({ name: "expires_at", type: "timestamp" })
+  expiresAt!: Date;
 
-  @Column({ name: "verificado_en", type: "timestamp", nullable: true })
-  verificadoEn!: Date | null;
+  @Column({ name: "verified_at", type: "timestamp", nullable: true })
+  verifiedAt!: Date | null;
 
-  @Column({ name: "ip_solicitud", nullable: true })
-  ipSolicitud!: string | null;
+  @Column({ name: "request_ip", length: 45, nullable: true })
+  requestIp!: string | null;
 
   @Column({ name: "company_id", type: "uuid" })
   companyId!: string;

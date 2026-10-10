@@ -21,7 +21,7 @@ export class CompanySettingsService {
       where: { companyId: dto.companyId },
     });
     if (exists)
-      throw new ConflictException("Esta empresa ya tiene configuración");
+      throw new ConflictException("This company already has a configuration");
     const setting = this.repo.create(dto);
     return this.repo.save(setting);
   }
@@ -32,7 +32,7 @@ export class CompanySettingsService {
 
   async findOne(id: string, companyId: string) {
     const setting = await this.repo.findOne({ where: { id, companyId } });
-    if (!setting) throw new NotFoundException("Setting no encontrado");
+    if (!setting) throw new NotFoundException(`Company setting ${id} not found`);
     return setting;
   }
 

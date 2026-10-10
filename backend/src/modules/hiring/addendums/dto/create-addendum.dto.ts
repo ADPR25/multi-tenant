@@ -1,6 +1,6 @@
-
 import { IsNotEmpty, IsString, IsOptional, IsUUID, IsEnum, IsNumber } from "class-validator";
 import { AddendumType } from "../entities/addendum.entity";
+
 export class CreateAddendumDto {
   @IsNotEmpty()
   @IsUUID()
@@ -8,17 +8,17 @@ export class CreateAddendumDto {
 
   @IsNotEmpty()
   @IsEnum(AddendumType)
-  tipo!: AddendumType;
+  type!: AddendumType;
 
   @IsNotEmpty()
   @IsString()
-  descripcion!: string;
+  description!: string;
 
   @IsOptional()
   @IsString()
-  montoAdicional?: string;
+  additionalAmount?: string;
 
   @IsOptional()
   @IsNumber()
-  diasAdicionales?: number;
+  additionalDays?: number;
 }

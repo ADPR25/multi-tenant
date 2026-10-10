@@ -4,6 +4,7 @@ export enum TaskStatus {
   DONE = "DONE",
   BLOCKED = "BLOCKED",
 }
+
 export enum TaskPriority {
   LOW = "LOW",
   MEDIUM = "MEDIUM",

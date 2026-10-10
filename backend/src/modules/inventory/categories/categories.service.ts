@@ -25,7 +25,7 @@ export class CategoriesService {
     const exists = await this.repoService.findOne({
       where: { companyId, name: dto.name },
     });
-    if (exists) throw new ConflictException(`Categoria ${dto.name} ya existe`);
+    if (exists) throw new ConflictException(`Category ${dto.name} already exists`);
     const data = this.repoService.create({ ...dto, companyId });
     return this.repoService.save(data);
   }
@@ -77,7 +77,7 @@ export class CategoriesService {
       where: { id, companyId },
     });
     if (!category)
-      throw new NotFoundException(`categoria con id: ${id} no encontrada`);
+      throw new NotFoundException(`Category with id: ${id} not found`);
     return category;
   }
 
@@ -88,7 +88,7 @@ export class CategoriesService {
         where: { companyId, name: dto.name },
       });
       if (exists)
-        throw new ConflictException(`Categoria ${dto.name} ya existe`);
+        throw new ConflictException(`Category ${dto.name} already exists`);
     }
     Object.assign(category, dto);
     return await this.repoService.save(category);

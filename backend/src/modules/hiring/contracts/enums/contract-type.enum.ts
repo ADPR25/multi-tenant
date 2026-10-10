@@ -1,8 +1,6 @@
-
-export enum ContractType {
-  PRESTACION_SERVICIOS = 1,
-  OBRA = 2,
-  CONSULTORIA = 3,
-  SUMINISTRO = 4,
-  OTRO = 99,
+export enum PaymentType {
+  MONTHLY = 1,
+  BIWEEKLY = 2,
+  SINGLE = 3,
+  PERCENTAGE = 4,
 }

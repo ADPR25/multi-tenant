@@ -1,4 +1,3 @@
-
 import { IsNotEmpty, IsOptional, IsString, IsNumber, IsUUID } from "class-validator";
 
 export class CreateObligationDto {
@@ -8,9 +7,9 @@ export class CreateObligationDto {
 
   @IsNotEmpty()
   @IsString()
-  descripcion!: string;
+  description!: string;
 
   @IsOptional()
   @IsNumber()
-  orden?: number;
+  sortOrder?: number;
 }

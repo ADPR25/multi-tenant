@@ -1,0 +1,957 @@
+
+==================================================================
+FILE: ./data/access.catalog.ts
+==================================================================
+export interface CatalogPermission {
+  name: string;
+  description: string;
+}
+
+export interface CatalogRoute {
+  path: string;
+  name: string;
+  title: string;
+  componentPath: string;
+  icon?: string;
+  permissions: string[];
+}
+
+export interface CatalogModule {
+  name: string;
+  icon: string;
+  path?: string;
+  children?: CatalogRoute[];
+  permissions?: string[];
+  componentPath?: string;
+  title?: string;
+}
+
+export const ACCESS_CATALOG: CatalogModule[] = [
+  {
+    name: "Seguridad",
+    icon: "Shield",
+    children: [
+      {
+        path: "/users",
+        name: "Usuarios",
+        title: "Usuarios",
+        componentPath: "@/views/iam/users/index.vue",
+        icon: "Users",
+        permissions: [
+          "iam:users:create",
+          "iam:users:read",
+          "iam:users:update",
+          "iam:users:state",
+        ],
+      },
+      {
+        path: "/roles",
+        name: "Roles",
+        title: "Roles",
+        componentPath: "@/views/iam/roles/index.vue",
+        icon: "ShieldCheck",
+        permissions: [
+          "iam:roles:create",
+          "iam:roles:read",
+          "iam:roles:update",
+          "iam:roles:assignment",
+          "iam:roles:state",
+        ],
+      },
+    ],
+  },
+  {
+    name: "Terceros",
+    icon: "Handshake",
+    children: [
+      {
+        path: "/third-parties",
+        name: "Terceros",
+        title: "Terceros",
+        componentPath: "@/views/third-parties/index.vue",
+        icon: "UsersRound",
+        permissions: [
+          "third-parties:create",
+          "third-parties:read",
+          "third-parties:update",
+          "third-parties:state",
+        ],
+      },
+    ],
+  },
+  {
+    name: "Inventario",
+    icon: "Boxes",
+    children: [
+      {
+        path: "/brands",
+        name: "Marcas",
+        title: "Marcas",
+        componentPath: "@/views/inventory/brands/index.vue",
+        icon: "Award",
+        permissions: [
+          "inventory:brands:create",
+          "inventory:brands:read",
+          "inventory:brands:update",
+          "inventory:brands:state",
+        ],
+      },
+      {
+        path: "/categories",
+        name: "Categorías",
+        title: "Categorías",
+        componentPath: "@/views/inventory/categories/index.vue",
+        icon: "LayoutGrid",
+        permissions: [
+          "inventory:categories:create",
+          "inventory:categories:read",
+          "inventory:categories:update",
+          "inventory:categories:state",
+        ],
+      },
+      {
+        path: "/warehouses",
+        name: "Bodegas",
+        title: "Bodegas",
+        componentPath: "@/views/inventory/warehouses/index.vue",
+        icon: "Warehouse",
+        permissions: [
+          "inventory:warehouse:create",
+          "inventory:warehouse:read",
+          "inventory:warehouse:update",
+          "inventory:warehouse:state",
+        ],
+      },
+      {
+        path: "/uom",
+        name: "Unidades",
+        title: "Unidades de Medida",
+        componentPath: "@/views/inventory/uom/index.vue",
+        icon: "Ruler",
+        permissions: [
+          "inventory:uom:create",
+          "inventory:uom:read",
+          "inventory:uom:update",
+          "inventory:uom:state",
+        ],
+      },
+      {
+        path: "/products",
+        name: "Productos",
+        title: "Productos",
+        componentPath: "@/views/inventory/products/index.vue",
+        icon: "Package",
+        permissions: [
+          "inventory:product:create",
+          "inventory:product:read",
+          "inventory:product:update",
+          "inventory:product:state",
+        ],
+      },
+      {
+        path: "/stocks",
+        name: "Stock",
+        title: "Stock Actual",
+        componentPath: "@/views/inventory/stocks/index.vue",
+        icon: "Boxes",
+        permissions: ["inventory:stocks:read"],
+      },
+      {
+        path: "/stock-movements",
+        name: "Movimientos",
+        title: "Movimientos de Stock",
+        componentPath: "@/views/inventory/stock-movements/index.vue",
+        icon: "ArrowLeftRight",
+        permissions: ["inventory:movements:create", "inventory:movements:read"],
+      },
+    ],
+  },
+  {
+    name: "Proyectos",
+    icon: "FolderKanban",
+    children: [
+      {
+        path: "/projects",
+        name: "Proyectos",
+        title: "Proyectos",
+        componentPath: "@/views/projects/index.vue",
+        icon: "Briefcase",
+        permissions: [
+          "projects:create",
+          "projects:read",
+          "projects:update",
+          "projects:state",
+          "projects:delete",
+        ],
+      },
+      {
+        path: "/survey",
+        name: "Encuestas",
+        title: "Encuestas",
+        componentPath: "@/views/surveys/survey/index.vue",
+        icon: "Briefcase",
+        permissions: [
+          "survey:create",
+          "survey:read",
+          "survey:update",
+          "survey:state",
+          "survey:delete",
+        ],
+      },
+    ],
+  },
+  {
+    name: "Contratación",
+    icon: "FileSignature",
+    children: [
+      {
+        path: "/contracts",
+        name: "Contratos",
+        title: "Contratos",
+        componentPath: "@/views/hiring/contracts/index.vue",
+        icon: "FileText",
+        permissions: [
+          "hiring:contract:create",
+          "hiring:contract:read",
+          "hiring:contract:update",
+          "hiring:contract:state",
+          "hiring:contract:delete",
+        ],
+      },
+    ],
+  },
+  {
+    name: "Documental",
+    icon: "FolderArchive",
+    children: [
+      {
+        path: "/documents/categories",
+        name: "Categorías Doc",
+        title: "Categorías Documentales",
+        componentPath: "@/views/documents/categories/index.vue",
+        icon: "LayoutGrid",
+        permissions: [
+          "documents:categories:create",
+          "documents:categories:read",
+          "documents:categories:update",
+          "documents:categories:state",
+        ],
+      },
+      {
+        path: "/documents/types",
+        name: "Tipos",
+        title: "Tipos de Documento",
+        componentPath: "@/views/documents/types/index.vue",
+        icon: "FileType",
+        permissions: [
+          "documents:types:create",
+          "documents:types:read",
+          "documents:types:update",
+          "documents:types:state",
+        ],
+      },
+      {
+        path: "/folders",
+        name: "Carpetas",
+        title: "Carpetas",
+        componentPath: "@/views/documents/folders/index.vue",
+        icon: "Folder",
+        permissions: [
+          "documents:folders:create",
+          "documents:folders:read",
+          "documents:folders:update",
+          "documents:folders:state",
+        ],
+      },
+      {
+        path: "/documents/docs",
+        name: "Documentos",
+        title: "Gestión Documental",
+        componentPath: "@/views/documents/docs/index.vue",
+        icon: "Files",
+        permissions: [
+          "documents:docs:create",
+          "documents:docs:read",
+          "documents:docs:update",
+          "documents:docs:state",
+          "documents:docs:delete",
+          "documents:docs:restore",
+        ],
+      },
+      {
+        path: "/documents/drive",
+        name: "Drive",
+        title: "Mi Drive Empresarial",
+        componentPath: "@/views/documents/drive/index.vue",
+        icon: "HardDrive",
+        permissions: [],
+      },
+    ],
+  },
+];
+
+export const DEFAULT_SIDEBAR = ACCESS_CATALOG.map((m) => ({
+  name: m.name,
+  title: m.name,
+  icon: m.icon,
+  path: m.path,
+  permissions: m.permissions,
+  children: m.children?.map((c) => ({
+    name: c.name,
+    title: c.title,
+    path: c.path,
+    icon: c.icon,
+    permissions: c.permissions,
+  })),
+}));
+
+export const DEFAULT_ROUTES = ACCESS_CATALOG.flatMap((m) =>
+  m.children
+    ? m.children.map((c) => ({
+        path: c.path,
+        name: c.name.replace(/\s/g, ""),
+        title: c.title,
+        componentPath: c.componentPath,
+      }))
+    : [
+        {
+          path: m.path,
+          name: m.name.replace(/\s/g, ""),
+          title: m.title || m.name,
+          componentPath: m.componentPath,
+        },
+      ],
+);
+
+export const ALL_PERMISSIONS_LIST: CatalogPermission[] = [
+  ...new Map<string, CatalogPermission>(
+    ACCESS_CATALOG.flatMap((m) => {
+      const routes: CatalogRoute[] = m.children
+        ? m.children
+        : m.path
+          ? [
+              {
+                path: m.path,
+                name: m.name,
+                title: m.title || m.name,
+                componentPath: m.componentPath || "",
+                permissions: m.permissions || [],
+              },
+            ]
+          : [];
+
+      return routes.flatMap((r) =>
+        (r.permissions || []).map((name): [string, CatalogPermission] => [
+          name,
+          { name, description: `${name} - ${r.title || r.name}` },
+        ]),
+      );
+    }),
+  ).values(),
+];
+
+==================================================================
+FILE: ./data/super.admin.ts
+==================================================================
+export const SUPER_ADMIN_SIDEBAR = [
+  {
+    icon: "Settings",
+    name: "Seguridad",
+    children: [
+      { icon: "User", name: "Usuarios", path: "/users" },
+      { icon: "ShieldCheck", name: "Roles", path: "/roles" },
+    ],
+  },
+  { icon: "Building2", name: "Empresas", path: "/companies" },
+];
+
+export const SUPER_ADMIN_ROUTES = [
+  {
+    path: "/users",
+    name: "Usuarios",
+    title: "Usuarios",
+    componentPath: "@/views/iam/users/index.vue",
+  },
+  {
+    path: "/roles",
+    name: "Roles",
+    title: "Roles",
+    componentPath: "@/views/iam/roles/index.vue",
+  },
+  {
+    path: "/companies",
+    name: "Empresas",
+    title: "Empresas",
+    componentPath: "@/views/tenant/companies/index.vue",
+  },
+];
+
+==================================================================
+FILE: ./dto/save-role-menus.dto.ts
+==================================================================
+import { IsArray, IsOptional, IsString, ValidateNested } from "class-validator";
+import { Type } from "class-transformer";
+
+export class SidebarItem {
+  @IsString() name: string;
+  @IsString() title: string;
+  @IsString() path: string;
+  @IsString() icon: string;
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => SidebarItem)
+  children?: SidebarItem[];
+}
+
+export class RouteItem {
+  @IsString() path: string;
+  @IsString() name: string;
+  @IsOptional() @IsString() title?: string;
+  @IsString() componentPath: string;
+}
+
+export class SaveRoleMenusDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => SidebarItem)
+  sidebar: SidebarItem[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  permissions?: string[];
+}
+
+==================================================================
+FILE: ./entities/role-menu.entity.ts
+==================================================================
+import { Entity, Column, ManyToOne, JoinColumn, Index } from "typeorm";
+import { BaseTenantEntity } from "@/infrastructure/database/base-tenant.entity";
+import { Role } from "@/core/iam/roles/entities/role.entity";
+import { RouteItem, SidebarItem } from "../dto/save-role-menus.dto";
+
+@Entity("role_menus")
+@Index(["companyId", "roleId"], { unique: true })
+export class RoleMenu extends BaseTenantEntity {
+  @Column({ type: "uuid" })
+  roleId: string;
+
+  @ManyToOne(() => Role, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "roleId" })
+  role: Role;
+
+  @Column({ type: "jsonb", default: [] })
+  sidebar: SidebarItem[];
+
+  @Column({ type: "jsonb", default: [] })
+  routes: RouteItem[];
+}
+
+==================================================================
+FILE: ./frontend.controller.ts
+==================================================================
+import {
+  Controller,
+  Get,
+  Put,
+  Body,
+  Param,
+  UseGuards,
+  ParseUUIDPipe,
+} from "@nestjs/common";
+import { FrontendService } from "./frontend.service";
+import { JwtAuthGuard } from "@/common/guards/jwt-auth.guard";
+import { PermissionsGuard } from "@/common/guards/permissions.guard";
+import { RequirePermissions } from "@/common/decorators/permissions.decorator";
+import {
+  CurrentCompanyId,
+  CurrentUser,
+  CurrentUserPayload,
+} from "@/common/decorators/current-company.decorator";
+import { SaveRoleMenusDto } from "./dto/save-role-menus.dto";
+
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@Controller("frontend")
+export class FrontendController {
+  constructor(private readonly service: FrontendService) {}
+
+  @Get("sidebar")
+  getSidebar(@CurrentUser() user: CurrentUserPayload) {
+    return this.service.getForRole(
+      user.roleId,
+      user.roleCode || user.code || "",
+      user.companyId ?? null,
+    );
+  }
+
+  @Get("routes")
+  getRoutes(@CurrentUser() user: CurrentUserPayload) {
+    return this.service.getRoutesForRole(
+      user.roleId,
+      user.roleCode || user.code || "",
+      user.companyId ?? null,
+    );
+  }
+
+  @Get("sidebar/raw")
+  @RequirePermissions("iam:roles:read")
+  getRaw() {
+    return this.service.getRaw();
+  }
+
+  @Get("routes/raw")
+  @RequirePermissions("iam:roles:read")
+  getRoutesRaw() {
+    return this.service.getRoutesRaw();
+  }
+
+  @Get("roles/:roleId/raw")
+  @RequirePermissions("iam:roles:read")
+  getRoleRaw(
+    @Param("roleId", ParseUUIDPipe) id: string,
+    @CurrentCompanyId() companyId: string,
+  ) {
+    return this.service.getRawForRole(id, companyId);
+  }
+
+  @Get("roles/:roleId/assignment-data")
+  @RequirePermissions("iam:roles:read")
+  getAssignment(
+    @Param("roleId", ParseUUIDPipe) id: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.service.getAssignmentData(id, user);
+  }
+
+  @Put("roles/:roleId/menus")
+  @RequirePermissions("iam:roles:update")
+  save(
+    @Param("roleId", ParseUUIDPipe) id: string,
+    @Body() body: SaveRoleMenusDto,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.service.saveForRole(id, body.sidebar, user, body.permissions);
+  }
+}
+
+==================================================================
+FILE: ./frontend.module.ts
+==================================================================
+import { Module } from "@nestjs/common";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { RoleMenu } from "./entities/role-menu.entity";
+import { Role } from "@/core/iam/roles/entities/role.entity";
+import { Permission } from "@/core/iam/permissions/entities/permission.entity";
+import { RolePermission } from "@/core/iam/role-permissions/entities/role-permission.entity";
+import { FrontendService } from "./frontend.service";
+import { FrontendController } from "./frontend.controller";
+
+@Module({
+  imports: [
+    TypeOrmModule.forFeature([RoleMenu, Role, Permission, RolePermission]),
+  ],
+  controllers: [FrontendController],
+  providers: [FrontendService],
+  exports: [FrontendService],
+})
+export class FrontendModule {}
+
+==================================================================
+FILE: ./frontend.service.ts
+==================================================================
+import {
+  Injectable,
+  ForbiddenException,
+  NotFoundException,
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { In, Repository, DataSource, IsNull, FindOptionsWhere } from "typeorm";
+import { RoleMenu } from "./entities/role-menu.entity";
+import { Permission } from "@/core/iam/permissions/entities/permission.entity";
+import { RolePermission } from "@/core/iam/role-permissions/entities/role-permission.entity";
+import { Role } from "@/core/iam/roles/entities/role.entity";
+import {
+  ACCESS_CATALOG,
+  DEFAULT_SIDEBAR,
+  DEFAULT_ROUTES,
+  CatalogModule,
+  CatalogRoute,
+} from "./data/access.catalog";
+import { SUPER_ADMIN_SIDEBAR, SUPER_ADMIN_ROUTES } from "./data/super.admin";
+import { SidebarItem, RouteItem } from "./dto/save-role-menus.dto";
+import { CurrentUserPayload } from "@/common/decorators/current-company.decorator";
+
+type RoleMenuWhere = FindOptionsWhere<RoleMenu>;
+
+@Injectable()
+export class FrontendService {
+  constructor(
+    @InjectRepository(RoleMenu)
+    private readonly roleMenuRepo: Repository<RoleMenu>,
+    @InjectRepository(Permission)
+    private readonly permRepo: Repository<Permission>,
+    @InjectRepository(RolePermission)
+    private readonly rolePermRepo: Repository<RolePermission>,
+    @InjectRepository(Role)
+    private readonly roleRepo: Repository<Role>,
+    private readonly dataSource: DataSource,
+  ) {}
+
+  getRaw(): SidebarItem[] {
+    return DEFAULT_SIDEBAR;
+  }
+
+  getRoutesRaw(): RouteItem[] {
+    return DEFAULT_ROUTES;
+  }
+
+  private isSuper(roleCode?: string): boolean {
+    return roleCode === "SUPER_ADMIN";
+  }
+
+  private flattenSidebar(items: SidebarItem[]): SidebarItem[] {
+    const flat: SidebarItem[] = [];
+    const walk = (nodes: SidebarItem[]) => {
+      for (const node of nodes) {
+        if (node.children?.length) walk(node.children);
+        else flat.push(node);
+      }
+    };
+    walk(items);
+    return flat;
+  }
+
+  private filterSidebarByPaths(
+    allowedPaths: Set<string>,
+    source: SidebarItem[] = DEFAULT_SIDEBAR,
+  ): SidebarItem[] {
+    return source
+      .map((group) => {
+        if (group.children) {
+          const filteredChildren = group.children.filter((c) =>
+            allowedPaths.has(c.path),
+          );
+          return filteredChildren.length
+            ? { ...group, children: filteredChildren }
+            : null;
+        }
+        return group.path && allowedPaths.has(group.path) ? group : null;
+      })
+      .filter((g): g is SidebarItem => g !== null);
+  }
+
+  private resolveRoutesFromSidebar(
+    selectedSidebar: SidebarItem[],
+  ): RouteItem[] {
+    const flat = this.flattenSidebar(selectedSidebar);
+    const selectedPaths = new Set(flat.map((s) => s.path));
+    return (DEFAULT_ROUTES as RouteItem[]).filter((r) =>
+      selectedPaths.has(r.path),
+    );
+  }
+
+  private buildWhere(roleId: string, companyId: string | null): RoleMenuWhere {
+    if (companyId) return { roleId, companyId };
+    return { roleId, companyId: IsNull() };
+  }
+
+  private async ensurePermissionsSeeded(
+    companyId: string | null,
+  ): Promise<void> {
+    if (!companyId) return;
+    const allNames = [
+      ...new Set(
+        ACCESS_CATALOG.flatMap((mod: CatalogModule) => {
+          const routes: CatalogRoute[] = mod.children ?? [];
+          return routes.length
+            ? routes.flatMap((r) => r.permissions ?? [])
+            : (mod.permissions ?? []);
+        }).filter((n) => !!n), 
+      ),
+    ];
+    if (!allNames.length) return;
+
+    const existing = await this.permRepo.find({
+      where: { name: In(allNames), companyId },
+    });
+    const existingNames = new Set(existing.map((p) => p.name));
+    const missing = allNames.filter((n) => !existingNames.has(n));
+    if (missing.length) {
+      await this.permRepo.save(
+        missing.map((name) =>
+          this.permRepo.create({
+            name,
+            module: name.split(":")[0],
+            description: `${name}`,
+            companyId,
+          }),
+        ),
+      );
+    }
+  }
+
+  private getCatalogForPermissions(
+    source: CatalogModule[] = ACCESS_CATALOG,
+  ): CatalogModule[] {
+    return source
+      .map((mod) => {
+        if (!mod.children) {
+          return mod.permissions?.length ? mod : null;
+        }
+        const withPerms = mod.children.filter((c) => c.permissions?.length);
+        return withPerms.length ? { ...mod, children: withPerms } : null;
+      })
+      .filter((m): m is CatalogModule => m !== null);
+  }
+
+  async getForRole(
+    roleId: string,
+    roleCode: string,
+    companyId: string | null,
+  ): Promise<SidebarItem[]> {
+    if (this.isSuper(roleCode)) return SUPER_ADMIN_SIDEBAR as SidebarItem[];
+    const custom = await this.roleMenuRepo.findOne({
+      where: this.buildWhere(roleId, companyId),
+    });
+    if (!custom?.sidebar?.length) return [];
+    const sidebar = custom.sidebar;
+    const allowedPaths = new Set(
+      this.flattenSidebar(sidebar).map((s) => s.path),
+    );
+    return this.filterSidebarByPaths(allowedPaths);
+  }
+
+  async getRoutesForRole(
+    roleId: string,
+    roleCode: string,
+    companyId: string | null,
+  ): Promise<RouteItem[]> {
+    if (this.isSuper(roleCode)) return SUPER_ADMIN_ROUTES;
+    const custom = await this.roleMenuRepo.findOne({
+      where: this.buildWhere(roleId, companyId),
+    });
+    return custom?.routes ?? [];
+  }
+
+  async getRawForRole(roleId: string, companyId: string | null) {
+    return (
+      (await this.roleMenuRepo.findOne({
+        where: this.buildWhere(roleId, companyId),
+      })) ?? {
+        sidebar: [] as SidebarItem[],
+        routes: [] as RouteItem[],
+        roleId,
+      }
+    );
+  }
+
+  async getAssignmentData(roleId: string, currentUser: CurrentUserPayload) {
+    const currentRoleCode = currentUser.roleCode ?? currentUser.code;
+    const isCurrentSuper = this.isSuper(currentRoleCode);
+
+    const targetRole = await this.roleRepo.findOne({ where: { id: roleId } });
+    if (!targetRole) throw new NotFoundException("Rol no encontrado");
+
+    const targetCompanyId = targetRole.companyId ?? null;
+
+    if (targetRole.code === "SUPER_ADMIN" && !targetCompanyId) {
+      return {
+        catalog: this.getCatalogForPermissions([...ACCESS_CATALOG]),
+        allSidebar: DEFAULT_SIDEBAR,
+        assignedSidebar: SUPER_ADMIN_SIDEBAR,
+        allRoutes: DEFAULT_ROUTES,
+        assignedRoutes: SUPER_ADMIN_ROUTES,
+        allPermissions: [],
+        assignedPermissions: [],
+        roleId,
+      };
+    }
+
+    await this.ensurePermissionsSeeded(targetCompanyId);
+
+    const targetWhere = this.buildWhere(roleId, targetCompanyId);
+    const target = await this.roleMenuRepo.findOne({ where: targetWhere });
+    const rolePermissions = await this.rolePermRepo.find({
+      where: { roleId, companyId: targetCompanyId ?? undefined },
+    });
+
+    if (isCurrentSuper) {
+      const allPermissions = await this.permRepo.find({
+        where: { companyId: targetCompanyId ?? undefined },
+        order: { name: "ASC" },
+      });
+      return {
+        catalog: this.getCatalogForPermissions([...ACCESS_CATALOG]),
+        allSidebar: DEFAULT_SIDEBAR,
+        assignedSidebar: target?.sidebar ?? [],
+        allRoutes: DEFAULT_ROUTES,
+        assignedRoutes: target?.routes ?? [],
+        allPermissions,
+        assignedPermissions: rolePermissions.map((rp) => rp.permissionId),
+        roleId,
+      };
+    }
+
+    const myCompanyId = currentUser.companyId ?? null;
+    const myRoleMenu = await this.roleMenuRepo.findOne({
+      where: this.buildWhere(currentUser.roleId, myCompanyId),
+    });
+
+    if (!myRoleMenu?.sidebar?.length) {
+      return {
+        catalog: [],
+        allSidebar: [],
+        assignedSidebar: target?.sidebar ?? [],
+        allRoutes: [],
+        assignedRoutes: target?.routes ?? [],
+        allPermissions: [],
+        assignedPermissions: rolePermissions.map((rp) => rp.permissionId),
+        roleId,
+      };
+    }
+
+    const mySidebar = myRoleMenu.sidebar;
+    const allowedMyPaths = new Set(
+      this.flattenSidebar(mySidebar).map((s) => s.path),
+    );
+    const allSidebar = this.filterSidebarByPaths(allowedMyPaths);
+    const allRoutes = (DEFAULT_ROUTES as RouteItem[]).filter((r) =>
+      allowedMyPaths.has(r.path),
+    );
+
+    const filteredAccessCatalog = ACCESS_CATALOG.map((mod) => {
+      if (mod.children) {
+        const filtered = mod.children.filter((c) => allowedMyPaths.has(c.path));
+        return filtered.length ? { ...mod, children: filtered } : null;
+      }
+      return mod.path && allowedMyPaths.has(mod.path) ? mod : null;
+    }).filter((m): m is CatalogModule => m !== null);
+
+    const catalog = this.getCatalogForPermissions(filteredAccessCatalog);
+
+    const myPerms = await this.rolePermRepo.find({
+      where: {
+        roleId: currentUser.roleId,
+        companyId: myCompanyId ?? undefined,
+      },
+    });
+    const allowedPermissionIds = new Set(myPerms.map((p) => p.permissionId));
+    const allPermissionsRaw = await this.permRepo.find({
+      where: { companyId: myCompanyId ?? undefined },
+      order: { name: "ASC" },
+    });
+    const allPermissions = allPermissionsRaw.filter((p) =>
+      allowedPermissionIds.has(p.id),
+    );
+
+    const filteredAssignedSidebar = this.filterSidebarByPaths(
+      allowedMyPaths,
+      target?.sidebar ?? [],
+    );
+
+    return {
+      catalog,
+      allSidebar,
+      assignedSidebar: filteredAssignedSidebar,
+      allRoutes,
+      assignedRoutes: target?.routes ?? [],
+      allPermissions,
+      assignedPermissions: rolePermissions.map((rp) => rp.permissionId),
+      roleId,
+    };
+  }
+
+  async saveForRole(
+    roleId: string,
+    sidebar: SidebarItem[],
+    currentUser: CurrentUserPayload,
+    permissions?: string[],
+  ) {
+    const currentRoleCode = currentUser.roleCode ?? currentUser.code;
+    const isCurrentSuper = this.isSuper(currentRoleCode);
+
+    const targetRole = await this.roleRepo.findOne({ where: { id: roleId } });
+    if (!targetRole) throw new NotFoundException("Rol no encontrado");
+    const targetCompanyId = targetRole.companyId ?? null;
+
+    if (targetRole.code === "SUPER_ADMIN" && !targetCompanyId) {
+      throw new ForbiddenException(
+        "No puedes modificar el rol SUPER_ADMIN global",
+      );
+    }
+
+    await this.ensurePermissionsSeeded(targetCompanyId);
+
+    if (!isCurrentSuper) {
+      const myRoleMenu = await this.roleMenuRepo.findOne({
+        where: this.buildWhere(
+          currentUser.roleId,
+          currentUser.companyId ?? null,
+        ),
+      });
+      const allowedMyPaths = new Set(
+        this.flattenSidebar(myRoleMenu?.sidebar ?? []).map((s) => s.path),
+      );
+      if (
+        this.flattenSidebar(sidebar).some((s) => !allowedMyPaths.has(s.path))
+      ) {
+        throw new ForbiddenException(
+          "No puedes asignar módulos que tú no tienes",
+        );
+      }
+      if (permissions?.length) {
+        const myPerms = await this.rolePermRepo.find({
+          where: {
+            roleId: currentUser.roleId,
+            companyId: currentUser.companyId ?? undefined,
+          },
+        });
+        const allowedIds = new Set(myPerms.map((p) => p.permissionId));
+        if (permissions.some((id) => !allowedIds.has(id))) {
+          throw new ForbiddenException(
+            "No puedes asignar permisos que tú no tienes",
+          );
+        }
+      }
+    }
+
+    const autoRoutes = this.resolveRoutesFromSidebar(sidebar);
+
+    return this.dataSource.transaction(async (manager) => {
+      const where = this.buildWhere(roleId, targetCompanyId);
+      let existing = await manager.findOne(RoleMenu, { where });
+      if (!existing) {
+        existing = manager.create(RoleMenu, {
+          roleId,
+          sidebar,
+          routes: autoRoutes,
+          companyId: targetCompanyId,
+        } as FindOptionsWhere<RoleMenu> as never);
+      } else {
+        existing.sidebar = sidebar;
+        existing.routes = autoRoutes;
+      }
+      await manager.save(existing);
+
+      if (permissions !== undefined) {
+        await manager.delete(RolePermission, {
+          roleId,
+          companyId: targetCompanyId ?? undefined,
+        });
+        if (permissions.length > 0) {
+          const entities = manager.create(
+            RolePermission,
+            permissions.map((permissionId) => ({
+              roleId,
+              permissionId,
+              companyId: targetCompanyId,
+            })),
+          );
+          await manager.save(entities);
+        }
+      }
+      return existing;
+    });
+  }
+}

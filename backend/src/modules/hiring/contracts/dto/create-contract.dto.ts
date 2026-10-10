@@ -3,11 +3,11 @@ import { IsNotEmpty, IsOptional, IsString, IsUUID, IsNumberString, IsDateString,
 export class CreateContractDto {
   @IsNotEmpty()
   @IsString()
-  codigo!: string;
+  code!: string;
 
   @IsOptional()
   @IsString()
-  numeroContrato?: string;
+  contractNumber?: string;
 
   @IsNotEmpty()
   @IsUUID()
@@ -19,37 +19,37 @@ export class CreateContractDto {
 
   @IsNotEmpty()
   @IsString()
-  objeto!: string;
+  purpose!: string;
 
   @IsOptional()
   @IsString()
-  observacion?: string;
+  observation?: string;
 
   @IsNotEmpty()
   @IsNumberString()
-  montoTotal!: string;
+  totalAmount!: string;
 
   @IsOptional()
   @IsNumberString()
-  montoPrimerPago?: string;
+  firstPaymentAmount?: string;
 
   @IsOptional()
   @IsInt()
-  vecesPagadas?: number;
+  timesPaid?: number;
 
   @IsNotEmpty()
   @IsDateString()
-  fechaInicio!: string;
+  startDate!: string;
 
   @IsOptional()
   @IsDateString()
-  fechaCierre?: string;
+  endDate?: string;
 
   @IsOptional()
   @IsString()
-  proyectoNombre?: string;
+  projectName?: string;
 
   @IsOptional()
   @IsUUID()
-  proyectoId?: string;
+  projectId?: string;
 }

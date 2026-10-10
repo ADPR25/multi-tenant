@@ -28,7 +28,7 @@ export class CompanyService {
       where: { tax_id: dto.tax_id },
     });
     if (exists)
-      throw new ConflictException(`Empresa con NIT ${dto.tax_id} ya existe`);
+      throw new ConflictException(`Company with Tax ID ${dto.tax_id} already exists`);
 
     return this.dataSource.transaction(async (manager) => {
       const company = manager.create(Company, dto);
@@ -55,7 +55,7 @@ export class CompanyService {
 
   async findOne(id: string) {
     const company = await this.companyRepo.findOne({ where: { id } });
-    if (!company) throw new NotFoundException(`Company ${id} no existe`);
+    if (!company) throw new NotFoundException(`Company ${id} does not exist`);
     return company;
   }
 

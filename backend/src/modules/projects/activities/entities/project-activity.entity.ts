@@ -8,6 +8,7 @@ import { ProjectStatus } from "../../enums/project-status.enum";
 @Entity("project_activities")
 @Index(["companyId", "phaseId"])
 @Index(["companyId", "projectId"])
+@Index(["companyId", "status"])
 export class ProjectActivity extends BaseTenantEntity {
   @Column({ name: "project_id", type: "uuid" }) 
   projectId!: string;
@@ -23,38 +24,39 @@ export class ProjectActivity extends BaseTenantEntity {
   @JoinColumn({ name: "phase_id" })
   phase?: ProjectPhase;
 
-  @Column({ length: 200 }) 
-  nombre!: string;
+  @Column({ name: "name", length: 200 }) 
+  name!: string;
 
-  @Column({ type: "text", nullable: true }) 
-  descripcion!: string | null;
+  @Column({ name: "description", type: "text", nullable: true }) 
+  description!: string | null;
 
-  @Column({ type: "int", default: 0 }) 
-  orden!: number;
+  @Column({ name: "sort_order", type: "int", default: 0 }) 
+  sortOrder!: number;
 
   @Column({
+    name: "status",
     type: "enum",
     enum: ProjectStatus,
-    default: ProjectStatus.EN_PLANEACION,
+    default: ProjectStatus.PLANNING,
   })
-  estado!: ProjectStatus;
+  status!: ProjectStatus;
 
-  @Column({ name: "responsable_id", type: "uuid", nullable: true })
-  responsableId!: string | null;
+  @Column({ name: "responsible_id", type: "uuid", nullable: true })
+  responsibleId!: string | null;
 
   @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
-  @JoinColumn({ name: "responsable_id" })
-  responsable?: User | null;
+  @JoinColumn({ name: "responsible_id" })
+  responsible?: User | null;
   
-  @Column({ name: "fecha_inicio", type: "date", nullable: true })
-  fechaInicio!: Date | null;
+  @Column({ name: "start_date", type: "date", nullable: true })
+  startDate!: Date | null;
 
-  @Column({ name: "fecha_fin", type: "date", nullable: true })
-  fechaFin!: Date | null;
+  @Column({ name: "end_date", type: "date", nullable: true })
+  endDate!: Date | null;
 
-  @Column({ type: "int", default: 0 }) 
-  avance!: number;
+  @Column({ name: "progress", type: "int", default: 0 }) 
+  progress!: number;
   
-  @Column({ default: true }) 
+  @Column({ name: "is_active", default: true }) 
   isActive!: boolean;
 }

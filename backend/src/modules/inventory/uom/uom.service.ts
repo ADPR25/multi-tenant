@@ -24,7 +24,7 @@ export class UomService {
     const exists = await this.repoService.findOne({
       where: { companyId, name: dto.name },
     });
-    if (exists) throw new ConflictException(`UoM ${dto.name} ya existe`);
+    if (exists) throw new ConflictException(`UoM ${dto.name} already exists`);
     const create = this.repoService.create({ ...dto, companyId });
     return this.repoService.save(create);
   }
@@ -47,7 +47,7 @@ export class UomService {
 
   async findOne(id: string, companyId: string) {
     const one = await this.repoService.findOne({ where: { id, companyId } });
-    if (!one) throw new NotFoundException(`uom ${id} not found`);
+    if (!one) throw new NotFoundException(`UoM ${id} not found`);
     return one;
   }
 

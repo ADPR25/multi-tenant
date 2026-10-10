@@ -25,7 +25,7 @@ export class BrandsService {
       where: { companyId, name: createBrandDto.name },
     });
     if (exists)
-      throw new ConflictException(`Marca ${createBrandDto.name} ya existe`);
+      throw new ConflictException(`Brand ${createBrandDto.name} already exists`);
     const data = this.repoService.create({
       ...createBrandDto,
       companyId,
@@ -35,7 +35,7 @@ export class BrandsService {
 
   async findOne(id: string, companyId: string) {
     const brand = await this.repoService.findOne({ where: { id, companyId } });
-    if (!brand) throw new NotFoundException(`Marca con id ${id} no encontrada`);
+    if (!brand) throw new NotFoundException(`Brand with id ${id} not found`);
     return brand;
   }
 
@@ -45,7 +45,7 @@ export class BrandsService {
       const exists = await this.repoService.findOne({
         where: { companyId, name: dto.name },
       });
-      if (exists) throw new ConflictException(`Marca ${dto.name} ya existe`);
+      if (exists) throw new ConflictException(`Brand ${dto.name} already exists`);
     }
     Object.assign(brand, dto);
     return await this.repoService.save(brand);

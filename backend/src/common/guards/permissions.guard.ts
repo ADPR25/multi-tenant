@@ -52,12 +52,12 @@ export class PermissionsGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<RequestWithUser>();
     const user = request.user;
 
-    if (!user?.roleId) throw new ForbiddenException("Sin rol asignado");
+    if (!user?.roleId) throw new ForbiddenException("No role assigned");
 
     if (this.isSuperAdmin(user)) return true;
 
     if (!user.companyId) {
-      throw new ForbiddenException("Usuario sin empresa asignada");
+      throw new ForbiddenException("User without company assigned");
     }
 
     const cacheKey = `perms:${user.companyId}:${user.roleId}`;

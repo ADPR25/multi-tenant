@@ -17,24 +17,24 @@ import {
 @Injectable()
 export class TypesService {
   constructor(
-    @InjectRepository(Type) private readonly repoService: Repository<Type>,
+    @InjectRepository(Type) private readonly repo: Repository<Type>,
   ) {}
 
   async create(createTypeDto: CreateTypeDto, companyId: string) {
-    const exists = await this.repoService.findOne({
+    const exists = await this.repo.findOne({
       where: { companyId, name: createTypeDto.name },
     });
     if (exists)
       throw new ConflictException(
-        `Tipo con nombre ${createTypeDto.name} ya existe`,
+        `Type with name ${createTypeDto.name} already exists`,
       );
 
-    const data = this.repoService.create({ ...createTypeDto, companyId });
-    return this.repoService.save(data);
+    const entity = this.repo.create({ ...createTypeDto, companyId });
+    return this.repo.save(entity);
   }
 
   async findAll(companyId: string, pagination: PaginationDto, state?: boolean) {
-    const [data, total] = await this.repoService.findAndCount({
+    const [data, total] = await this.repo.findAndCount({
       where: { companyId, ...(state !== undefined ? { isActive: state } : {}) },
       order: { createdAt: "DESC" },
       ...paginate(pagination),
@@ -43,29 +43,29 @@ export class TypesService {
   }
 
   async findOne(id: string, companyId: string) {
-    const one = await this.repoService.findOne({ where: { id, companyId } });
-    if (!one) throw new NotFoundException(`type ${id} not found`);
-    return one;
+    const entity = await this.repo.findOne({ where: { id, companyId } });
+    if (!entity) throw new NotFoundException(`Type ${id} not found`);
+    return entity;
   }
 
   async update(id: string, updateTypeDto: UpdateTypeDto, companyId: string) {
-    const type = await this.findOne(id, companyId);
-    if (updateTypeDto.name && updateTypeDto.name !== type.name) {
-      const exists = await this.repoService.findOne({
+    const entity = await this.findOne(id, companyId);
+    if (updateTypeDto.name && updateTypeDto.name !== entity.name) {
+      const exists = await this.repo.findOne({
         where: { companyId, name: updateTypeDto.name },
       });
       if (exists)
         throw new ConflictException(
-          `Tipo con nombre ${updateTypeDto.name} ya existe`,
+          `Type with name ${updateTypeDto.name} already exists`,
         );
     }
-    Object.assign(type, updateTypeDto);
-    return this.repoService.save(type);
+    Object.assign(entity, updateTypeDto);
+    return this.repo.save(entity);
   }
 
   async toggleActive(id: string, companyId: string) {
-    const type = await this.findOne(id, companyId);
-    type.isActive = !type.isActive;
-    return this.repoService.save(type);
+    const entity = await this.findOne(id, companyId);
+    entity.isActive = !entity.isActive;
+    return this.repo.save(entity);
   }
 }

@@ -12,12 +12,12 @@ export class ContractObligation extends BaseTenantEntity {
   @JoinColumn({ name: "contract_id" })
   contract!: Contract;
 
-  @Column({ type: "text" })
-  descripcion!: string;
+  @Column({ name: "description", type: "text" })
+  description!: string;
 
-  @Column({ type: "int", default: 1 })
-  orden!: number;
+  @Column({ name: "sort_order", type: "int", default: 1 })
+  sortOrder!: number;
 
-  @Column({ default: true })
+  @Column({ name: "is_active", default: true })
   isActive!: boolean;
 }

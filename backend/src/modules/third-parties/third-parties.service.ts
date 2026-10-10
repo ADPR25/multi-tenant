@@ -16,7 +16,6 @@ import {
 import { ThirdPartyType } from "./enums/third-party-type.enum";
 
 type ThirdPartyWhere = FindOptionsWhere<ThirdParty>;
-
 @Injectable()
 export class ThirdPartiesService {
   constructor(
@@ -29,30 +28,31 @@ export class ThirdPartiesService {
     companyId: string,
   ): Promise<ThirdParty> {
     const exists = await this.repo.findOne({
-      where: { companyId, nit: dto.nit },
+      where: { companyId, taxId: dto.taxId },
     });
     if (exists)
-      throw new ConflictException(`Tercero con NIT ${dto.nit} ya existe`);
+      throw new ConflictException(
+        `Third party with Tax ID ${dto.taxId} already exists`,
+      );
     return this.repo.save(this.repo.create({ ...dto, companyId }));
   }
 
   async findAll(companyId: string, query: FilterDto, state?: boolean) {
     const isSelect = query.find === "select";
-    const tipo = query.tipo as ThirdPartyType | undefined;
+    const type = query.tipo as ThirdPartyType | undefined;
     const search = query.search?.trim();
 
     const baseWhere: ThirdPartyWhere = {
       companyId,
       ...(state !== undefined ? { isActive: state } : {}),
-      ...(tipo ? { tipo } : {}),
+      ...(type ? { type } : {}),
     };
 
-    // sin search
     if (!search) {
       const [data, total] = await this.repo.findAndCount({
         where: baseWhere,
         ...(isSelect
-          ? { select: ["id", "nit", "razonSocial", "tipo"] as const }
+          ? { select: ["id", "taxId", "legalName", "type"] as const }
           : {}),
         order: { createdAt: "DESC" },
         ...paginate(query),
@@ -60,18 +60,17 @@ export class ThirdPartiesService {
       return paginatedResponse(data, total, query);
     }
 
-    // con search
     const searchWhere: ThirdPartyWhere[] = [
-      { ...baseWhere, nit: ILike(`%${search}%`) },
-      { ...baseWhere, razonSocial: ILike(`%${search}%`) },
-      { ...baseWhere, nombreComercial: ILike(`%${search}%`) },
+      { ...baseWhere, taxId: ILike(`%${search}%`) },
+      { ...baseWhere, legalName: ILike(`%${search}%`) },
+      { ...baseWhere, tradeName: ILike(`%${search}%`) },
       { ...baseWhere, email: ILike(`%${search}%`) },
     ];
 
     const [data, total] = await this.repo.findAndCount({
       where: searchWhere,
       ...(isSelect
-        ? { select: ["id", "nit", "razonSocial", "tipo"] as const }
+        ? { select: ["id", "taxId", "legalName", "type"] as const }
         : {}),
       order: { createdAt: "DESC" },
       ...paginate(query),
@@ -80,9 +79,9 @@ export class ThirdPartiesService {
   }
 
   async findOne(id: string, companyId: string): Promise<ThirdParty> {
-    const one = await this.repo.findOne({ where: { id, companyId } });
-    if (!one) throw new NotFoundException(`Tercero ${id} no encontrado`);
-    return one;
+    const entity = await this.repo.findOne({ where: { id, companyId } });
+    if (!entity) throw new NotFoundException(`Third party ${id} not found`);
+    return entity;
   }
 
   async update(
@@ -91,12 +90,14 @@ export class ThirdPartiesService {
     companyId: string,
   ): Promise<ThirdParty> {
     const entity = await this.findOne(id, companyId);
-    if (dto.nit && dto.nit !== entity.nit) {
+    if (dto.taxId && dto.taxId !== entity.taxId) {
       const exists = await this.repo.findOne({
-        where: { companyId, nit: dto.nit },
+        where: { companyId, taxId: dto.taxId },
       });
       if (exists)
-        throw new ConflictException(`Tercero con NIT ${dto.nit} ya existe`);
+        throw new ConflictException(
+          `Third party with Tax ID ${dto.taxId} already exists`,
+        );
     }
     Object.assign(entity, dto);
     return this.repo.save(entity);
@@ -108,11 +109,11 @@ export class ThirdPartiesService {
     return this.repo.save(entity);
   }
 
-  async findForSelect(companyId: string, tipo?: ThirdPartyType) {
+  async findForSelect(companyId: string, type?: ThirdPartyType) {
     return this.repo.find({
-      where: { companyId, isActive: true, ...(tipo ? { tipo } : {}) },
-      select: ["id", "nit", "razonSocial", "tipo"],
-      order: { razonSocial: "ASC" },
+      where: { companyId, isActive: true, ...(type ? { type } : {}) },
+      select: ["id", "taxId", "legalName", "type"],
+      order: { legalName: "ASC" },
       take: 100,
     });
   }

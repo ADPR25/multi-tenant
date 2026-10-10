@@ -1,0 +1,642 @@
+.aura-survey-host {
+  --aura-ink: #17201c;
+  --aura-muted: #6e7a73;
+  --aura-line: #dce4df;
+  --aura-paper: #fbfcfa;
+  --aura-green: #185c49;
+  --aura-mint: #dff2e8;
+  --aura-coral: #e36f55;
+  max-width: 900px;
+  margin: 32px auto;
+  color: var(--aura-ink);
+  font-family: "DM Sans", sans-serif;
+}
+.aura-survey {
+  background: var(--aura-paper);
+  border: 1px solid var(--aura-line);
+  box-shadow: 0 22px 55px rgba(23, 32, 28, 0.09);
+  border-radius: 18px;
+  overflow: hidden;
+}
+.aura-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 42px 48px 28px;
+  background: linear-gradient(135deg, #f0f7ef, #fbfcfa 70%);
+}
+.aura-kicker {
+  color: var(--aura-coral);
+  font: 700 11px "Space Grotesk", sans-serif;
+  letter-spacing: 2px;
+}
+.aura-header h1,
+.aura-page-heading h2 {
+  margin: 10px 0 8px;
+  font: 700 clamp(26px, 4vw, 40px) "Space Grotesk", sans-serif;
+  letter-spacing: 0;
+}
+.aura-header p,
+.aura-page-heading p {
+  margin: 0;
+  color: var(--aura-muted);
+  line-height: 1.6;
+}
+.aura-page-count {
+  color: var(--aura-muted);
+  font-size: 13px;
+  white-space: nowrap;
+  padding-top: 5px;
+}
+.aura-progress {
+  height: 5px;
+  background: #e6eee8;
+}
+.aura-progress-bar {
+  height: 100%;
+  background: var(--aura-green);
+  transition: width 0.35s ease;
+}
+.aura-page {
+  padding: 38px 48px 12px;
+}
+.aura-page-heading {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  margin-bottom: 30px;
+}
+.aura-step {
+  color: var(--aura-coral);
+  font: 700 15px "Space Grotesk", sans-serif;
+  padding-top: 10px;
+}
+.aura-page-heading h2 {
+  font-size: 25px;
+  margin: 0 0 7px;
+}
+.aura-questions {
+  display: grid;
+  gap: 25px;
+}
+.aura-question {
+  padding-bottom: 2px;
+}
+.aura-label {
+  display: block;
+  font: 600 16px "Space Grotesk", sans-serif;
+  margin-bottom: 7px;
+}
+.aura-required {
+  color: var(--aura-coral);
+  margin-left: 4px;
+}
+.aura-help {
+  color: var(--aura-muted);
+  font-size: 13px;
+  margin-bottom: 11px;
+}
+.aura-control {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #cbd7cf;
+  border-radius: 9px;
+  background: white;
+  color: var(--aura-ink);
+  padding: 13px 15px;
+  font: 15px "DM Sans", sans-serif;
+  outline: none;
+  transition: border 0.2s, box-shadow 0.2s;
+}
+textarea.aura-control {
+  resize: vertical;
+  min-height: 105px;
+}
+.aura-control:focus {
+  border-color: var(--aura-green);
+  box-shadow: 0 0 0 4px rgba(24, 92, 73, 0.1);
+}
+.aura-options {
+  display: grid;
+  gap: 9px;
+}
+.aura-option {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 13px 15px;
+  border: 1px solid var(--aura-line);
+  border-radius: 9px;
+  background: white;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.aura-option:hover {
+  border-color: #9dbcae;
+  transform: translateX(2px);
+}
+.aura-option input {
+  position: absolute;
+  opacity: 0;
+}
+.aura-option-mark {
+  width: 17px;
+  height: 17px;
+  border: 1px solid #aabbb1;
+  border-radius: 50%;
+  position: relative;
+  flex: 0 0 auto;
+  pointer-events: none;
+}
+.aura-option input[type="checkbox"] + .aura-option-mark {
+  border-radius: 4px;
+}
+.aura-option input:checked + .aura-option-mark {
+  background: var(--aura-green);
+  border-color: var(--aura-green);
+}
+.aura-option input:checked + .aura-option-mark:after {
+  content: "✓";
+  color: white;
+  position: absolute;
+  font-size: 12px;
+  left: 3px;
+  top: -1px;
+}
+.aura-rating {
+  display: flex;
+  gap: 8px;
+}
+.aura-rating label input {
+  position: absolute;
+  opacity: 0;
+}
+.aura-rating label span {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--aura-line);
+  border-radius: 50%;
+  color: var(--aura-muted);
+  cursor: pointer;
+  font-weight: 600;
+}
+.aura-rating label span:hover,
+.aura-rating label input:checked + span {
+  color: white;
+  background: var(--aura-green);
+  border-color: var(--aura-green);
+}
+.aura-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+.aura-toggle input {
+  position: absolute;
+  opacity: 0;
+}
+.aura-toggle span {
+  width: 42px;
+  height: 24px;
+  background: #cad6ce;
+  border-radius: 20px;
+  position: relative;
+  transition: 0.2s;
+}
+.aura-toggle span:after {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  top: 3px;
+  left: 3px;
+  background: white;
+  border-radius: 50%;
+  transition: 0.2s;
+}
+.aura-toggle input:checked + span {
+  background: var(--aura-green);
+}
+.aura-toggle input:checked + span:after {
+  transform: translateX(18px);
+}
+.aura-error {
+  color: #bf4934;
+  font-size: 12px;
+  min-height: 0;
+  margin-top: 6px;
+}
+.has-error .aura-control,
+.has-error .aura-option {
+  border-color: var(--aura-coral);
+}
+.aura-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 25px 48px 35px;
+}
+.aura-footer-status {
+  color: var(--aura-muted);
+  font-size: 11px;
+  text-align: center;
+}
+.aura-button {
+  border: 0;
+  border-radius: 8px;
+  padding: 12px 17px;
+  font: 600 14px "DM Sans", sans-serif;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.aura-button:hover {
+  transform: translateY(-1px);
+}
+.aura-button-primary {
+  color: white;
+  background: var(--aura-green);
+  box-shadow: 0 7px 14px rgba(24, 92, 73, 0.16);
+}
+.aura-button-primary span {
+  margin-left: 18px;
+  font-size: 18px;
+}
+.aura-button-ghost {
+  color: var(--aura-green);
+  background: transparent;
+  border: 1px solid var(--aura-line);
+}
+.aura-complete {
+  padding: 85px 48px;
+  text-align: center;
+}
+.aura-complete h2 {
+  font: 700 30px "Space Grotesk", sans-serif;
+  margin: 0 0 10px;
+}
+.aura-complete p {
+  color: var(--aura-muted);
+  margin: 0 auto 28px;
+  max-width: 440px;
+  line-height: 1.6;
+}
+.aura-complete .aura-button {
+  display: block;
+  margin: auto;
+}
+@media (max-width: 600px) {
+  .aura-survey-host {
+    margin: 12px;
+  }
+  .aura-header,
+  .aura-page,
+  .aura-footer {
+    padding-left: 22px;
+    padding-right: 22px;
+  }
+  .aura-header {
+    padding-top: 28px;
+  }
+  .aura-footer {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+  .aura-footer-status {
+    order: 3;
+    width: 100%;
+  }
+  .aura-footer .aura-button {
+    flex: 1;
+  }
+  .aura-page-heading {
+    margin-bottom: 23px;
+  }
+  .aura-phone {
+    grid-template-columns: 1fr;
+  }
+  .aura-date-range {
+    grid-template-columns: 1fr;
+  }
+  .aura-date-range span {
+    text-align: center;
+  }
+}
+.aura-media-error {
+  padding: 16px;
+  color: #b64f3b;
+  background: #fff3ef;
+  border-radius: 8px;
+}
+.aura-signature-wrap {
+  display: grid;
+  gap: 8px;
+  max-width: 600px;
+}
+.aura-signature {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 120px;
+  border: 1px dashed #aebfb3;
+  border-radius: 9px;
+  background: #fff;
+  touch-action: none;
+}
+.aura-signature-clear {
+  justify-self: start;
+  border: 1px solid var(--aura-line);
+  border-radius: 6px;
+  padding: 7px 10px;
+  color: var(--aura-green);
+  background: white;
+  cursor: pointer;
+  font-size: 12px;
+}
+.aura-file-status {
+  margin-top: 7px;
+  color: var(--aura-muted);
+  font-size: 12px;
+}
+.aura-file {
+  padding: 9px;
+  cursor: pointer;
+  background: #f4f8f4;
+}
+.aura-file::file-selector-button {
+  margin-right: 10px;
+  border: 0;
+  border-radius: 6px;
+  padding: 9px 12px;
+  color: white;
+  background: var(--aura-green);
+  cursor: pointer;
+  font: 600 12px "DM Sans", sans-serif;
+}
+.aura-phone {
+  display: grid;
+  grid-template-columns: minmax(145px, 0.42fr) 1fr;
+  gap: 8px;
+}
+.aura-country {
+  appearance: auto;
+  cursor: pointer;
+}
+.aura-autocomplete {
+  position: relative;
+  min-width: 0;
+}
+.aura-autocomplete-list {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 5px);
+  left: 0;
+  right: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 5px;
+  border: 1px solid var(--aura-line);
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(23, 32, 28, 0.15);
+}
+.aura-autocomplete-list[hidden] {
+  display: none;
+}
+.aura-autocomplete-list button {
+  display: block;
+  width: 100%;
+  padding: 10px 11px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--aura-ink);
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+  font: 14px "DM Sans", sans-serif;
+}
+.aura-autocomplete-list button:hover,
+.aura-autocomplete-list button:focus {
+  color: var(--aura-green);
+  background: var(--aura-mint);
+  outline: 0;
+}
+.aura-date-control {
+  position: relative;
+}
+.aura-date-control .aura-control {
+  padding-right: 42px;
+}
+.aura-date-control span {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  color: var(--aura-green);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+.aura-scale,
+.aura-emojis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.aura-scale label input,
+.aura-emojis label input,
+.aura-image-choices input {
+  position: absolute;
+  opacity: 0;
+}
+.aura-scale label span {
+  display: grid;
+  place-items: center;
+  min-width: 38px;
+  height: 38px;
+  padding: 0 8px;
+  border: 1px solid var(--aura-line);
+  border-radius: 7px;
+  cursor: pointer;
+}
+.aura-scale label input:checked + span,
+.aura-scale label span:hover {
+  color: white;
+  background: var(--aura-green);
+  border-color: var(--aura-green);
+}
+.aura-slider {
+  display: grid;
+  gap: 7px;
+}
+.aura-slider-labels {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+  color: var(--aura-muted);
+  font-size: 12px;
+}
+.aura-slider-labels span:last-child {
+  text-align: right;
+}
+.aura-slider output {
+  padding: 3px 8px;
+  color: var(--aura-green);
+  background: var(--aura-mint);
+  border-radius: 5px;
+  font-weight: 700;
+}
+.aura-slider input {
+  width: 100%;
+  accent-color: var(--aura-green);
+}
+.aura-emojis label span {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--aura-line);
+  border-radius: 50%;
+  font-size: 22px;
+  cursor: pointer;
+}
+.aura-emojis label input:checked + span {
+  background: var(--aura-mint);
+  border-color: var(--aura-green);
+  transform: scale(1.08);
+}
+.aura-ranking {
+  display: grid;
+  gap: 8px;
+  padding-left: 28px;
+}
+.aura-ranking li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--aura-line);
+  border-radius: 7px;
+}
+.aura-ranking li span {
+  flex: 1;
+}
+.aura-ranking button {
+  border: 0;
+  color: var(--aura-green);
+  background: var(--aura-mint);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.aura-matrix-scroll {
+  overflow-x: auto;
+}
+.aura-matrix {
+  width: 100%;
+  min-width: 430px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.aura-matrix th,
+.aura-matrix td {
+  padding: 10px;
+  border: 1px solid var(--aura-line);
+  text-align: center;
+}
+.aura-matrix th {
+  background: #f1f6f1;
+}
+.aura-matrix th:first-child {
+  text-align: left;
+}
+.aura-date-range {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+}
+.aura-date-range span {
+  color: var(--aura-muted);
+  font-size: 12px;
+}
+.aura-design-heading {
+  margin: 12px 0 0;
+  font: 700 24px "Space Grotesk", sans-serif;
+}
+.aura-design-description {
+  color: var(--aura-muted);
+  line-height: 1.6;
+}
+.aura-design-separator {
+  border: 0;
+  border-top: 1px solid var(--aura-line);
+}
+.aura-design-media img,
+.aura-design-media video,
+.aura-design-media iframe {
+  display: block;
+  width: 100%;
+  max-height: 360px;
+  min-height: 220px;
+  object-fit: contain;
+  border: 0;
+  border-radius: 9px;
+}
+.aura-design-section {
+  padding: 15px;
+  border-left: 3px solid var(--aura-coral);
+  background: #fff8f5;
+}
+.aura-design-section h3 {
+  margin: 0 0 5px;
+}
+.aura-calculated {
+  display: block;
+  padding: 12px 14px;
+  background: #f0f5f0;
+  border-radius: 8px;
+}
+.aura-timer-wrap {
+  padding: 8px 48px 12px;
+  background: #f6faf7;
+  border-top: 1px solid #e6eee8;
+}
+.aura-timer {
+  font: 700 12px "DM Sans", sans-serif;
+  color: #185c49;
+}
+.aura-timer-danger {
+  color: #b64f3b;
+}
+.aura-timer-progress {
+  height: 4px;
+  background: #e6eee8;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.aura-timer-progress [data-aura-timer-bar] {
+  height: 100%;
+  background: #185c49;
+  transition: width 1s linear;
+}
+.aura-time-error {
+  font: 600 11px "DM Sans", sans-serif;
+  color: #b64f3b;
+  background: #fff3ef;
+  border: 1px solid #f2cec5;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+.aura-timer-wait {
+  color: #8a7a3a;
+}
+.aura-timer-ok {
+  color: #185c49;
+}
+.aura-timer-progress [data-aura-timer-bar].is-danger {
+  background: #e36f55;
+}

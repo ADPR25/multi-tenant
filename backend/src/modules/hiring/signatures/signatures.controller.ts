@@ -1,4 +1,3 @@
-
 import { Controller, Post, Body, Param, Get, Req, UseGuards } from "@nestjs/common";
 import { SignaturesService } from "./signatures.service";
 import { RequestCodeDto } from "./dto/request-code.dto";
@@ -14,22 +13,22 @@ export class SignaturesController {
   constructor(private readonly service: SignaturesService) {}
 
   @Public()
-  @Get("public/:codigo")
-  getPublic(@Param("codigo") codigo: string) {
-    return this.service.getPublicContract(codigo);
+  @Get("public/:code")
+  getPublic(@Param("code") code: string) {
+    return this.service.getPublicContract(code);
   }
 
   @Public()
-  @Post("public/:codigo/request-code")
-  requestCode(@Param("codigo") codigo: string, @Body() dto: RequestCodeDto, @Req() req: Request) {
+  @Post("public/:code/request-code")
+  requestCode(@Param("code") code: string, @Body() dto: RequestCodeDto, @Req() req: Request) {
     const ip = (req.headers["x-forwarded-for"] as string) || req.ip || "0.0.0.0";
-    return this.service.requestCode(codigo, dto.email, ip);
+    return this.service.requestCode(code, dto.email, ip);
   }
 
   @Public()
-  @Post("public/:codigo/verify")
-  verify(@Param("codigo") codigo: string, @Body() dto: VerifyCodeDto, @Req() req: Request) {
+  @Post("public/:code/verify")
+  verify(@Param("code") code: string, @Body() dto: VerifyCodeDto, @Req() req: Request) {
     const ip = (req.headers["x-forwarded-for"] as string) || req.ip || "0.0.0.0";
-    return this.service.verifyCode(codigo, dto.codigo, ip, dto.firmaBase64);
+    return this.service.verifyCode(code, dto.code, ip, dto.signatureBase64);
   }
 }

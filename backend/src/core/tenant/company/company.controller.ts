@@ -70,7 +70,7 @@ export class CompanyController {
     @CurrentUser() user: CurrentUserPayload,
   ) {
     if (!this.isSuper(user) && companyId && id !== companyId) {
-      throw new ForbiddenException("No puedes ver otra empresa");
+      throw new ForbiddenException("You cannot view/edit another company");
     }
     return this.companyService.findOne(id);
   }
@@ -84,7 +84,7 @@ export class CompanyController {
     @CurrentUser() user: CurrentUserPayload,
   ) {
     if (!this.isSuper(user) && companyId && id !== companyId) {
-      throw new ForbiddenException("No puedes editar otra empresa");
+      throw new ForbiddenException("You cannot view/edit another company");
     }
     return this.companyService.update(id, dto);
   }

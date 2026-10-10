@@ -28,7 +28,7 @@ export class WarehousesService {
     const exists = await this.repoService.findOne({
       where: { companyId, code: dto.code },
     });
-    if (exists) throw new ConflictException(`Bodega con codigo ${dto.code} ya existe`);
+    if (exists) throw new ConflictException(`Warehouse with code ${dto.code} already exists`);
 
     const data = this.repoService.create({ ...dto, companyId });
 
@@ -96,7 +96,7 @@ export class WarehousesService {
       const exists = await this.repoService.findOne({
         where: { companyId, code: dto.code },
       });
-      if (exists) throw new ConflictException(`Codigo ${dto.code} ya existe`);
+      if (exists) throw new ConflictException(`code ${dto.code} already exists`);
     }
     Object.assign(warehouse, dto);
     return this.repoService.save(warehouse);

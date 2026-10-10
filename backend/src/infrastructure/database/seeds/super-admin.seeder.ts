@@ -33,12 +33,12 @@ export class SuperAdminSeeder implements OnApplicationBootstrap {
             companyId: null,
             name: "SUPER ADMIN",
             code: "SUPER_ADMIN",
-            description: "Rol global sin empresa",
+            description: "Global role without company",
             isPrincipal: true,
             isActive: true,
           } as Partial<Role>);
           superRole = await manager.save(superRole);
-          this.logger.log(`✅ Rol SUPER_ADMIN global creado`);
+          this.logger.log(`✅ Global SUPER_ADMIN role created`);
         }
 
         const docNumber = "00000000";
@@ -65,14 +65,14 @@ export class SuperAdminSeeder implements OnApplicationBootstrap {
           } as Partial<User>);
           await manager.save(superUser);
           this.logger.log(
-            `✅ Usuario superadmin@system.com / Admin123* creado`,
+            `✅ User superadmin@system.com / Admin123* created`,
           );
         } else {
-          this.logger.log(`ℹ Super admin ya existe, no se crea`);
+          this.logger.log(`ℹ Super admin already exists, skipping creation`);
         }
       });
     } catch (e) {
-      this.logger.error("Error seedeando super admin", e as Error);
+      this.logger.error("Error seeding super admin", e as Error);
     }
   }
 }

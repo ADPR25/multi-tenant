@@ -49,7 +49,7 @@ export class RolesController {
     );
 
     if (!effectiveCompanyId) {
-      throw new ConflictException("companyId es requerido");
+      throw new ConflictException("companyId companyId is required");
     }
 
     return this.rolesService.create({ ...dto, companyId: effectiveCompanyId });

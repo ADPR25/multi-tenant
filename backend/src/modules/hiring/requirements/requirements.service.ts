@@ -1,4 +1,3 @@
-
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
@@ -15,9 +14,9 @@ export class RequirementsService {
   
   async create(dto: CreateRequirementDto, companyId: string) {
     const contract = await this.contractRepo.findOne({ where: { id: dto.contractId, companyId } });
-    if (!contract) throw new NotFoundException("Contrato no encontrado");
-    const req = this.repo.create({ ...dto, companyId });
-    return await this.repo.save(req);
+    if (!contract) throw new NotFoundException("Contract not found");
+    const requirement = this.repo.create({ ...dto, companyId });
+    return await this.repo.save(requirement);
   }
 
   async findByContract(contractId: string, companyId: string) {
@@ -25,16 +24,16 @@ export class RequirementsService {
   }
   
   async toggleDelivered(id: string, companyId: string) {
-    const r = await this.repo.findOne({ where: { id, companyId } });
-    if (!r) throw new NotFoundException("Requisito no encontrado");
-    r.entregado = !r.entregado;
-    return await this.repo.save(r);
+    const requirement = await this.repo.findOne({ where: { id, companyId } });
+    if (!requirement) throw new NotFoundException("Requirement not found");
+    requirement.isDelivered = !requirement.isDelivered;
+    return await this.repo.save(requirement);
   }
 
   async remove(id: string, companyId: string) {
-    const r = await this.repo.findOne({ where: { id, companyId } });
-    if (!r) throw new NotFoundException("Requisito no encontrado");
-    await this.repo.softRemove(r);
-    return { message: "Eliminado" };
+    const requirement = await this.repo.findOne({ where: { id, companyId } });
+    if (!requirement) throw new NotFoundException("Requirement not found");
+    await this.repo.softRemove(requirement);
+    return { message: "Deleted" };
   }
 }

@@ -36,12 +36,12 @@ export class UploadsController {
         ? req.headers.authorization.slice(7)
         : null);
 
-    if (!token) throw new UnauthorizedException("Token no proporcionado");
+    if (!token) throw new UnauthorizedException("Token not provided");
 
     try {
       this.jwtService.verify(token);
     } catch (error) {
-      throw new UnauthorizedException("Token inválido", {
+      throw new UnauthorizedException("Invalid token", {
         cause: error as Error,
       });
     }
@@ -49,7 +49,7 @@ export class UploadsController {
     const key = `docs/${companyId}/${folderId}/${filename}`;
     const abs = this.uploadsService.getAbsolutePath(key);
     if (!fs.existsSync(abs)) {
-      res.status(404).json({ message: "Archivo no encontrado" });
+      res.status(404).json({ message: "File not found" });
       return;
     }
 

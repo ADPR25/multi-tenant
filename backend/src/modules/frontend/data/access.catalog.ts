@@ -180,6 +180,20 @@ export const ACCESS_CATALOG: CatalogModule[] = [
           "projects:delete",
         ],
       },
+      {
+        path: "/survey",
+        name: "Encuestas",
+        title: "Encuestas",
+        componentPath: "@/views/surveys/survey/index.vue",
+        icon: "ClipboardList",
+        permissions: [
+          "survey:create",
+          "survey:read",
+          "survey:update",
+          "survey:state",
+          "survey:delete",
+        ],
+      },
     ],
   },
   {
@@ -266,7 +280,7 @@ export const ACCESS_CATALOG: CatalogModule[] = [
         title: "Mi Drive Empresarial",
         componentPath: "@/views/documents/drive/index.vue",
         icon: "HardDrive",
-        permissions: [], // vista virtual, sin permisos propios
+        permissions: ["documents:drive:revisor"],
       },
     ],
   },

@@ -19,18 +19,16 @@ export class TasksService {
       projectId: dto.projectId,
       phaseId: dto.phaseId ?? null,
       activityId: dto.activityId,
-      titulo: dto.titulo,
+      title: dto.title,
       companyId,
-      descripcion: dto.descripcion ?? null,
-      estado: dto.estado,
-      prioridad: dto.prioridad,
-      responsableId: dto.responsableId ?? null,
-      fechaVencimiento: dto.fechaVencimiento
-        ? new Date(dto.fechaVencimiento)
-        : null,
-      horasEstimadas: dto.horasEstimadas ?? null,
-      horasReales: dto.horasReales ?? null,
-      orden: dto.orden ?? 0,
+      description: dto.description ?? null,
+      status: dto.status,
+      priority: dto.priority,
+      responsibleId: dto.responsibleId ?? null,
+      dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
+      estimatedHours: dto.estimatedHours ?? null,
+      actualHours: dto.actualHours ?? null,
+      sortOrder: dto.sortOrder ?? 0,
     });
     return this.repo.save(entity);
   }
@@ -40,10 +38,10 @@ export class TasksService {
       .createQueryBuilder("task")
       .where("task.projectId = :projectId", { projectId })
       .andWhere("task.companyId = :companyId", { companyId })
-      .orderBy("task.orden", "ASC");
+      .orderBy("task.sortOrder", "ASC");
 
     if (query?.search?.trim()) {
-      qb.andWhere("(task.titulo ILIKE :s OR task.descripcion ILIKE :s)", {
+      qb.andWhere("(task.title ILIKE :s OR task.description ILIKE :s)", {
         s: `%${query.search}%`,
       });
     }
@@ -66,14 +64,14 @@ export class TasksService {
   ): Promise<ProjectTask[]> {
     return this.repo.find({
       where: { activityId, companyId },
-      order: { orden: "ASC" },
+      order: { sortOrder: "ASC" },
     });
   }
 
   async findOne(id: string, companyId: string): Promise<ProjectTask> {
-    const e = await this.repo.findOne({ where: { id, companyId } });
-    if (!e) throw new NotFoundException(`Tarea ${id} no encontrada`);
-    return e;
+    const entity = await this.repo.findOne({ where: { id, companyId } });
+    if (!entity) throw new NotFoundException(`Task ${id} not found`);
+    return entity;
   }
 
   async update(
@@ -81,30 +79,27 @@ export class TasksService {
     dto: UpdateTaskDto,
     companyId: string,
   ): Promise<ProjectTask> {
-    const e = await this.findOne(id, companyId);
-    Object.assign(e, {
+    const entity = await this.findOne(id, companyId);
+    Object.assign(entity, {
       ...dto,
-      ...(dto.fechaVencimiento !== undefined
+      ...(dto.dueDate !== undefined
         ? {
-            fechaVencimiento: dto.fechaVencimiento
-              ? new Date(dto.fechaVencimiento)
-              : null,
+            dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
           }
         : {}),
     });
-    return this.repo.save(e);
+    return this.repo.save(entity);
   }
 
   async toggleActive(id: string, companyId: string): Promise<ProjectTask> {
-    const e = await this.findOne(id, companyId);
-    const entityWithActive = e as ProjectTask & { isActive: boolean };
-    entityWithActive.isActive = !entityWithActive.isActive;
-    return this.repo.save(entityWithActive);
+    const entity = await this.findOne(id, companyId);
+    entity.isActive = !entity.isActive;
+    return this.repo.save(entity);
   }
 
   async remove(id: string, companyId: string): Promise<{ message: string }> {
-    const e = await this.findOne(id, companyId);
-    await this.repo.remove(e);
-    return { message: `Tarea ${id} eliminada` };
+    const entity = await this.findOne(id, companyId);
+    await this.repo.remove(entity);
+    return { message: `Task ${id} deleted` };
   }
 }

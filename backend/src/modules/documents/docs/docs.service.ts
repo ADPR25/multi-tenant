@@ -49,7 +49,7 @@ export class DocsService {
       });
       if (!f)
         throw new BadRequestException(
-          `Folder ${dto.folderId} no existe o inactivo`,
+          `Folder ${dto.folderId} does not exist`,
         );
     }
     if (dto.categoryId) {
@@ -58,7 +58,7 @@ export class DocsService {
       });
       if (!c)
         throw new BadRequestException(
-          `Category ${dto.categoryId} no existe o inactivo`,
+          `Category ${dto.categoryId} does not exist`,
         );
     }
     if (dto.typeId) {
@@ -67,7 +67,7 @@ export class DocsService {
       });
       if (!t)
         throw new BadRequestException(
-          `Type ${dto.typeId} no existe o inactivo`,
+          `Type ${dto.typeId} does not exist`,
         );
     }
   }
@@ -92,7 +92,7 @@ export class DocsService {
     const folder = await this.folderRepo.findOne({
       where: { id: dto.folderId, companyId },
     });
-    if (!folder) throw new NotFoundException("Carpeta no encontrada");
+    if (!folder) throw new NotFoundException("Folder not found");
 
     const effectiveUserId = user.id || user.sub;
     if (!effectiveUserId)
@@ -101,7 +101,7 @@ export class DocsService {
     if (folder.ownerFolderName) {
       if (folder.createdBy && folder.createdBy !== effectiveUserId) {
         throw new ForbiddenException(
-          "No puedes subir en carpeta de otro compañero",
+          "You cannot upload to another user's folder",
         );
       }
     }

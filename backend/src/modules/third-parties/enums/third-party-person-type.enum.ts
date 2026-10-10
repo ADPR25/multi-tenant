@@ -1,4 +1,4 @@
 export enum ThirdPartyPersonType {
-  NATURAL = "NATURAL",
-  JURIDICA = "JURIDICA",
+  INDIVIDUAL = "INDIVIDUAL", //NATURAL
+  LEGAL_ENTITY = "LEGAL_ENTITY", //JURIDICA
 }

@@ -6,28 +6,28 @@ export class CreateThirdPartyDto {
   @IsNotEmpty()
   @IsString()
   @Length(5, 20)
-  nit!: string;
+  taxId!: string;
 
   @IsOptional()
   @IsString()
   @Length(1, 5)
-  dv?: string;
+  verificationDigit?: string;
 
   @IsNotEmpty()
   @IsString()
   @Length(3, 200)
-  razonSocial!: string;
+  legalName!: string;
 
   @IsOptional()
   @IsString()
-  nombreComercial?: string;
+  tradeName?: string;
 
   @IsEnum(ThirdPartyType)
-  tipo!: ThirdPartyType;
+  type!: ThirdPartyType;
 
   @IsOptional()
   @IsEnum(ThirdPartyPersonType)
-  tipoPersona?: ThirdPartyPersonType;
+  personType?: ThirdPartyPersonType;
 
   @IsOptional()
   @IsEmail()
@@ -35,37 +35,37 @@ export class CreateThirdPartyDto {
 
   @IsOptional()
   @IsString()
-  telefono?: string;
+  phone?: string;
 
   @IsOptional()
   @IsString()
-  ciudad?: string;
+  city?: string;
 
   @IsOptional()
   @IsString()
-  direccion?: string;
+  address?: string;
 
   @IsOptional()
   @IsString()
-  banco?: string;
+  bankName?: string;
 
   @IsOptional()
   @IsString()
-  tipoCuenta?: string;
+  bankAccountType?: string;
 
   @IsOptional()
   @IsString()
-  cuentaBancaria?: string;
+  bankAccountNumber?: string;
 
   @IsOptional()
   @IsString()
-  actividadEconomica?: string;
+  economicActivity?: string;
 
   @IsOptional()
   @IsBoolean()
-  responsableIva?: boolean;
+  isVatResponsible?: boolean;
 
   @IsOptional()
   @IsString()
-  notas?: string;
+  notes?: string;
 }

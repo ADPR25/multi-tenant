@@ -3,7 +3,7 @@ import { Role } from "@/core/iam/roles/entities/role.entity";
 import { BaseTenantEntity } from "@/infrastructure/database/base-tenant.entity";
 
 @Entity("users")
-@Index(["document_number"], { unique: true })
+@Index(["companyId", "document_number"], { unique: true })
 @Index(["companyId", "email"], { unique: true })
 export class User extends BaseTenantEntity {
   @Column()

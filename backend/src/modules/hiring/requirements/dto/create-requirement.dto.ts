@@ -1,5 +1,5 @@
-
 import { IsNotEmpty, IsString, IsBoolean, IsOptional, IsUUID } from "class-validator";
+
 export class CreateRequirementDto {
   @IsNotEmpty()
   @IsUUID()
@@ -7,11 +7,11 @@ export class CreateRequirementDto {
 
   @IsNotEmpty()
   @IsString()
-  nombre!: string;
+  name!: string;
 
   @IsOptional()
   @IsBoolean()
-  obligatorio?: boolean;
+  isRequired?: boolean;
 
   @IsOptional()
   @IsUUID()
@@ -19,5 +19,5 @@ export class CreateRequirementDto {
 
   @IsOptional()
   @IsString()
-  observacion?: string;
+  observation?: string;
 }

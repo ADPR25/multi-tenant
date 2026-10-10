@@ -4,8 +4,9 @@ import { Project } from "../../projects/entities/project.entity";
 import { ProjectStatus } from "../../enums/project-status.enum";
 
 @Entity("project_phases")
-@Index(["companyId", "projectId", "codigo"], { unique: true })
+@Index(["companyId", "projectId", "code"], { unique: true })
 @Index(["companyId", "projectId"])
+@Index(["companyId", "status"])
 export class ProjectPhase extends BaseTenantEntity {
   @Column({ name: "project_id", type: "uuid" })
   projectId!: string;
@@ -14,43 +15,44 @@ export class ProjectPhase extends BaseTenantEntity {
   @JoinColumn({ name: "project_id" })
   project?: Project;
 
-  @Column({ length: 50 })
-  codigo!: string;
+  @Column({ name: "code", length: 50 })
+  code!: string;
 
-  @Column({ length: 200 })
-  nombre!: string;
+  @Column({ name: "name", length: 200 })
+  name!: string;
 
-  @Column({ type: "text", nullable: true })
-  descripcion!: string | null;
+  @Column({ name: "description", type: "text", nullable: true })
+  description!: string | null;
 
-  @Column({ type: "int", default: 0 })
-  orden!: number;
+  @Column({ name: "sort_order", type: "int", default: 0 })
+  sortOrder!: number;
 
   @Column({
+    name: "status",
     type: "enum",
     enum: ProjectStatus,
-    default: ProjectStatus.EN_PLANEACION,
+    default: ProjectStatus.PLANNING,
   })
-  estado!: ProjectStatus;
+  status!: ProjectStatus;
 
-  @Column({ name: "fecha_inicio", type: "date", nullable: true })
-  fechaInicio!: Date | null;
+  @Column({ name: "start_date", type: "date", nullable: true })
+  startDate!: Date | null;
 
-  @Column({ name: "fecha_fin", type: "date", nullable: true })
-  fechaFin!: Date | null;
+  @Column({ name: "end_date", type: "date", nullable: true })
+  endDate!: Date | null;
 
-  @Column({ type: "int", default: 0 })
-  avance!: number;
+  @Column({ name: "progress", type: "int", default: 0 })
+  progress!: number;
 
   @Column({
-    name: "presupuesto",
+    name: "budget",
     type: "decimal",
     precision: 18,
     scale: 2,
     nullable: true,
   })
-  presupuesto!: string | null;
+  budget!: string | null;
 
-  @Column({ default: true })
+  @Column({ name: "is_active", default: true })
   isActive!: boolean;
 }

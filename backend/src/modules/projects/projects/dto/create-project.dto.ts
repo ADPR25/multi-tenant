@@ -11,46 +11,48 @@ import {
   IsDecimal,
 } from "class-validator";
 import { ProjectStatus } from "../../enums/project-status.enum";
+
 export class CreateProjectDto {
   @IsString()
   @MaxLength(50)
-  codigo!: string;
+  code!: string;
 
   @IsString()
   @MaxLength(200)
-  nombre!: string;
+  name!: string;
 
   @IsOptional()
   @IsString()
-  descripcion?: string | null;
+  description?: string | null;
+
   @IsOptional()
   @IsEnum(ProjectStatus)
-  estado?: ProjectStatus;
+  status?: ProjectStatus;
 
   @IsOptional()
   @IsDateString()
-  fechaInicio?: string | null;
+  startDate?: string | null;
 
   @IsOptional()
   @IsDateString()
-  fechaFin?: string | null;
+  endDate?: string | null;
 
   @IsOptional()
   @IsString()
   @IsDecimal({ decimal_digits: "0,2" })
-  presupuesto?: string | null;
+  budget?: string | null;
 
   @IsOptional()
   @IsNumber()
   @Min(0)
   @Max(100)
-  avance?: number;
+  progress?: number;
 
   @IsOptional()
   @IsUUID()
-  clienteId?: string | null;
+  clientId?: string | null;
   
   @IsOptional()
   @IsUUID()
-  responsableId?: string | null;
+  responsibleId?: string | null;
 }
