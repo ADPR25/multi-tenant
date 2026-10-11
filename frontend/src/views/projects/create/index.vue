@@ -23,23 +23,15 @@ interface UserOption {
   email?: string;
 }
 
-interface ThirdPartyListResponse {
-  data?: ThirdParty[];
-}
-
-interface UserListResponse {
-  data?: UserOption[];
-}
-
 const emit = defineEmits<{
   (e: "close"): void;
   (e: "created", project: Project): void;
 }>();
 
 const props = defineProps<{
-  item?: Partial<Project> & {
-    cliente?: { id?: string };
-    responsable?: { id?: string };
+  item?: Project & {
+    client?: { id?: string };
+    responsible?: { id?: string };
   };
 }>();
 
@@ -56,29 +48,29 @@ const usuarios = ref<UserOption[]>([]);
 const isEditing = !!props.item?.id;
 
 const form = ref({
-  codigo: props.item?.codigo || "",
-  nombre: props.item?.nombre || "",
-  descripcion: (props.item?.descripcion as string) || "",
-  estado: props.item?.estado || "EN_PLANEACION",
-  fechaInicio: props.item?.fechaInicio
-    ? String(props.item.fechaInicio).substring(0, 10)
+  code: props.item?.code || "",
+  name: props.item?.name || "",
+  description: (props.item?.description as string) || "",
+  status: props.item?.status || "PLANNING",
+  startDate: props.item?.startDate
+    ? String(props.item.startDate).substring(0, 10)
     : "",
-  fechaFin: props.item?.fechaFin
-    ? String(props.item.fechaFin).substring(0, 10)
+  endDate: props.item?.endDate
+    ? String(props.item.endDate).substring(0, 10)
     : "",
-  presupuesto: (props.item?.presupuesto as string) || "",
-  avance: props.item?.avance ?? 0,
-  clienteId: (props.item?.clienteId as string) || props.item?.cliente?.id || "",
-  responsableId:
-    (props.item?.responsableId as string) || props.item?.responsable?.id || "",
+  budget: (props.item?.budget as string) || "",
+  progress: props.item?.progress ?? 0,
+  clientId: (props.item?.clientId as string) || props.item?.client?.id || "",
+  responsibleId:
+    (props.item?.responsibleId as string) || props.item?.responsible?.id || "",
 });
 
-const estados = [
-  "EN_PLANEACION",
-  "EN_EJECUCION",
-  "PAUSADO",
-  "FINALIZADO",
-  "CANCELADO",
+const statusOptions = [
+  { title: "En Planeación", value: "PLANNING" },
+  { title: "En Ejecución", value: "IN_PROGRESS" },
+  { title: "Pausado", value: "PAUSED" },
+  { title: "Finalizado", value: "COMPLETED" },
+  { title: "Cancelado", value: "CANCELLED" },
 ];
 
 async function submit(): Promise<void> {
@@ -87,32 +79,30 @@ async function submit(): Promise<void> {
   if (!valid) return;
   saving.value = true;
   try {
-    const payload: Partial<ProjectPayload> = {
-      codigo: form.value.codigo,
-      nombre: form.value.nombre,
-      descripcion: form.value.descripcion || null,
-      estado: form.value.estado,
-      fechaInicio: form.value.fechaInicio || null,
-      fechaFin: form.value.fechaFin || null,
-      presupuesto: form.value.presupuesto || null,
-      avance: Number(form.value.avance),
-      clienteId: form.value.clienteId || null,
-      responsableId: form.value.responsableId || null,
+    const payload: ProjectPayload = {
+      code: form.value.code,
+      name: form.value.name,
+      description: form.value.description || null,
+      status: form.value.status as ProjectPayload["status"],
+      startDate: form.value.startDate || null,
+      endDate: form.value.endDate || null,
+      budget: form.value.budget ? String(form.value.budget) : null,
+      progress: Number(form.value.progress),
+      clientId: form.value.clientId || null,
+      responsibleId: form.value.responsibleId || null,
     };
+
     let res: Project;
     if (props.item?.id) {
       res = await projectsService.update(props.item.id, payload);
     } else {
-      res = await projectsService.create(payload as ProjectPayload);
+      res = await projectsService.create(payload);
     }
 
     lastSaved.value = res;
-
     if (isEditing) {
-      // En edición mostramos modal
       showSuccessModal.value = true;
     } else {
-      // En creación seguimos como antes
       emit("created", res);
     }
   } catch (err: unknown) {
@@ -126,31 +116,46 @@ async function submit(): Promise<void> {
 
 function onSuccessConfirm() {
   showSuccessModal.value = false;
-  if (lastSaved.value) {
-    emit("created", lastSaved.value);
-  }
+  if (lastSaved.value) emit("created", lastSaved.value);
   emit("close");
 }
 
 function getUserLabel(user: UserOption): string {
   const fullName = `${user.first_name || ""} ${user.last_name || ""}`.trim();
-  return fullName || user.email || "";
+  return fullName || user.email || user.id;
+}
+
+function getThirdPartyLabel(tp: ThirdParty): string {
+  const record = tp as ThirdParty & {
+    razonSocial?: string;
+    businessName?: string;
+    nit?: string;
+  };
+  return (
+    record.razonSocial ||
+    record.businessName ||
+    record.name ||
+    record.nit ||
+    record.id
+  );
 }
 
 onMounted(async () => {
   try {
     const [tRes, uRes] = await Promise.all([
       thirdPartiesService
-        .list({ limit: "all", state: "true" })
+        .list({ limit: "all", state: true })
         .catch(() => ({ data: [] as ThirdParty[] })),
-      usersService
-        .list({ limit: "all" })
-        .catch(() => ({ data: [] as UserOption[] })),
+      usersService.list().catch(() => ({ data: [] as UserOption[] })),
     ]);
-    const tData = tRes as ThirdPartyListResponse | ThirdParty[];
-    terceros.value = Array.isArray(tData) ? tData : tData.data || [];
-    const uData = uRes as UserListResponse | UserOption[];
-    usuarios.value = Array.isArray(uData) ? uData : uData.data || [];
+
+    type ListResponse<T> = { data: T[] } | T[];
+
+    const tList = tRes as ListResponse<ThirdParty>;
+    terceros.value = Array.isArray(tList) ? tList : tList.data || [];
+
+    const uList = uRes as ListResponse<UserOption>;
+    usuarios.value = Array.isArray(uList) ? uList : uList.data || [];
   } catch (e) {
     console.error(e);
   }
@@ -163,90 +168,104 @@ onMounted(async () => {
   >
     <v-form ref="formRef" @submit.prevent="submit">
       <v-row>
-        <v-col cols="12" md="3"
-          ><v-label>Código *</v-label
-          ><v-text-field
-            v-model="form.codigo"
+        <v-col cols="12" md="3">
+          <v-label>Código *</v-label>
+          <v-text-field
+            v-model="form.code"
             variant="outlined"
             density="comfortable"
-            :rules="[(v: string) => !!v || 'Req']"
-        /></v-col>
-        <v-col cols="12" md="6"
-          ><v-label>Nombre *</v-label
-          ><v-text-field
-            v-model="form.nombre"
+            :rules="[(v: string) => !!v || 'Requerido']"
+          />
+        </v-col>
+        <v-col cols="12" md="6">
+          <v-label>Nombre *</v-label>
+          <v-text-field
+            v-model="form.name"
             variant="outlined"
             density="comfortable"
-            :rules="[(v: string) => !!v || 'Req']"
-        /></v-col>
-        <v-col cols="12" md="3"
-          ><v-label>Estado</v-label
-          ><v-select
-            v-model="form.estado"
-            :items="estados"
+            :rules="[(v: string) => !!v || 'Requerido']"
+          />
+        </v-col>
+        <v-col cols="12" md="3">
+          <v-label>Estado</v-label>
+          <v-select
+            v-model="form.status"
+            :items="statusOptions"
             variant="outlined"
             density="comfortable"
-        /></v-col>
-        <v-col cols="12"
-          ><v-label>Descripción</v-label
-          ><v-textarea
-            v-model="form.descripcion"
+          />
+        </v-col>
+        <v-col cols="12">
+          <v-label>Descripción</v-label>
+          <v-textarea
+            v-model="form.description"
             variant="outlined"
             density="comfortable"
             rows="2"
-        /></v-col>
-        <v-col cols="12" md="3"
-          ><v-label>Fecha Inicio</v-label
-          ><v-date-input
-            v-model="form.fechaInicio"
+          />
+        </v-col>
+        <v-col cols="12" md="3">
+          <v-label>Fecha Inicio</v-label>
+          <v-date-input
+            v-model="form.startDate"
             variant="outlined"
             density="comfortable"
-        /></v-col>
-        <v-col cols="12" md="3"
-          ><v-label>Fecha Fin</v-label
-          ><v-date-input
-            v-model="form.fechaFin"
+            clearable
+          />
+        </v-col>
+        <v-col cols="12" md="3">
+          <v-label>Fecha Fin</v-label>
+          <v-date-input
+            v-model="form.endDate"
             variant="outlined"
             density="comfortable"
-        /></v-col>
-        <v-col cols="12" md="3"
-          ><v-label>Presupuesto</v-label
-          ><v-text-field
-            v-model="form.presupuesto"
+            clearable
+          />
+        </v-col>
+        <v-col cols="12" md="3">
+          <v-label>Presupuesto</v-label>
+          <v-text-field
+            v-model="form.budget"
             type="number"
             variant="outlined"
             density="comfortable"
-        /></v-col>
-        <v-col cols="12" md="3"
-          ><v-label>Avance %</v-label
-          ><v-text-field
-            v-model="form.avance"
+          />
+        </v-col>
+        <v-col cols="12" md="3">
+          <v-label>Avance %</v-label>
+          <v-text-field
+            v-model="form.progress"
             type="number"
+            min="0"
+            max="100"
             variant="outlined"
             density="comfortable"
-        /></v-col>
-        <v-col cols="12" md="6"
-          ><v-label>Cliente</v-label
-          ><v-autocomplete
-            v-model="form.clienteId"
+          />
+        </v-col>
+        <v-col cols="12" md="6">
+          <v-label>Cliente</v-label>
+          <v-autocomplete
+            v-model="form.clientId"
             :items="terceros"
-            item-title="razonSocial"
+            :item-title="getThirdPartyLabel"
             item-value="id"
             clearable
             variant="outlined"
             density="comfortable"
-        /></v-col>
-        <v-col cols="12" md="6"
-          ><v-label>Responsable</v-label
-          ><v-autocomplete
-            v-model="form.responsableId"
+          />
+        </v-col>
+        <v-col cols="12" md="6">
+          <v-label>Responsable</v-label>
+          <v-autocomplete
+            v-model="form.responsibleId"
             :items="usuarios"
             :item-title="getUserLabel"
             item-value="id"
             clearable
             variant="outlined"
             density="comfortable"
-        /></v-col>
+          />
+        </v-col>
       </v-row>
       <div class="flex justify-end gap-2 mt-4">
         <v-btn variant="outlined" @click="emit('close')"
@@ -259,7 +278,6 @@ onMounted(async () => {
       </div>
     </v-form>
 
-    <!-- MODAL EXITO EDICION -->
     <v-dialog v-model="showSuccessModal" max-width="420" persistent>
       <v-card class="rounded-2xl">
         <v-card-text class="text-center pt-8 pb-2">
@@ -270,8 +288,8 @@ onMounted(async () => {
           </div>
           <h3 class="text-xl font-semibold">¡Edición exitosa!</h3>
           <p class="text-gray-500 mt-2 text-sm">
-            El proyecto <b>{{ lastSaved?.nombre || form.nombre }}</b> se
-            actualizó correctamente.
+            El proyecto <b>{{ lastSaved?.name || form.name }}</b> se actualizó
+            correctamente.
           </p>
         </v-card-text>
         <v-card-actions class="justify-center pb-6 gap-2">

@@ -14,49 +14,57 @@ export interface ProjectQuery {
 export interface ThirdPartyRef {
   id: string;
   razonSocial?: string;
-  nombre?: string;
+  businessName?: string;
+  name?: string;
+  nit?: string;
 }
 
 export interface UserRef {
   id: string;
-  nombre?: string;
+  first_name?: string;
+  last_name?: string;
   email?: string;
 }
 
 export interface ProjectPayload {
-  codigo: string;
-  nombre: string;
-  descripcion?: string | null;
-  estado?: string;
-  fechaInicio?: string | null;
-  fechaFin?: string | null;
-  presupuesto?: string | null;
-  avance?: number;
-  clienteId?: string | null;
-  responsableId?: string | null;
-  [key: string]: QueryValue;
+  code: string;
+  name: string;
+  description?: string | null;
+  status?: string;
+  startDate?: string | null;
+  endDate?: string | null;
+  budget?: string | null;
+  progress?: number;
+  clientId?: string | null;
+  responsibleId?: string | null;
 }
 
 export interface Project {
   id: string;
-  codigo: string;
-  nombre: string;
-  descripcion?: string | null;
-  estado: string;
-  fechaInicio?: string | null;
-  fechaFin?: string | null;
-  presupuesto?: string | null;
-  avance: number;
-  clienteId?: string | null;
-  cliente?: ThirdPartyRef | null;
-  responsable?: UserRef | null;
+  companyId?: string;
+  code: string;
+  name: string;
+  description?: string | null;
+  status: string;
+  startDate?: string | null;
+  endDate?: string | null;
+  budget?: string | null;
+  progress: number;
+  clientId: string | null;
+  responsibleId: string | null;
+  client?: ThirdPartyRef | null;
+  responsible?: UserRef | null;
   isActive: boolean;
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ProjectsResponse {
   data: Project[];
-  total?: number;
+  total: number;
+  page?: number;
+  limit?: number;
+  totalPages?: number;
 }
 
 export const projectsService = {

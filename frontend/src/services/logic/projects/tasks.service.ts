@@ -8,29 +8,35 @@ export interface TaskPayload {
   projectId?: string;
   phaseId?: string | null;
   activityId?: string;
-  titulo?: string;
-  descripcion?: string | null;
-  estado?: string;
-  prioridad?: string;
-  fechaVencimiento?: string | null;
-  horasEstimadas?: string | null;
-  orden?: number;
-  [key: string]: QueryValue;
+  title?: string;
+  description?: string | null;
+  status?: string;
+  priority?: string;
+  dueDate?: string | null;
+  estimatedHours?: string | null;
+  actualHours?: string | null;
+  sortOrder?: number;
+  responsibleId?: string | null;
+  surveyId: string
 }
 
 export interface Task {
   id: string;
-  titulo: string;
-  descripcion?: string | null;
-  estado: string;
-  prioridad: string;
-  activityId: string;
-  phaseId?: string | null;
+  title: string;
+  description: string | null;
+  status: string;
+  priority: string;
   projectId: string;
-  orden: number;
-  fechaVencimiento?: string | null;
-  horasEstimadas?: string | null;
-  isActive?: boolean;
+  phaseId: string | null;
+  activityId: string;
+  dueDate: string | null;
+  estimatedHours: string | null;
+  actualHours: string | null;
+  sortOrder: number;
+  responsibleId: string | null;
+  isActive: boolean;
+  surveyId: string;
+  createdAt?: string;
 }
 
 export interface TaskListResponse {
@@ -40,7 +46,7 @@ export interface TaskListResponse {
 
 export const tasksService = {
   listByProject(projectId: string, query?: TaskQuery) {
-    return api.request<Task[] | TaskListResponse>(
+    return api.request<{ data: Task[] } | Task[] | TaskListResponse>(
       `/projects/tasks/project/${projectId}${buildQuery(query)}`,
     );
   },

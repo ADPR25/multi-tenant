@@ -8,27 +8,24 @@ import {
   type Project,
 } from "@/services/logic/projects/projects.service";
 import { usePermissions } from "@/composables/usePermissions";
-import {
-  Plus,
-  Pencil,
-  Power,
-  Trash2,
-  FolderKanban,
-  X,
-} from "lucide-vue-next";
+import { Plus, Pencil, Power, Trash2, FolderKanban, X } from "lucide-vue-next";
 import { ref, computed } from "vue";
 
 defineOptions({ name: "ProjectsIndexPage" });
 
 interface ProjectItem {
   id: string;
-  codigo: string;
-  nombre: string;
-  estado: string;
-  avance: number;
-  presupuesto?: string;
-  cliente?: { razonSocial?: string };
-  isActive?: boolean;
+  code: string;
+  name: string;
+  progress: number;
+  clientId: string | null;
+  isActive: boolean;
+  createdAt?: string;
+  client?: {
+    razonSocial?: string;
+    businessName?: string;
+    name?: string;
+  } | null;
 }
 
 interface CreatedProject {
@@ -46,12 +43,10 @@ const itemToToggle = ref<ProjectItem | null>(null);
 const isSelectedActive = computed(() => !!itemToToggle.value?.isActive);
 
 const headers = [
-  { title: "Código", key: "codigo" },
-  { title: "Nombre", key: "nombre" },
-  { title: "Cliente", key: "cliente", sortable: false },
-  { title: "Estado", key: "estado" },
-  { title: "Avance", key: "avance" },
-  { title: "Activo", key: "isActive", align: "center" as const },
+  { title: "Código", key: "code" },
+  { title: "Nombre", key: "name" },
+  { title: "Avance", key: "progress" },
+  { title: "Estado", key: "isActive" },
   { title: "Opciones", key: "actions", align: "end" as const, sortable: false },
 ];
 
@@ -59,9 +54,10 @@ function openCreate(): void {
   selected.value = null;
   mode.value = "create";
 }
-function openEdit(item: ProjectItem): void {
-  selected.value = item;
-  selectedId.value = item.id;
+const openEdit = async (item: ProjectItem) => {
+  const itemEdit = await projectsService.getById(item.id)
+  selected.value = itemEdit;
+  selectedId.value = itemEdit.id;
   mode.value = "edit";
 }
 function closeList(): void {
@@ -97,7 +93,7 @@ async function toggle(): Promise<void> {
   }
 }
 async function remove(item: ProjectItem): Promise<void> {
-  if (!confirm(`Eliminar proyecto ${item.codigo}?`)) return;
+  if (!confirm(`Eliminar proyecto ${item.code}?`)) return;
   try {
     await projectsService.remove(item.id);
     tableRef.value?.reload();
@@ -126,23 +122,18 @@ async function remove(item: ProjectItem): Promise<void> {
         :fetch-fn="projectsService.list"
         search-placeholder="Buscar código o nombre..."
       >
-        <template #[`item.cliente`]="{ item }">{{
-          item.cliente?.razonSocial || "-"
-        }}</template>
-        <template #[`item.estado`]="{ item }"
-          ><v-chip size="small" variant="tonal" color="primary">{{
-            item.estado
-          }}</v-chip></template
-        >
-        <template #[`item.avance`]="{ item }"
-          ><v-progress-linear
-            :model-value="item.avance"
-            height="6"
-            rounded
-            color="primary"
-            style="width: 80px"
-          />{{ item.avance }}%</template
-        >
+        <template #[`item.progress`]="{ item }">
+          <div class="flex items-center gap-2">
+            <v-progress-linear
+              :model-value="item.progress"
+              height="6"
+              rounded
+              color="primary"
+              style="width: 80px"
+            />
+            <span class="text-sm">{{ item.progress }}%</span>
+          </div>
+        </template>
         <template #[`item.isActive`]="{ item }"
           ><v-chip
             :color="item.isActive ? 'success' : 'error'"
@@ -195,9 +186,7 @@ async function remove(item: ProjectItem): Promise<void> {
     </div>
     <div v-else>
       <div class="flex items-center justify-between mb-6">
-        <h1 class="text-2xl font-bold">
-          Editar Proyecto {{ selected?.codigo }}
-        </h1>
+        <h1 class="text-2xl font-bold">Editar Proyecto {{ selected?.code }}</h1>
         <v-btn variant="text" icon @click="closeList"
           ><X class="h-5 w-5"
         /></v-btn>

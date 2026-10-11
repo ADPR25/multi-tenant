@@ -1,37 +1,40 @@
 import { api } from "@/services/api/api";
 
-type QueryValue = string | number | boolean | null | undefined;
-
 export interface ActivityPayload {
   projectId?: string;
   phaseId?: string;
-  nombre?: string;
-  descripcion?: string | null;
-  estado?: string;
-  orden?: number;
-  fechaInicio?: string | null;
-  fechaFin?: string | null;
-  [key: string]: QueryValue;
+  name?: string;
+  description?: string | null;
+  sortOrder?: number;
+  status?: string;
+  startDate?: string | null;
+  endDate?: string | null;
+  progress?: number;
+  responsibleId?: string | null;
 }
 
 export interface Activity {
   id: string;
-  nombre: string;
-  descripcion?: string | null;
-  estado: string;
-  orden: number;
-  phaseId: string;
   projectId: string;
-  fechaInicio?: string | null;
-  fechaFin?: string | null;
+  phaseId: string;
+  name: string;
+  description: string | null;
+  sortOrder: number;
+  status: string;
+  startDate: string | null;
+  endDate: string | null;
+  progress: number;
+  responsibleId: string | null;
+  isActive: boolean;
+  createdAt?: string;
 }
 
 export const activitiesService = {
   listByProject(projectId: string) {
-    return api.request<Activity[]>(`/projects/activities/project/${projectId}`);
+    return api.request<{ data: Activity[] } | Activity[]>(`/projects/activities/project/${projectId}`);
   },
   listByPhase(phaseId: string) {
-    return api.request<Activity[]>(`/projects/activities/phase/${phaseId}`);
+    return api.request<{ data: Activity[] } | Activity[]>(`/projects/activities/phase/${phaseId}`);
   },
   getById(id: string) {
     return api.request<Activity>(`/projects/activities/${id}`);

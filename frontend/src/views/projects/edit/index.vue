@@ -8,12 +8,10 @@ import ProjectGeneralForm from "../create/index.vue";
 import PhasesTab from "../components/PhasesTab.vue";
 import ActivitiesTab from "../components/ActivitiesTab.vue";
 import TasksTab from "../components/TasksTab.vue";
-// import SurveysTab from "../components/SurveysTab.vue";
 import {
   FolderKanban,
   Layers,
   ListChecks,
-  // ClipboardList,
   CheckSquare,
 } from "lucide-vue-next";
 
@@ -73,9 +71,6 @@ onMounted(load);
           <v-tab value="tasks"
             ><CheckSquare class="h-4 w-4 mr-2" /> Tareas</v-tab
           >
-          <!-- <v-tab value="surveys"
-            ><ClipboardList class="h-4 w-4 mr-2" /> Encuestas</v-tab
-          > -->
         </v-tabs>
         <div class="p-6">
           <v-window v-model="tab">
@@ -95,9 +90,6 @@ onMounted(load);
             <v-window-item value="tasks">
               <TasksTab :project-id="project.id" />
             </v-window-item>
-            <!-- <v-window-item value="surveys">
-              <SurveysTab :project-id="project.id" />
-            </v-window-item> -->
           </v-window>
         </div>
       </div>

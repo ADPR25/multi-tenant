@@ -1,70 +1,58 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
-import { phasesService } from "@/services/logic/projects/phases.service";
+import {
+  phasesService,
+  type Phase,
+} from "@/services/logic/projects/phases.service";
 import { Save, Plus, Pencil, Trash2 } from "lucide-vue-next";
 
-defineOptions({
-  name: "ProjectPhasesTab",
-});
-
-interface ProjectPhase {
-  id: string;
-  codigo: string;
-  nombre: string;
-  descripcion?: string | null;
-  orden: number;
-  estado: string;
-  fechaInicio?: string | null;
-  fechaFin?: string | null;
-  presupuesto?: string | null;
-  avance?: number;
-}
+defineOptions({ name: "ProjectPhasesTab" });
 
 interface PhaseForm {
-  codigo: string;
-  nombre: string;
-  descripcion: string;
-  orden: number;
-  estado: string;
-  fechaInicio: string;
-  fechaFin: string;
-  presupuesto: string;
+  code: string;
+  name: string;
+  description: string;
+  sortOrder: number;
+  status: string;
+  startDate: string;
+  endDate: string;
+  budget: string;
+  progress: number;
 }
 
-interface ListResponse<T> {
-  data?: T[];
-}
+const props = defineProps<{ projectId: string }>();
 
-const props = defineProps<{
-  projectId: string;
-}>();
-
-const phases = ref<ProjectPhase[]>([]);
+const phases = ref<Phase[]>([]);
 const loading = ref(false);
 const showForm = ref(false);
-const editing = ref<ProjectPhase | null>(null);
+const editing = ref<Phase | null>(null);
 const formRef = ref<{ validate: () => Promise<{ valid: boolean }> } | null>(
   null,
 );
 const saving = ref(false);
 
 const form = ref<PhaseForm>({
-  codigo: "",
-  nombre: "",
-  descripcion: "",
-  orden: 0,
-  estado: "EN_PLANEACION",
-  fechaInicio: "",
-  fechaFin: "",
-  presupuesto: "",
+  code: "",
+  name: "",
+  description: "",
+  sortOrder: 0,
+  status: "PLANNING",
+  startDate: "",
+  endDate: "",
+  budget: "",
+  progress: 0,
 });
 
 async function load(): Promise<void> {
   loading.value = true;
   try {
-    const res = await phasesService.listByProject(props.projectId);
-    const list = res as ListResponse<ProjectPhase> | ProjectPhase[];
-    phases.value = Array.isArray(list) ? list : list.data || [];
+    const response = await phasesService.listByProject(props.projectId);
+    if (Array.isArray(response)) {
+      phases.value = response;
+    } else {
+      const wrapped = response as { data?: Phase[] };
+      phases.value = wrapped.data ?? [];
+    }
   } catch {
     phases.value = [];
   } finally {
@@ -75,29 +63,31 @@ async function load(): Promise<void> {
 function openCreate(): void {
   editing.value = null;
   form.value = {
-    codigo: "",
-    nombre: "",
-    descripcion: "",
-    orden: phases.value.length,
-    estado: "EN_PLANEACION",
-    fechaInicio: "",
-    fechaFin: "",
-    presupuesto: "",
+    code: "",
+    name: "",
+    description: "",
+    sortOrder: phases.value.length,
+    status: "PLANNING",
+    startDate: "",
+    endDate: "",
+    budget: "",
+    progress: 0,
   };
   showForm.value = true;
 }
 
-function openEdit(p: ProjectPhase): void {
+function openEdit(p: Phase): void {
   editing.value = p;
   form.value = {
-    codigo: p.codigo,
-    nombre: p.nombre,
-    descripcion: p.descripcion || "",
-    orden: p.orden,
-    estado: p.estado,
-    fechaInicio: p.fechaInicio ? p.fechaInicio.substring(0, 10) : "",
-    fechaFin: p.fechaFin ? p.fechaFin.substring(0, 10) : "",
-    presupuesto: p.presupuesto || "",
+    code: p.code,
+    name: p.name,
+    description: p.description || "",
+    sortOrder: p.sortOrder,
+    status: p.status,
+    startDate: p.startDate ? p.startDate.substring(0, 10) : "",
+    endDate: p.endDate ? p.endDate.substring(0, 10) : "",
+    budget: p.budget || "",
+    progress: p.progress ?? 0,
   };
   showForm.value = true;
 }
@@ -109,11 +99,16 @@ async function submit(): Promise<void> {
   saving.value = true;
   try {
     const payload = {
-      ...form.value,
       projectId: props.projectId,
-      fechaInicio: form.value.fechaInicio || null,
-      fechaFin: form.value.fechaFin || null,
-      presupuesto: form.value.presupuesto || null,
+      code: form.value.code,
+      name: form.value.name,
+      description: form.value.description || null,
+      sortOrder: Number(form.value.sortOrder),
+      status: form.value.status,
+      startDate: form.value.startDate || null,
+      endDate: form.value.endDate || null,
+      budget: form.value.budget || null,
+      progress: Number(form.value.progress),
     };
     if (editing.value) {
       await phasesService.update(editing.value.id, payload);
@@ -131,8 +126,8 @@ async function submit(): Promise<void> {
   }
 }
 
-async function removePhase(p: ProjectPhase): Promise<void> {
-  if (!confirm(`Eliminar fase ${p.nombre}?`)) return;
+async function removePhase(p: Phase): Promise<void> {
+  if (!confirm(`Eliminar fase ${p.name}?`)) return;
   await phasesService.remove(p.id);
   await load();
 }
@@ -157,11 +152,11 @@ onMounted(load);
       >
         <div>
           <div class="font-medium">
-            {{ ph.orden }}. {{ ph.codigo }} - {{ ph.nombre }}
+            {{ ph.sortOrder }}. {{ ph.code }} - {{ ph.name }}
           </div>
           <div class="text-sm text-gray-500">
-            {{ ph.descripcion || "Sin descripción" }} | {{ ph.estado }} |
-            Avance: {{ ph.avance ?? 0 }}%
+            {{ ph.description || "Sin descripción" }} | {{ ph.status }} |
+            Avance: {{ ph.progress }}%
           </div>
         </div>
         <div class="flex gap-1">
@@ -197,7 +192,7 @@ onMounted(load);
               <v-col cols="12" md="4"
                 ><v-label>Código *</v-label
                 ><v-text-field
-                  v-model="form.codigo"
+                  v-model="form.code"
                   variant="outlined"
                   density="compact"
                   :rules="[(v: string) => !!v || 'Req']"
@@ -205,7 +200,7 @@ onMounted(load);
               <v-col cols="12" md="8"
                 ><v-label>Nombre *</v-label
                 ><v-text-field
-                  v-model="form.nombre"
+                  v-model="form.name"
                   variant="outlined"
                   density="compact"
                   :rules="[(v: string) => !!v || 'Req']"
@@ -213,7 +208,7 @@ onMounted(load);
               <v-col cols="12"
                 ><v-label>Descripción</v-label
                 ><v-textarea
-                  v-model="form.descripcion"
+                  v-model="form.description"
                   variant="outlined"
                   density="compact"
                   rows="2"
@@ -221,7 +216,15 @@ onMounted(load);
               <v-col cols="12" md="3"
                 ><v-label>Orden</v-label
                 ><v-text-field
-                  v-model="form.orden"
+                  v-model="form.sortOrder"
+                  type="number"
+                  variant="outlined"
+                  density="compact"
+              /></v-col>
+              <v-col cols="12" md="3"
+                ><v-label>Avance %</v-label
+                ><v-text-field
+                  v-model="form.progress"
                   type="number"
                   variant="outlined"
                   density="compact"
@@ -229,28 +232,35 @@ onMounted(load);
               <v-col cols="12" md="3"
                 ><v-label>Estado</v-label
                 ><v-select
-                  v-model="form.estado"
+                  v-model="form.status"
                   :items="[
-                    'EN_PLANEACION',
-                    'EN_EJECUCION',
-                    'PAUSADO',
-                    'FINALIZADO',
-                    'CANCELADO',
+                    'PLANNING',
+                    'IN_PROGRESS',
+                    'PAUSED',
+                    'COMPLETED',
+                    'CANCELLED',
                   ]"
                   variant="outlined"
                   density="compact"
               /></v-col>
               <v-col cols="12" md="3"
-                ><v-label>Inicio</v-label
-                ><v-date-input
-                  v-model="form.fechaInicio"
+                ><v-label>Presupuesto</v-label
+                ><v-text-field
+                  v-model="form.budget"
                   variant="outlined"
                   density="compact"
               /></v-col>
-              <v-col cols="12" md="3"
+              <v-col cols="12" md="6"
+                ><v-label>Inicio</v-label
+                ><v-date-input
+                  v-model="form.startDate"
+                  variant="outlined"
+                  density="compact"
+              /></v-col>
+              <v-col cols="12" md="6"
                 ><v-label>Fin</v-label
                 ><v-date-input
-                  v-model="form.fechaFin"
+                  v-model="form.endDate"
                   variant="outlined"
                   density="compact"
               /></v-col>

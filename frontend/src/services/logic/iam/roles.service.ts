@@ -23,8 +23,7 @@ export interface RolesResponse {
 }
 
 export const rolesService = {
-  list(active?: boolean) {
-    console.log(active);
+  list() {
     return api.request<RolesResponse>("/roles");
   },
   getById(id: string) {

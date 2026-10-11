@@ -11,6 +11,7 @@ export interface Survey {
   id: string;
   companyId: string;
   title: string;
+  code: string;
   description?: string | null;
   endDate: string;
   isActive: boolean;
@@ -21,6 +22,7 @@ export interface Survey {
 export interface SurveyFetchParams {
   search?: string;
   page?: number;
+  find?: string;
   limit?: number | string;
   state?: boolean | string;
   isActive?: boolean | string;
@@ -36,6 +38,7 @@ export interface FetchResponse<T> {
 function buildQuery(params: SurveyFetchParams) {
   const q = new URLSearchParams();
   if (params.page) q.set("page", String(params.page));
+  if (params.find) q.set("find", String(params.find));
   if (params.limit) q.set("limit", String(params.limit));
   if (params.search) q.set("search", String(params.search));
   if (params.state !== undefined) q.set("state", String(params.state));
@@ -47,7 +50,9 @@ function buildQuery(params: SurveyFetchParams) {
 
 export const surveysService = {
   list(params: SurveyFetchParams): Promise<FetchResponse<Survey>> {
-    return api.request<FetchResponse<Survey>>(`/projects/surveys${buildQuery(params)}`);
+    return api.request<FetchResponse<Survey>>(
+      `/projects/surveys${buildQuery(params)}`,
+    );
   },
 
   getById(id: string) {

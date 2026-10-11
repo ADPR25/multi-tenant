@@ -1,52 +1,35 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
-import { activitiesService } from "@/services/logic/projects/activities.service";
-import { phasesService } from "@/services/logic/projects/phases.service";
+import {
+  activitiesService,
+  type Activity,
+} from "@/services/logic/projects/activities.service";
+import {
+  phasesService,
+  type Phase,
+} from "@/services/logic/projects/phases.service";
 import { Plus, Pencil, Trash2, Save } from "lucide-vue-next";
 
-defineOptions({
-  name: "ProjectActivitiesTab",
-});
-
-interface ProjectActivity {
-  id: string;
-  nombre: string;
-  descripcion?: string | null;
-  orden: number;
-  estado: string;
-  phaseId: string;
-  fechaInicio?: string | null;
-  fechaFin?: string | null;
-}
-
-interface ProjectPhase {
-  id: string;
-  nombre: string;
-}
-
-interface ListResponse<T> {
-  data?: T[];
-}
+defineOptions({ name: "ProjectActivitiesTab" });
 
 interface ActivityForm {
   phaseId: string;
-  nombre: string;
-  descripcion: string;
-  orden: number;
-  estado: string;
-  fechaInicio: string;
-  fechaFin: string;
+  name: string;
+  description: string;
+  sortOrder: number;
+  status: string;
+  startDate: string;
+  endDate: string;
+  progress: number;
 }
 
-const props = defineProps<{
-  projectId: string;
-}>();
+const props = defineProps<{ projectId: string }>();
 
-const activities = ref<ProjectActivity[]>([]);
-const phases = ref<ProjectPhase[]>([]);
+const activities = ref<Activity[]>([]);
+const phases = ref<Phase[]>([]);
 const loading = ref(false);
 const showForm = ref(false);
-const editing = ref<ProjectActivity | null>(null);
+const editing = ref<Activity | null>(null);
 const formRef = ref<{ validate: () => Promise<{ valid: boolean }> } | null>(
   null,
 );
@@ -54,27 +37,29 @@ const saving = ref(false);
 
 const form = ref<ActivityForm>({
   phaseId: "",
-  nombre: "",
-  descripcion: "",
-  orden: 0,
-  estado: "EN_PLANEACION",
-  fechaInicio: "",
-  fechaFin: "",
+  name: "",
+  description: "",
+  sortOrder: 0,
+  status: "PLANNING",
+  startDate: "",
+  endDate: "",
+  progress: 0,
 });
 
 async function load(): Promise<void> {
   loading.value = true;
   try {
-    const [a, p] = await Promise.all([
+    const [aRes, pRes] = await Promise.all([
       activitiesService.listByProject(props.projectId),
       phasesService.listByProject(props.projectId),
     ]);
 
-    const aData = a as ListResponse<ProjectActivity> | ProjectActivity[];
-    activities.value = Array.isArray(aData) ? aData : aData.data || [];
-
-    const pData = p as ListResponse<ProjectPhase> | ProjectPhase[];
-    phases.value = Array.isArray(pData) ? pData : pData.data || [];
+    activities.value = Array.isArray(aRes)
+      ? aRes
+      : ((aRes as { data?: Activity[] }).data ?? []);
+    phases.value = Array.isArray(pRes)
+      ? pRes
+      : ((pRes as { data?: Phase[] }).data ?? []);
   } catch {
     // no bloquea UI
   } finally {
@@ -85,27 +70,29 @@ async function load(): Promise<void> {
 function openCreate(): void {
   editing.value = null;
   form.value = {
-    phaseId: "",
-    nombre: "",
-    descripcion: "",
-    orden: activities.value.length,
-    estado: "EN_PLANEACION",
-    fechaInicio: "",
-    fechaFin: "",
+    phaseId: phases.value[0]?.id || "",
+    name: "",
+    description: "",
+    sortOrder: activities.value.length,
+    status: "PLANNING",
+    startDate: "",
+    endDate: "",
+    progress: 0,
   };
   showForm.value = true;
 }
 
-function openEdit(it: ProjectActivity): void {
+function openEdit(it: Activity): void {
   editing.value = it;
   form.value = {
     phaseId: it.phaseId,
-    nombre: it.nombre,
-    descripcion: it.descripcion || "",
-    orden: it.orden,
-    estado: it.estado,
-    fechaInicio: it.fechaInicio ? it.fechaInicio.substring(0, 10) : "",
-    fechaFin: it.fechaFin ? it.fechaFin.substring(0, 10) : "",
+    name: it.name,
+    description: it.description || "",
+    sortOrder: it.sortOrder,
+    status: it.status,
+    startDate: it.startDate ? it.startDate.substring(0, 10) : "",
+    endDate: it.endDate ? it.endDate.substring(0, 10) : "",
+    progress: it.progress ?? 0,
   };
   showForm.value = true;
 }
@@ -117,10 +104,15 @@ async function submit(): Promise<void> {
   saving.value = true;
   try {
     const payload = {
-      ...form.value,
       projectId: props.projectId,
-      fechaInicio: form.value.fechaInicio || null,
-      fechaFin: form.value.fechaFin || null,
+      phaseId: form.value.phaseId,
+      name: form.value.name,
+      description: form.value.description || null,
+      sortOrder: Number(form.value.sortOrder),
+      status: form.value.status,
+      startDate: form.value.startDate || null,
+      endDate: form.value.endDate || null,
+      progress: Number(form.value.progress),
     };
     if (editing.value) {
       await activitiesService.update(editing.value.id, payload);
@@ -138,8 +130,8 @@ async function submit(): Promise<void> {
   }
 }
 
-async function removeActivity(it: ProjectActivity): Promise<void> {
-  if (!confirm(`Eliminar ${it.nombre}?`)) return;
+async function removeActivity(it: Activity): Promise<void> {
+  if (!confirm(`Eliminar ${it.name}?`)) return;
   await activitiesService.remove(it.id);
   await load();
 }
@@ -164,16 +156,16 @@ onMounted(load);
       >
         <div>
           <div class="font-medium">
-            {{ a.nombre }}
+            {{ a.name }}
             <span class="text-xs text-gray-500"
               >[Fase:
               {{
-                phases.find((p) => p.id === a.phaseId)?.nombre || a.phaseId
+                phases.find((p) => p.id === a.phaseId)?.name || a.phaseId
               }}]</span
             >
           </div>
           <div class="text-sm text-gray-500">
-            {{ a.descripcion || "" }} - {{ a.estado }}
+            {{ a.description || "" }} - {{ a.status }} - {{ a.progress }}%
           </div>
         </div>
         <div class="flex gap-1">
@@ -213,7 +205,7 @@ onMounted(load);
                 ><v-select
                   v-model="form.phaseId"
                   :items="phases"
-                  item-title="nombre"
+                  item-title="name"
                   item-value="id"
                   variant="outlined"
                   density="compact"
@@ -222,7 +214,7 @@ onMounted(load);
               <v-col cols="12"
                 ><v-label>Nombre *</v-label
                 ><v-text-field
-                  v-model="form.nombre"
+                  v-model="form.name"
                   variant="outlined"
                   density="compact"
                   :rules="[(v: string) => !!v || 'Req']"
@@ -230,7 +222,7 @@ onMounted(load);
               <v-col cols="12"
                 ><v-label>Descripción</v-label
                 ><v-textarea
-                  v-model="form.descripcion"
+                  v-model="form.description"
                   variant="outlined"
                   density="compact"
                   rows="2"
@@ -238,7 +230,15 @@ onMounted(load);
               <v-col cols="12" md="4"
                 ><v-label>Orden</v-label
                 ><v-text-field
-                  v-model="form.orden"
+                  v-model="form.sortOrder"
+                  type="number"
+                  variant="outlined"
+                  density="compact"
+              /></v-col>
+              <v-col cols="12" md="4"
+                ><v-label>Avance %</v-label
+                ><v-text-field
+                  v-model="form.progress"
                   type="number"
                   variant="outlined"
                   density="compact"
@@ -246,21 +246,28 @@ onMounted(load);
               <v-col cols="12" md="4"
                 ><v-label>Estado</v-label
                 ><v-select
-                  v-model="form.estado"
+                  v-model="form.status"
                   :items="[
-                    'EN_PLANEACION',
-                    'EN_EJECUCION',
-                    'PAUSADO',
-                    'FINALIZADO',
-                    'CANCELADO',
+                    'PLANNING',
+                    'IN_PROGRESS',
+                    'PAUSED',
+                    'COMPLETED',
+                    'CANCELLED',
                   ]"
                   variant="outlined"
                   density="compact"
               /></v-col>
-              <v-col cols="12" md="4"
+              <v-col cols="12" md="6"
                 ><v-label>Inicio</v-label
                 ><v-date-input
-                  v-model="form.fechaInicio"
+                  v-model="form.startDate"
+                  variant="outlined"
+                  density="compact"
+              /></v-col>
+              <v-col cols="12" md="6"
+                ><v-label>Fin</v-label
+                ><v-date-input
+                  v-model="form.endDate"
                   variant="outlined"
                   density="compact"
               /></v-col>
