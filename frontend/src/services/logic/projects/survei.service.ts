@@ -4,9 +4,7 @@ export interface SurveyPayload {
   title: string;
   description?: string | null;
   endDate: string;
-  projectId?: string;
-  isActive?: boolean;
-  [key: string]: unknown;
+  survey: Record<string, unknown>;
 }
 
 export interface Survey {

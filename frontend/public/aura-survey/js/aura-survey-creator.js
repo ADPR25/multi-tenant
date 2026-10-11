@@ -334,13 +334,10 @@ var IsDesplegable = false;
       condition.value === null || condition.value === undefined
         ? ""
         : String(condition.value);
-    var low = v.toLowerCase().trim();
-    if (low === "si" || low === "sí") v = "true";
-    if (low === "no") v = "false";
     return {
       question: condition.question || "",
       operator: condition.operator || "=",
-      value: v,
+      value: v.trim(),
     };
   }
   function getQuestionConditions(question) {
@@ -351,22 +348,24 @@ var IsDesplegable = false;
   function getOperator(operator) {
     return (
       OPERATORS.find(function (i) {
-        return i.value === operator;
+        return i.value === operator;  
       }) || OPERATORS[0]
     );
   }
   function expressionValue(value, sourceQuestion) {
     value = value === null || value === undefined ? "" : String(value);
     if (sourceQuestion && sourceQuestion.type === "boolean") {
+      var low = value.toLowerCase().trim();
       if (
-        value === "true" ||
-        value.toLowerCase() === "sí" ||
+        low === "true" ||
+        low === "sí" ||
+        low === "si" ||
         value === sourceQuestion.labelTrue
       )
         return "true";
       if (
-        value === "false" ||
-        value.toLowerCase() === "no" ||
+        low === "false" ||
+        low === "no" ||
         value === sourceQuestion.labelFalse
       )
         return "false";
@@ -816,11 +815,11 @@ var IsDesplegable = false;
   };
   AuraSurveyCreator.prototype.renderConditionalLogic = function (question) {
     var conditions = getQuestionConditions(question);
-    var hasAvailableQuestions = getAllQuestions(this.schema).some(function (
-      item,
-    ) {
-      return item.name !== question.name;
-    });
+    var hasAvailableQuestions = getAllQuestions(this.schema).some(
+      function (item) {
+        return item.name !== question.name;
+      },
+    );
     var rows = conditions
       .map(
         function (condition, index) {

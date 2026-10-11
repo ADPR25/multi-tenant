@@ -11,20 +11,10 @@ defineOptions({ name: "SurveyIndexView" });
 
 const { can } = usePermissions();
 
-interface SurveyForm {
-  id?: string;
-  title: string;
-  description: string;
-}
-
-const createInitialItem = (): SurveyForm => ({
-  title: "",
-  description: "",
-});
-
 const mode = ref<"list" | "create" | "edit">("list");
-const selected = ref<SurveyForm>(createInitialItem());
+const selected = ref<Survey | null>(null);
 const tableRef = ref<{ reload: () => void } | null>(null);
+
 const headers = [
   { title: "Título", key: "title" },
   { title: "Descripción", key: "description" },
@@ -33,22 +23,23 @@ const headers = [
 ];
 
 function openCreate() {
-  selected.value = createInitialItem();
+  selected.value = null;
   mode.value = "create";
 }
 
-function openEdit(item: Survey) {
-  selected.value = {
-    id: item.id,
-    title: item.title,
-    description: item.description || "",
-  };
-  mode.value = "edit";
+async function openEdit(item: Survey) {
+  try {
+    const data = await surveysService.getById(item.id);
+    selected.value = data;
+    mode.value = "edit";
+  } catch (e) {
+    console.error(e);
+  }
 }
 
 function closeList() {
   mode.value = "list";
-  selected.value = createInitialItem();
+  selected.value = null;
   tableRef.value?.reload();
 }
 </script>
@@ -94,14 +85,12 @@ function closeList() {
               @click="openEdit(item)"
               ><Pencil class="h-4 w-4"
             /></v-btn>
-
             <v-btn
               v-if="can('survey:state')"
               icon
               size="x-small"
               variant="text"
               :color="item.isActive ? 'success' : 'error'"
-              @click="console.log(item)"
               ><Power class="h-4 w-4"
             /></v-btn>
           </div>
@@ -118,7 +107,12 @@ function closeList() {
           ><X class="h-5 w-5"
         /></v-btn>
       </div>
-      <CreateView :item="selected" @close="closeList" @created="closeList" />
+      <CreateView
+        :key="selected?.id || 'create'"
+        :item="selected"
+        @close="closeList"
+        @created="closeList"
+      />
     </div>
   </AdminLayout>
 </template>

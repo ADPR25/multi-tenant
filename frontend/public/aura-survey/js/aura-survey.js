@@ -302,20 +302,17 @@
     var actualArray = Array.isArray(actualValue)
       ? actualValue.map(String)
       : null;
-    // FIX BOOLEANO: convierte true/false boolean a string para comparar con "true"/"false" del creator
     var actualString = Array.isArray(actualValue)
       ? actualValue.join(", ")
       : String(actualValue == null ? "" : actualValue);
-    // Normaliza booleanos: true/false -> "true"/"false"
     if (actual === true) actualString = "true";
     if (actual === false) actualString = "false";
     var expectedString = String(expected);
-    if (
-      expectedString.toLowerCase() === "si" ||
-      expectedString.toLowerCase() === "sí"
-    )
-      expectedString = "true";
-    if (expectedString.toLowerCase() === "no") expectedString = "false";
+
+    // --- FIX: NO convertir si/no a true/false ---
+    // Solo normalizamos para comparacion case-insensitive
+    var actualNorm = actualString.trim().toLowerCase();
+    var expectedNorm = expectedString.trim().toLowerCase();
 
     switch (operator) {
       case "empty":
@@ -332,14 +329,26 @@
         );
       case "=":
         if (actualArray) {
-          return actualArray.indexOf(expectedString) !== -1;
+          return (
+            actualArray
+              .map(function (v) {
+                return v.toLowerCase();
+              })
+              .indexOf(expectedNorm) !== -1
+          );
         }
-        return actualString === expectedString;
+        return actualNorm === expectedNorm;
       case "!=":
         if (actualArray) {
-          return actualArray.indexOf(expectedString) === -1;
+          return (
+            actualArray
+              .map(function (v) {
+                return v.toLowerCase();
+              })
+              .indexOf(expectedNorm) === -1
+          );
         }
-        return actualString !== expectedString;
+        return actualNorm !== expectedNorm;
       case ">":
         return Number(actualValue) > Number(expected);
       case "<":
@@ -350,31 +359,32 @@
         return Number(actualValue) <= Number(expected);
       case "contains":
         if (actualArray) {
-          return actualArray.indexOf(expectedString) !== -1;
+          return (
+            actualArray
+              .map(function (v) {
+                return v.toLowerCase();
+              })
+              .indexOf(expectedNorm) !== -1
+          );
         }
-        return (
-          actualString.toLowerCase().indexOf(expectedString.toLowerCase()) !==
-          -1
-        );
+        return actualNorm.indexOf(expectedNorm) !== -1;
       case "notcontains":
         if (actualArray) {
-          return actualArray.indexOf(expectedString) === -1;
+          return (
+            actualArray
+              .map(function (v) {
+                return v.toLowerCase();
+              })
+              .indexOf(expectedNorm) === -1
+          );
         }
-        return (
-          actualString.toLowerCase().indexOf(expectedString.toLowerCase()) ===
-          -1
-        );
+        return actualNorm.indexOf(expectedNorm) === -1;
       case "startswith":
-        return (
-          actualString.toLowerCase().indexOf(expectedString.toLowerCase()) === 0
-        );
+        return actualNorm.indexOf(expectedNorm) === 0;
       case "endswith":
-        return (
-          actualString.toLowerCase().slice(-expectedString.length) ===
-          expectedString.toLowerCase()
-        );
+        return actualNorm.slice(-expectedNorm.length) === expectedNorm;
       case "anyof":
-        var anyValues = expectedString
+        var anyValues = expectedNorm
           .split(",")
           .map(function (i) {
             return i.trim();
@@ -382,11 +392,15 @@
           .filter(Boolean);
         return anyValues.some(function (item) {
           return actualArray
-            ? actualArray.indexOf(item) !== -1
-            : actualString === item;
+            ? actualArray
+                .map(function (v) {
+                  return v.toLowerCase();
+                })
+                .indexOf(item) !== -1
+            : actualNorm === item;
         });
       case "allof":
-        var allValues = expectedString
+        var allValues = expectedNorm
           .split(",")
           .map(function (i) {
             return i.trim();
@@ -394,11 +408,15 @@
           .filter(Boolean);
         return allValues.every(function (item) {
           return actualArray
-            ? actualArray.indexOf(item) !== -1
-            : actualString === item;
+            ? actualArray
+                .map(function (v) {
+                  return v.toLowerCase();
+                })
+                .indexOf(item) !== -1
+            : actualNorm === item;
         });
       default:
-        return actualString === expectedString;
+        return actualNorm === expectedNorm;
     }
   }
 
@@ -434,11 +452,9 @@
     this.startTimer();
   }
 
-  // === FIX CRITICO: ESTE METODO FALTABA ===
   AuraSurvey.prototype.findQuestion = function (name) {
     return findQuestionInPages(this.pages, name);
   };
-  // ========================================
 
   AuraSurvey.prototype.getTimeLimitConfig = function () {
     var tl = this._timeLimit || this.definition.timeLimit;
@@ -508,7 +524,6 @@
         : null;
       var footer = self.root ? self.root.querySelector(".aura-footer") : null;
 
-      // Actualiza barra y tiempo restante
       if (timerEl && cfg.maxEnabled) {
         var remain = cfg.maxSeconds - elapsed;
         timerEl.textContent = "Tiempo restante: " + formatSeconds(remain);
@@ -520,19 +535,15 @@
         timerBar.style.width = pct + "%";
       }
 
-      // === Actualiza el texto de TIEMPO MINIMO y muestra el boton cuando ya cumple ===
       if (cfg.minEnabled) {
         var wait = cfg.minSeconds - elapsed;
         if (wait > 0) {
           if (minHintEl)
             minHintEl.textContent =
               "⏳ Debes esperar " + formatSeconds(wait) + " para poder enviar.";
-          // mantiene el boton oculto
         } else {
-          // YA CUMPLIO MINIMO -> muestra boton y quita mensaje
           if (minHintEl) minHintEl.remove();
           if (!submitBtn && footer) {
-            // inyecta el boton que estaba oculto sin hacer re-render completo
             var isLast = self.currentPage === self.pages.length - 1;
             var btn = document.createElement("button");
             btn.type = "button";
@@ -954,8 +965,6 @@
     if (question.type === "image") {
       var rawUrl = question.src || question.url || question.imageUrl || "";
       var imgUrl = rawUrl;
-
-      // FIX: Si pegas link de google /imgres, saca la imagen real del parametro imgurl
       try {
         if (imgUrl.indexOf("google.com/imgres") !== -1) {
           var urlObj = new URL(imgUrl);
@@ -963,9 +972,7 @@
           if (real) imgUrl = decodeURIComponent(real);
         }
       } catch (e) {}
-
       if (!imgUrl) return "";
-
       return (
         '<figure class="aura-design-media"><img src="' +
         escapeHtml(imgUrl) +
@@ -1238,8 +1245,8 @@
         question.type === "matrixtext"
           ? "text"
           : question.type === "matrixcheckbox"
-          ? "checkbox"
-          : "radio";
+            ? "checkbox"
+            : "radio";
       input =
         '<div class="aura-matrix-scroll"><table class="aura-matrix"><thead><tr><th></th>' +
         (question.columns || [])
@@ -1702,7 +1709,6 @@
         " para poder enviar.</div>"
       : "";
 
-    // BOTON OCULTO SI AUN NO CUMPLE MINIMO
     var primaryButtonHtml = "";
     if (showBotton) {
       if (minCheck.ok) {
@@ -1717,7 +1723,7 @@
           ) +
           "<span>→</span></button>";
       } else {
-        primaryButtonHtml = ""; // <-- aqui desaparece Enviar respuestas
+        primaryButtonHtml = "";
       }
     }
 

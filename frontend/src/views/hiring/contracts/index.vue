@@ -90,7 +90,7 @@ async function removeContract(item: ContractItem): Promise<void> {
         <h1 class="text-2xl font-bold flex items-center gap-2">
           <FileText class="h-6 w-6" /> Contratos
         </h1>
-        <v-btn v-if="can('hiring:create')" color="primary" @click="openCreate"
+        <v-btn v-if="can('hiring:contract:create')" color="primary" @click="openCreate"
           ><Plus class="h-4 w-4 mr-2" /> Crear</v-btn
         >
       </div>

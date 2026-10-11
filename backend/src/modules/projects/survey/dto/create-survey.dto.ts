@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsObject, IsDateString, IsOptional, IsUUID } from "class-validator";
+import { IsString, IsNotEmpty, IsObject, IsDateString, IsOptional } from "class-validator";
 
 export class CreateSurveyDto {
   @IsString()
@@ -16,7 +16,4 @@ export class CreateSurveyDto {
   @IsDateString()
   @IsNotEmpty()
   endDate: string;
-
-  @IsUUID() 
-  projectId: string
 }

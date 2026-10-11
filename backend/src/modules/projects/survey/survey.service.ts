@@ -14,6 +14,8 @@ import {
   paginatedResponse,
 } from "@/common/helpers/pagination.helper";
 
+type SurveyWithVirtual = Survey & { isActive: boolean };
+
 @Injectable()
 export class SurveyService {
   constructor(
@@ -21,7 +23,53 @@ export class SurveyService {
     private readonly repo: Repository<Survey>,
   ) {}
 
-  async create(dto: CreateSurveyDto, companyId: string) {
+  private isActiveByDate(
+    endDate: Survey["endDate"] | string | null | undefined,
+  ): boolean {
+    if (!endDate) return true;
+    const end = endDate instanceof Date ? endDate : new Date(endDate);
+    const today = new Date();
+
+    const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+    const todayDay = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+    );
+
+    return todayDay <= endDay;
+  }
+
+  private withVirtualIsActive(survey: Survey): SurveyWithVirtual {
+    return {
+      ...survey,
+      isActive: this.isActiveByDate(survey.endDate),
+    };
+  }
+
+  private generateCode(length = 6): string {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let code = "";
+    for (let i = 0; i < length; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  }
+
+  private async generateUniqueCode(): Promise<string> {
+    let code: string;
+    let exists: Survey | null;
+    do {
+      code = this.generateCode();
+      exists = await this.repo.findOne({ where: { code }, select: ["id"] });
+    } while (exists);
+    return code;
+  }
+
+  async create(
+    dto: CreateSurveyDto,
+    companyId: string,
+  ): Promise<SurveyWithVirtual> {
     const exists = await this.repo.findOne({
       where: { companyId, title: dto.title },
     });
@@ -29,12 +77,17 @@ export class SurveyService {
       throw new ConflictException(`Survey ${dto.title} already exists`);
     }
 
+    const code = await this.generateUniqueCode();
+
     const data = this.repo.create({
       ...dto,
       companyId,
+      code,
       endDate: dto.endDate ? new Date(dto.endDate) : undefined,
     });
-    return this.repo.save(data);
+
+    const saved = await this.repo.save(data);
+    return this.withVirtualIsActive(saved);
   }
 
   async findAll(
@@ -45,42 +98,71 @@ export class SurveyService {
   ) {
     const where: FindOptionsWhere<Survey> = {
       companyId,
-      ...(state !== undefined ? { isActive: state } : {}),
     };
 
+    let data: Survey[];
+    let total: number;
+
     if (!search) {
-      const [data, total] = await this.repo.findAndCount({
+      [data, total] = await this.repo.findAndCount({
         where,
         order: { createdAt: "DESC" },
+        select: { id: true, description: true, title: true, endDate: true },
         ...paginate(pagination),
       });
-      return paginatedResponse(data, total, pagination);
+    } else {
+      [data, total] = await this.repo.findAndCount({
+        where: [
+          { ...where, title: ILike(`%${search}%`) },
+          { ...where, description: ILike(`%${search}%`) },
+        ],
+        order: { createdAt: "DESC" },
+        select: { id: true, description: true, title: true, endDate: true },
+        ...paginate(pagination),
+      });
     }
 
-    const [data, total] = await this.repo.findAndCount({
-      where: [
-        { ...where, title: ILike(`%${search}%`) },
-        { ...where, description: ILike(`%${search}%`) },
-      ],
-      order: { createdAt: "DESC" },
-      ...paginate(pagination),
-    });
+    let mapped = data.map((s) => this.withVirtualIsActive(s));
 
-    return paginatedResponse(data, total, pagination);
+    if (state !== undefined) {
+      mapped = mapped.filter((s) => s.isActive === state);
+      total = mapped.length;
+    }
+
+    return paginatedResponse(mapped, total, pagination);
   }
 
-  async findOne(id: string, companyId: string) {
-    const survey = await this.repo.findOne({ where: { id, companyId } });
+  async findOne(id: string, companyId: string): Promise<Survey> {
+    const survey = await this.repo.findOne({
+      where: { id, companyId },
+      select: {
+        title: true,
+        endDate: true,
+        survey: true,
+        description: true,
+        id: true,
+        companyId: true,
+      },
+    });
     if (!survey) {
       throw new NotFoundException(`Survey with id ${id} not found`);
     }
     return survey;
   }
 
-  async update(id: string, dto: UpdateSurveyDto, companyId: string) {
-    const survey = await this.findOne(id, companyId);
+  async update(
+    id: string,
+    dto: UpdateSurveyDto,
+    companyId: string,
+  ): Promise<SurveyWithVirtual> {
+    const raw = await this.repo.findOne({
+      where: { id, companyId },
+    });
+    if (!raw) {
+      throw new NotFoundException(`Survey with id ${id} not found`);
+    }
 
-    if (dto.title && dto.title !== survey.title) {
+    if (dto.title && dto.title !== raw.title) {
       const exists = await this.repo.findOne({
         where: { companyId, title: dto.title },
       });
@@ -89,16 +171,22 @@ export class SurveyService {
       }
     }
 
-    Object.assign(survey, {
+    Object.assign(raw, {
       ...dto,
       ...(dto.endDate ? { endDate: new Date(dto.endDate) } : {}),
     });
 
-    return this.repo.save(survey);
+    const saved = await this.repo.save(raw);
+    return this.withVirtualIsActive(saved);
   }
 
   async remove(id: string, companyId: string) {
-    const survey = await this.findOne(id, companyId);
+    const survey = await this.repo.findOne({
+      where: { id, companyId },
+    });
+    if (!survey) {
+      throw new NotFoundException(`Survey with id ${id} not found`);
+    }
     return this.repo.softRemove(survey);
   }
 }
