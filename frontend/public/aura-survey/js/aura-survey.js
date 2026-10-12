@@ -1,5 +1,6 @@
 (function (global) {
   "use strict";
+  var VERSION = "PRO:1.0.1";
   var defaults = {
     title: "Aura survey",
     description: "",
@@ -126,7 +127,6 @@
   function findQuestion(name) {
     return findQuestionInPages(this.pages, name);
   }
-
   function expressionLiteral(value) {
     var text = String(value == null ? "" : value).trim();
     if (text === "true" || text === "false") return text;
@@ -419,7 +419,6 @@
         return actualNorm === expectedNorm;
     }
   }
-
   function AuraSurvey(target, definition) {
     this.host =
       typeof target === "string" ? document.querySelector(target) : target;
@@ -451,11 +450,9 @@
     this.render();
     this.startTimer();
   }
-
   AuraSurvey.prototype.findQuestion = function (name) {
     return findQuestionInPages(this.pages, name);
   };
-
   AuraSurvey.prototype.getTimeLimitConfig = function () {
     var tl = this._timeLimit || this.definition.timeLimit;
     if (!tl || !tl.enabled) return null;
@@ -579,6 +576,12 @@
       if (!Array.isArray(page.elements)) {
         page.elements = [];
       }
+      if (page.visibleIf && !page.auraConditions) {
+        ensureConditionalState(page);
+      }
+      if (page.auraConditions) {
+        buildVisibleIf(page);
+      }
       page.elements.forEach(function (question) {
         if (!question) return;
         if (question.visibleIf && !question.auraConditions) {
@@ -652,6 +655,55 @@
       return result;
     }
     return this.evaluateExpression(question.visibleIf);
+  };
+  AuraSurvey.prototype.isPageVisible = function (page) {
+    if (!page) return false;
+    if (
+      !page.visibleIf &&
+      (!page.auraConditions || !page.auraConditions.length)
+    )
+      return true;
+    if (Array.isArray(page.auraConditions) && page.auraConditions.length) {
+      var logic =
+        String(page.auraConditionLogic || "and").toLowerCase() === "or"
+          ? "or"
+          : "and";
+      var result =
+        logic === "or"
+          ? page.auraConditions.some(
+              function (c) {
+                return compareCondition(this.values[c.question], c);
+              }.bind(this),
+            )
+          : page.auraConditions.every(
+              function (c) {
+                return compareCondition(this.values[c.question], c);
+              }.bind(this),
+            );
+      if (String(page.auraConditionAction || "show").toLowerCase() === "hide")
+        return !result;
+      return result;
+    }
+    return this.evaluateExpression(page.visibleIf);
+  };
+  AuraSurvey.prototype.getVisiblePages = function () {
+    return this.pages.filter(this.isPageVisible.bind(this));
+  };
+  AuraSurvey.prototype.getNextVisibleIndex = function (from) {
+    var next = from + 1;
+    while (next < this.pages.length) {
+      if (this.isPageVisible(this.pages[next])) return next;
+      next++;
+    }
+    return -1;
+  };
+  AuraSurvey.prototype.getPrevVisibleIndex = function (from) {
+    var prev = from - 1;
+    while (prev >= 0) {
+      if (this.isPageVisible(this.pages[prev])) return prev;
+      prev--;
+    }
+    return -1;
   };
   AuraSurvey.prototype.evaluateExpression = function (expression) {
     if (!expression) return true;
@@ -792,9 +844,8 @@
   AuraSurvey.prototype.refreshConditionalVisibility = function () {
     var page = this.pages[this.currentPage];
     if (!page) return;
-    var questions = page.elements || [];
     var shouldRender = false;
-    questions.forEach(function (question) {
+    (page.elements || []).forEach(function (question) {
       if (!question.name) return;
       var shouldBeVisible = this.visible(question);
       var element = this.root.querySelector(
@@ -805,6 +856,14 @@
         shouldRender = true;
       }
     }, this);
+    var visibleNow = this.getVisiblePages().length;
+    if (
+      this._lastVisibleCount !== undefined &&
+      this._lastVisibleCount !== visibleNow
+    ) {
+      shouldRender = true;
+    }
+    this._lastVisibleCount = visibleNow;
     if (shouldRender) {
       this.renderPage();
     }
@@ -824,17 +883,20 @@
       var input = box.querySelector("[data-autocomplete-input]");
       var list = box.querySelector("[data-autocomplete-list]");
       if (!input || !list) return;
-      var name = box.dataset.autocomplete;
-      var question = null;
-      for (var p = 0; p < survey.pages.length; p++) {
-        var elements = survey.pages[p].elements || [];
-        for (var q = 0; q < elements.length; q++) {
-          if (elements[q].name === name) {
-            question = elements[q];
-            break;
-          }
+      var name = box.dataset.autocomplete.replace("_country", "");
+      var question = survey.findQuestion(name);
+      if (!question && name.indexOf("_country") !== -1) {
+        question = survey.findQuestion(box.dataset.autocomplete);
+      }
+      if (!question) {
+        for (var p = 0; p < survey.pages.length; p++) {
+          var els = survey.pages[p].elements || [];
+          for (var q = 0; q < els.length; q++)
+            if (els[q].name === name) {
+              question = els[q];
+              break;
+            }
         }
-        if (question) break;
       }
       if (!question) return;
       var options = Array.prototype.slice.call(
@@ -852,38 +914,27 @@
             query === "" ||
             text.indexOf(query) !== -1 ||
             value.indexOf(query) !== -1;
-          if (match) {
-            option.hidden = false;
-            option.style.display = "";
-            matches++;
-          } else {
-            option.hidden = true;
-            option.style.display = "none";
-          }
+          option.hidden = !match;
+          option.style.display = match ? "" : "none";
+          if (match) matches++;
         });
         list.hidden = matches === 0;
       };
       input.addEventListener("focus", function () {
         filter();
-        if (options.length > 0) {
-          list.hidden = false;
-        }
+        if (options.length > 0) list.hidden = false;
       });
-      input.addEventListener("input", function () {
-        filter();
-      });
+      input.addEventListener("input", filter);
       input.addEventListener("keydown", function (event) {
         if (event.key === "Escape") {
           list.hidden = true;
           return;
         }
         if (event.key === "Enter") {
-          var firstVisible = options.find(function (option) {
-            return !option.hidden;
+          var firstVisible = options.find(function (o) {
+            return !o.hidden;
           });
-          if (firstVisible) {
-            firstVisible.click();
-          }
+          if (firstVisible) firstVisible.click();
           event.preventDefault();
         }
       });
@@ -893,14 +944,14 @@
           event.stopPropagation();
           var selectedValue = option.dataset.optionValue;
           var selectedText = option.dataset.optionText;
-          if (question.type === "dropdown") {
+
+          if (question.type === "dropdown" || name === question.name) {
             survey.values[name] = selectedValue;
             input.value = selectedText;
           } else if (question.type === "tel") {
             var current = survey.values[name];
-            if (!current || typeof current !== "object") {
+            if (!current || typeof current !== "object")
               current = { country: "", number: "" };
-            }
             survey.values[name] = {
               country: selectedValue,
               number: current.number || "",
@@ -913,9 +964,7 @@
             value: survey.values[name],
             data: survey.getData(),
           });
-          if (typeof survey.refreshConditionalVisibility === "function") {
-            survey.refreshConditionalVisibility();
-          }
+          survey.renderPage();
         });
       });
     });
@@ -1671,30 +1720,52 @@
   AuraSurvey.prototype.renderPage = function () {
     var page = this.pages[this.currentPage];
     if (!page) return;
+
+    if (!this.isPageVisible(page)) {
+      var n = this.getNextVisibleIndex(this.currentPage);
+      if (n !== -1) {
+        this.currentPage = n;
+        return this.renderPage();
+      }
+      var p = this.getPrevVisibleIndex(this.currentPage);
+      if (p !== -1) {
+        this.currentPage = p;
+        return this.renderPage();
+      }
+    }
+
+    page = this.pages[this.currentPage];
+    var visiblePages = this.getVisiblePages();
+    var visibleIndex = visiblePages.indexOf(page);
+    if (visibleIndex === -1) visibleIndex = 0;
+
     var visibleQuestions = (page.elements || []).filter(
       this.visible.bind(this),
     );
     var showBotton =
       this.definition.showBotton !== false &&
       this.definition.showButton !== false;
+
     var progress = Math.round(
-      ((this.currentPage + 1) / this.pages.length) * 100,
+      ((visibleIndex + 1) / (visiblePages.length || 1)) * 100,
     );
+
     var pageLabel =
-      this.pages.length > 1 && this.definition.showPageNumbers
+      visiblePages.length > 1 && this.definition.showPageNumbers
         ? '<span class="aura-page-count">Página ' +
-          (this.currentPage + 1) +
+          (visibleIndex + 1) +
           " de " +
-          this.pages.length +
+          visiblePages.length +
           "</span>"
-        : "";
+        : visiblePages.length === 1
+          ? '<span class="aura-page-count">Página 1 de 1</span>'
+          : "";
 
     var cfg = this.getTimeLimitConfig();
-    var timerMarkup = "";
-    if (cfg && cfg.enabled) {
-      timerMarkup =
-        '<div class="aura-timer-wrap"><div class="aura-timer-progress"><div data-aura-timer-bar style="width:0%"></div></div><div class="aura-timer" data-aura-timer>Cargando...</div></div>';
-    }
+    var timerMarkup =
+      cfg && cfg.enabled
+        ? '<div class="aura-timer-wrap"><div class="aura-timer-progress"><div data-aura-timer-bar style="width:0%"></div></div><div class="aura-timer" data-aura-timer>Cargando...</div></div>'
+        : "";
     var progressMarkup =
       (this.definition.showProgress
         ? '<div class="aura-progress"><div class="aura-progress-bar" style="width:' +
@@ -1709,29 +1780,25 @@
         " para poder enviar.</div>"
       : "";
 
+    var isLastVisible = visibleIndex === visiblePages.length - 1;
+
     var primaryButtonHtml = "";
-    if (showBotton) {
-      if (minCheck.ok) {
-        primaryButtonHtml =
-          '<button type="button" class="aura-button aura-button-primary" data-aura-action="' +
-          (this.currentPage === this.pages.length - 1 ? "complete" : "next") +
-          '" data-aura-submit>' +
-          escapeHtml(
-            this.currentPage === this.pages.length - 1
-              ? this.definition.completeText
-              : this.definition.nextText,
-          ) +
-          "<span>→</span></button>";
-      } else {
-        primaryButtonHtml = "";
-      }
+    if (showBotton && minCheck.ok) {
+      primaryButtonHtml =
+        '<button type="button" class="aura-button aura-button-primary" data-aura-action="' +
+        (isLastVisible ? "complete" : "next") +
+        '" data-aura-submit>' +
+        escapeHtml(
+          isLastVisible
+            ? this.definition.completeText
+            : this.definition.nextText,
+        ) +
+        "<span>→</span></button>";
     }
 
-    var footerHtml = "";
-    if (showBotton) {
-      footerHtml =
-        '<footer class="aura-footer">' +
-        (this.currentPage > 0
+    var footerHtml = showBotton
+      ? '<footer class="aura-footer">' +
+        (visibleIndex > 0
           ? '<button type="button" class="aura-button aura-button-ghost" data-aura-action="previous">' +
             escapeHtml(this.definition.previousText) +
             "</button>"
@@ -1739,11 +1806,8 @@
         minHint +
         "</div>" +
         (primaryButtonHtml || "<span></span>") +
-        "</footer>";
-    } else {
-      footerHtml =
-        '<footer class="aura-footer" style="border:none;justify-content:center;padding-top:10px;"><span></span><span></span></footer>';
-    }
+        "</footer>"
+      : '<footer class="aura-footer" style="border:none;"><span></span><span></span></footer>';
 
     this.root.innerHTML =
       '<header class="aura-header"><div><span class="aura-kicker">AURA / FORM</span><h1>' +
@@ -1755,7 +1819,7 @@
       "</header>" +
       progressMarkup +
       '<main class="aura-page"><div class="aura-page-heading"><span class="aura-step">0' +
-      (this.currentPage + 1) +
+      (visibleIndex + 1) +
       "</span><div><h2>" +
       escapeHtml(page.title || "") +
       "</h2>" +
@@ -1770,29 +1834,13 @@
         button.addEventListener(
           "click",
           function () {
-            var action = button.dataset.auraAction;
-            if (typeof this[action] === "function") {
-              this[action]();
-            }
+            var a = button.dataset.auraAction;
+            if (typeof this[a] === "function") this[a]();
           }.bind(this),
         );
       }.bind(this),
     );
-    this.root.querySelectorAll("[data-rank]").forEach(
-      function (button) {
-        button.addEventListener("click", this.moveRanking.bind(this, button));
-      }.bind(this),
-    );
-    this.root
-      .querySelectorAll('input[type="range"]')
-      .forEach(function (slider) {
-        slider.addEventListener("input", function () {
-          var output = slider.parentElement.querySelector("output");
-          if (output) {
-            output.textContent = slider.value;
-          }
-        });
-      });
+
     this.bindSignatures();
     this.bindAutocomplete();
     if (this._timerId) {
@@ -1802,32 +1850,21 @@
     this.startTimer();
   };
   AuraSurvey.prototype.next = function () {
-    var minCheck = this.checkMinTime(false);
-    if (!minCheck.ok) {
-      alert(minCheck.message);
-      return false;
-    }
-    if (
-      this.definition.showBotton === false ||
-      this.definition.showButton === false
-    )
-      return false;
     if (!this.validate()) return false;
-    if (this.currentPage < this.pages.length - 1) {
-      this.currentPage++;
+    var nextIdx = this.getNextVisibleIndex(this.currentPage);
+    if (nextIdx !== -1) {
+      this.currentPage = nextIdx;
       this.emit("pageChanged", { page: this.currentPage });
       this.renderPage();
+    } else {
+      this.complete(false);
     }
     return true;
   };
   AuraSurvey.prototype.previous = function () {
-    if (
-      this.definition.showBotton === false ||
-      this.definition.showButton === false
-    )
-      return false;
-    if (this.currentPage > 0) {
-      this.currentPage--;
+    var prevIdx = this.getPrevVisibleIndex(this.currentPage);
+    if (prevIdx !== -1) {
+      this.currentPage = prevIdx;
       this.emit("pageChanged", { page: this.currentPage });
       this.renderPage();
     }
@@ -1898,5 +1935,5 @@
   };
   AuraSurvey.findQuestion = findQuestion;
   global.AuraSurvey = AuraSurvey;
-  global.AuraSurvey.version = "1.1.1";
+  global.AuraSurvey.version = VERSION;
 })(window);

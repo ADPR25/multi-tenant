@@ -1,6 +1,6 @@
 (function (global) {
   "use strict";
-  var VERSION = "2.3.0-business-pro";
+  var VERSION = "PRO:1.0.1";
   function escapeHtml(v) {
     return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) {
       return {
@@ -29,6 +29,98 @@
   function getChoiceValue(c) {
     return typeof c === "object" && c !== null ? c.value : c;
   }
+  function slugify(s) {
+    return (
+      String(s)
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_+|_+$/g, "") || "q"
+    );
+  }
+  function isCountMap(v) {
+    return (
+      typeof v === "object" &&
+      v !== null &&
+      !Array.isArray(v) &&
+      Object.keys(v).length > 0 &&
+      Object.values(v).every(function (x) {
+        return typeof x === "number";
+      })
+    );
+  }
+  function isStatsObject(o) {
+    if (!o || typeof o !== "object" || Array.isArray(o)) return false;
+    if (o.pages) return false;
+    var keys = Object.keys(o);
+    if (!keys.length) return false;
+    return keys.every(function (k) {
+      var v = o[k];
+      if (Array.isArray(v)) return true;
+      if (isCountMap(v)) return true;
+      if (typeof v === "string" || typeof v === "number") return true;
+      return false;
+    });
+  }
+  function statsToInternal(stats) {
+    var elements = [];
+    var expanded = {};
+    var maxLen = 0;
+    for (var title in stats) {
+      if (!stats.hasOwnProperty(title)) continue;
+      var value = stats[title];
+      var name = slugify(title);
+      if (isCountMap(value)) {
+        var choices = Object.keys(value).map(function (l) {
+          return { value: l, text: l };
+        });
+        var arr = [];
+        for (var label in value) {
+          if (!value.hasOwnProperty(label)) continue;
+          var c = value[label];
+          for (var i = 0; i < c; i++) arr.push(label);
+        }
+        expanded[name] = arr;
+        maxLen = Math.max(maxLen, arr.length);
+        elements.push({
+          name: name,
+          title: title,
+          type: "radiogroup",
+          choices: choices,
+        });
+      } else {
+        var arr2 = Array.isArray(value) ? value : [value];
+        arr2 = arr2.filter(function (x) {
+          return x !== undefined && x !== null && x !== "";
+        });
+        expanded[name] = arr2;
+        maxLen = Math.max(maxLen, arr2.length);
+        elements.push({
+          name: name,
+          title: title,
+          type: arr2.length > 1 ? "text" : "text",
+        });
+      }
+    }
+    var responses = Array.from({ length: maxLen || 1 }, function () {
+      return {};
+    });
+    for (var n in expanded) {
+      if (!expanded.hasOwnProperty(n)) continue;
+      var a = expanded[n];
+      for (var j = 0; j < maxLen; j++) {
+        if (a[j] !== undefined) responses[j][n] = a[j];
+      }
+    }
+    var schema = {
+      title: "Resultados",
+      description: maxLen + " respuestas",
+      pages: [{ name: "page1", title: "Resumen", elements: elements }],
+    };
+    return { schema: schema, responses: responses };
+  }
+
   function getAllQuestions(pages) {
     var qs = [];
     (pages || []).forEach(function (p) {
@@ -58,7 +150,6 @@
       }, 0) / arr.length
     );
   }
-
   var PALETTE_DEFAULT = [
     "#123a2e",
     "#1a5c49",
@@ -69,8 +160,6 @@
     "#0f1a15",
     "#8fb5a0",
   ];
-
-  // --- Canvas helpers ---
   function prepCanvas(canvas) {
     var ctx = canvas.getContext("2d");
     var dpr = global.devicePixelRatio || 1;
@@ -254,7 +343,6 @@
     var max = Math.max.apply(null, values.concat([1]));
     var n = labels.length;
     var cols = colors || PALETTE_DEFAULT;
-    // grid
     ctx.strokeStyle = "#e3ebe5";
     ctx.lineWidth = 1;
     for (var level = 1; level <= 4; level++) {
@@ -277,7 +365,6 @@
       ctx.lineTo(cx + Math.cos(ang) * r, cy + Math.sin(ang) * r);
       ctx.stroke();
     }
-    // data
     ctx.fillStyle = cols[0] + "33";
     ctx.strokeStyle = cols[0];
     ctx.lineWidth = 2.5;
@@ -293,7 +380,6 @@
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-    // labels
     ctx.fillStyle = "#0f1a15";
     ctx.font = "11px system-ui";
     ctx.textAlign = "center";
@@ -316,12 +402,8 @@
     var rowH = chartH / (values.length || 1);
     values.forEach(function (v, i) {
       var intensity = v / max;
-      var r = 18 + Math.round((227 - 18) * (1 - intensity));
-      var g = 58 + Math.round((200 - 58) * intensity);
-      var b = 46 + Math.round((120 - 46) * intensity);
-      ctx.fillStyle = "rgb(" + r + "," + g + "," + b + ")";
-      // actually invert: use brand color opacity
       ctx.globalAlpha = 0.2 + 0.8 * intensity;
+      ctx.fillStyle = (colors || PALETTE_DEFAULT)[i % colors.length];
       ctx.fillRect(pad.left, pad.top + i * rowH, chartW, rowH * 0.8);
       ctx.globalAlpha = 1;
       ctx.fillStyle = "#0f1a15";
@@ -349,7 +431,6 @@
     if (type === "heatmap") return drawHeatmap(canvas, labels, values, colors);
     return drawBarChart(canvas, labels, values, colors);
   }
-
   function analyzeQuestion(question, responses) {
     var name = question.name,
       type = question.type;
@@ -441,19 +522,34 @@
       this.options.tier ||
       this.options.license ||
       "pro"
-    ).toLowerCase(); // 'basic' | 'pro' | 'indie' | 'business'
+    ).toLowerCase();
     if (this.tier === "indie") this.tier = "basic";
     if (this.tier === "business") this.tier = "pro";
     this.isPro = this.tier === "pro";
     this.brandColors = this.options.brandColors || PALETTE_DEFAULT;
-    this.displayMode = this.options.displayMode || "count"; // count | percent
-    this.schema = clone(
+    this.displayMode = this.options.displayMode || "count";
+    var rawSchema = clone(
       this.options.schema || { title: "Dashboard", pages: [] },
     );
-    this.responses = clone(this.options.responses || []);
+    var rawResponses = clone(this.options.responses || []);
+    var rawStats = this.options.stats || null;
+    if (rawStats && isStatsObject(rawStats)) {
+      var converted = statsToInternal(rawStats);
+      rawSchema = converted.schema;
+      rawResponses = converted.responses;
+    } else if (
+      isStatsObject(rawSchema) &&
+      (!rawResponses || !rawResponses.length)
+    ) {
+      var conv2 = statsToInternal(rawSchema);
+      rawSchema = conv2.schema;
+      rawResponses = conv2.responses;
+    }
+    this.schema = rawSchema;
+    this.responses = rawResponses;
     this.chartPrefs = {};
     this.currentFilter = "";
-    this.compare = { q: "", value: "" }; // for pro cross-filter
+    this.compare = { q: "", value: "" };
     this.render();
   }
   AuraSurveyDashboard.prototype.setResponses = function (r) {
@@ -462,8 +558,23 @@
     return this;
   };
   AuraSurveyDashboard.prototype.setSchema = function (s) {
-    this.schema = clone(s || {});
+    if (isStatsObject(s)) {
+      var c = statsToInternal(s);
+      this.schema = c.schema;
+      this.responses = c.responses;
+    } else {
+      this.schema = clone(s || {});
+    }
     this.render();
+    return this;
+  };
+  AuraSurveyDashboard.prototype.setStats = function (stats) {
+    if (isStatsObject(stats)) {
+      var c = statsToInternal(stats);
+      this.schema = c.schema;
+      this.responses = c.responses;
+      this.render();
+    }
     return this;
   };
   AuraSurveyDashboard.prototype.getStats = function () {
@@ -511,7 +622,7 @@
       escapeHtml(this.schema.title || "Dashboard") +
       " PDF</title>";
     html +=
-      "<style>body{font-family:system-ui,sans-serif;padding:24px;color:#0f1a15} h1{font-size:28px;letter-spacing:-.02em} h2{font-size:16px;margin-top:28px;border-bottom:1px solid #e3ebe5;padding-bottom:6px} img{max-width:100%;border:1px solid #e3ebe5;border-radius:12px;display:block} table{width:100%;border-collapse:collapse;margin-top:10px} th,td{border:1px solid #e3ebe5;padding:8px;text-align:left;font-size:12px} th{background:#123a2e;color:#fff} .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px} @media print{.no-print{display:none} @page{margin:14mm} .grid{grid-template-columns:1fr 1fr}} @media(max-width:700px){.grid{grid-template-columns:1fr}}</style></head><body>";
+      "<style>body{font-family:system-ui,sans-serif;padding:24px;color:#0f1a15} h1{font-size:28px} h2{font-size:16px;margin-top:28px;border-bottom:1px solid #e3ebe5;padding-bottom:6px} img{max-width:100%;border:1px solid #e3ebe5;border-radius:12px;display:block} table{width:100%;border-collapse:collapse;margin-top:10px} th,td{border:1px solid #e3ebe5;padding:8px;text-align:left;font-size:12px} th{background:#123a2e;color:#fff}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px} @media print{.no-print{display:none} @page{margin:14mm}.grid{grid-template-columns:1fr 1fr}} @media(max-width:700px){.grid{grid-template-columns:1fr}}</style></head><body>";
     html +=
       "<h1>" +
       escapeHtml(this.schema.title || "Dashboard") +
@@ -521,14 +632,11 @@
       escapeHtml(self.currentFilter || "Todas") +
       " | Generado: " +
       new Date().toLocaleString() +
-      "</p>";
-    html += '<div class="grid">';
+      '</p><div class="grid">';
     filtered.forEach(function (q) {
       var analysis = analyzeQuestion(q, self.responses);
       html +=
-        '<div style="border:1px solid #e3ebe5;border-radius:14px;padding:14px;break-inside:avoid">';
-      html +=
-        '<h2 style="margin:0 0 8px 0">' +
+        '<div style="border:1px solid #e3ebe5;border-radius:14px;padding:14px;break-inside:avoid"><h2 style="margin:0 0 8px 0">' +
         escapeHtml(q.title || q.name) +
         '</h2><small style="color:#7a8a82">' +
         q.type +
@@ -558,9 +666,7 @@
       html += "</div>";
     });
     html +=
-      '</div><br><button class="no-print" onclick="window.print()" style="padding:12px 18px;border-radius:999px;border:0;background:#123a2e;color:#fff;cursor:pointer;font-weight:700">Imprimir / Guardar como PDF</button>';
-    html +=
-      "<script>setTimeout(()=>window.print(),600)<\/script></body></html>";
+      '</div><br><button class="no-print" onclick="window.print()" style="padding:12px 18px;border-radius:999px;border:0;background:#123a2e;color:#fff;cursor:pointer;font-weight:700">Imprimir / Guardar como PDF</button><script>setTimeout(()=>window.print(),600)<\/script></body></html>';
     win.document.write(html);
     win.document.close();
   };
@@ -571,36 +677,28 @@
     var questions = getAllQuestions(this.schema.pages || []);
     this.host.classList.add("aura-dashboard-host");
     var tierBadge = this.isPro
-      ? '<span style="background:#123a2e;color:#fff;border-radius:999px;padding:4px 10px;font:700 10px Space Grotesk;letter-spacing:.8px">BUSINESS • PRO</span>'
-      : '<span style="background:#e36f55;color:#fff;border-radius:999px;padding:4px 10px;font:700 10px Space Grotesk;letter-spacing:.8px">INDIE • BASIC</span>';
+      ? '<span style="background:#123a2e;color:#fff;border-radius:999px;padding:4px 10px;font:700 10px Space Grotesk;letter-spacing:.8px">BUSINESS</span>'
+      : '<span style="background:#e36f55;color:#fff;border-radius:999px;padding:4px 10px;font:700 10px Space Grotesk;letter-spacing:.8px">INDIE</span>';
     var upgradeBanner = this.isPro
       ? ""
       : '<div style="margin:14px 0;padding:12px 16px;border:1px dashed #e36f55;background:#fff5f2;border-radius:12px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div><b style="color:#e36f55">Estás en BASIC</b> — Solo barras y torta. Para presentar a clientes necesitas PRO: dona, línea, radar, heatmap, PDF y filtros cruzados.<br><small style="color:#7a8a82">Exportar PDF, colores de marca y Comparar están bloqueados.</small></div><a href="https://aurasurvey.lemonsqueezy.com/checkout/buy/bd66f21c-d1b0-4a59-b04c-b2234d8dfabc" target="_blank" style="background:#123a2e;color:#fff;padding:8px 14px;border-radius:999px;font:700 12px system-ui;text-decoration:none;white-space:nowrap">Upgrade a Business — $159 →</a></div>';
-
-    // toolbar pro controls
     var proControls = "";
     if (this.isPro) {
       proControls =
-        '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-left:8px">' +
-        '<label style="margin-left:30px;font:600 11px system-ui;color:#7a8a82">MARCA</label><input type="color" data-brand-color="0" value="' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-left:8px"><label style="margin-left:30px;font:600 11px system-ui;color:#7a8a82">MARCA</label><input type="color" data-brand-color="0" value="' +
         (this.brandColors[0] || "#123a2e") +
-        '" style="width:28px;height:28px;border-radius:999px;border:1px solid #e3ebe5;padding:2px">' +
-        '<input type="color" data-brand-color="1" value="' +
+        '" style="width:28px;height:28px;border-radius:999px;border:1px solid #e3ebe5;padding:2px"><input type="color" data-brand-color="1" value="' +
         (this.brandColors[1] || "#e36f55") +
-        '" style="width:28px;height:28px;border-radius:999px;border:1px solid #e3ebe5;padding:2px">' +
-        '<select data-display-mode style="padding:8px 12px;border-radius:999px;border:1px solid #dce4df;font:600 12px system-ui;background:#fff"><option value="count" ' +
+        '" style="width:28px;height:28px;border-radius:999px;border:1px solid #e3ebe5;padding:2px"><select data-display-mode style="padding:8px 12px;border-radius:999px;border:1px solid #dce4df;font:600 12px system-ui;background:#fff"><option value="count" ' +
         (this.displayMode === "count" ? "selected" : "") +
         '># Absoluto</option><option value="percent" ' +
         (this.displayMode === "percent" ? "selected" : "") +
-        ">% Porcentaje</option></select>" +
-        "</div>";
+        ">% Porcentaje</option></select></div>";
     }
-
     this.host.innerHTML =
-      '<div class="aura-dashboard"><header class="aura-dash-header" style="display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap"><div><span class="aura-dash-kicker" style="display:flex;gap:8px;align-items:center">AURA / DASHBOARD • OFFLINE • ' +
+      '<div class="aura-dashboard"><header class="aura-dash-header" style="display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap"><div><span class="aura-dash-kicker" style="display:flex;gap:8px;align-items:center">AURA / DASHBOARD' +
       tierBadge +
       '</span><h1 style="margin:8px 0 4px">' +
-      escapeHtml(this.schema.title || "Resultados") +
       '</h1><p style="color:#7a8a82;margin:0">' +
       escapeHtml(this.schema.description || "Análisis elegante, 100% offline") +
       '</p></div><div class="aura-dash-actions" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
@@ -617,10 +715,7 @@
       stats.avgCompletion +
       '%</b><span style="font:700 10px system-ui;color:#7a8a82">COMPLETADO</span></div><div class="aura-dash-stat" style="background:#fff;border:1px solid #e3ebe5;border-radius:14px;padding:12px 14px"><b style="display:block;font-size:22px">' +
       (questions.length ? stats.total * questions.length : 0) +
-      '</b><span style="font:700 10px system-ui;color:#7a8a82">DATOS</span></div></div>' +
-      '<div class="aura-dash-toolbar" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0">' +
-      '<div class="aura-dash-filter-wrap" style="position:relative;min-width:280px"><div class="aura-autocomplete" data-autocomplete="dash-filter" style="width:100%"><input id="aura-dash-search" class="aura-dash-filter-input" placeholder="🔍 Filtrar por pregunta..." autocomplete="off" style="width:100%;padding:10px 14px;border:1px solid #dce4df;border-radius:999px;outline:0;font:500 13px system-ui;background:#fff"><div class="aura-autocomplete-list" data-autocomplete-list hidden style="position:absolute;top:110%;left:0;right:0;z-index:20;background:#fff;border:1px solid #dce4df;border-radius:12px;box-shadow:0 12px 30px rgba(15,26,21,.12);max-height:280px;overflow:auto;padding:6px"></div></div></div>' +
-      '<button class="aura-dash-btn" data-act="clear-filter" style="margin-left:30px;display:none;padding:8px 12px;border-radius:999px;border:1px solid #dce4df;background:#fff;font:600 12px system-ui;cursor:pointer">✕ Limpiar</button>' +
+      '</b><span style="font:700 10px system-ui;color:#7a8a82">DATOS</span></div></div><div class="aura-dash-toolbar" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0"><div class="aura-dash-filter-wrap" style="position:relative;min-width:280px"><div class="aura-autocomplete" data-autocomplete="dash-filter" style="width:100%"><input id="aura-dash-search" class="aura-dash-filter-input" placeholder="🔍 Filtrar por pregunta..." autocomplete="off" style="width:100%;padding:10px 14px;border:1px solid #dce4df;border-radius:999px;outline:0;font:500 13px system-ui;background:#fff"><div class="aura-autocomplete-list" data-autocomplete-list hidden style="position:absolute;top:110%;left:0;right:0;z-index:20;background:#fff;border:1px solid #dce4df;border-radius:12px;box-shadow:0 12px 30px rgba(15,26,21,.12);max-height:280px;overflow:auto;padding:6px"></div></div></div><button class="aura-dash-btn" data-act="clear-filter" style="margin-left:30px;display:none;padding:8px 12px;border-radius:999px;border:1px solid #dce4df;background:#fff;font:600 12px system-ui;cursor:pointer">✕ Limpiar</button>' +
       proControls +
       (self.isPro
         ? '<div style="display:flex;gap:8px;align-items:center;margin-left:auto"><label style="font:700 10px system-ui;color:#7a8a82">COMPARAR:</label><select data-compare-q style="padding:8px 10px;border-radius:999px;border:1px solid #dce4df;font:600 12px system-ui;max-width:180px"><option value="">Sin comparar</option>' +
@@ -640,7 +735,6 @@
           '</select><select data-compare-v style="padding:8px 10px;border-radius:999px;border:1px solid #dce4df;font:600 12px system-ui;max-width:140px"><option value="">Valor...</option></select></div>'
         : "") +
       '</div><div class="aura-dash-body" id="aura-dash-body" style="display:grid;grid-template-columns:1fr 1fr;gap:14px"></div></div>';
-
     this.host.querySelector('[data-act="pdf"]').onclick = function () {
       self.exportPDF();
     };
@@ -653,8 +747,6 @@
     var body = this.host.querySelector("#aura-dash-body");
     var input = this.host.querySelector("#aura-dash-search");
     var list = this.host.querySelector("[data-autocomplete-list]");
-
-    // brand color handlers
     this.host.querySelectorAll("[data-brand-color]").forEach(function (inp) {
       inp.onchange = function () {
         var idx = parseInt(inp.dataset.brandColor, 10);
@@ -668,8 +760,6 @@
         self.displayMode = this.value;
         renderList();
       };
-
-    // compare handlers
     var compQ = this.host.querySelector("[data-compare-q]");
     var compV = this.host.querySelector("[data-compare-v]");
     function refreshCompareValues() {
@@ -685,10 +775,7 @@
       var q = questions.find(function (x) {
         return x.name === qName;
       });
-      if (!q) {
-        return;
-      }
-      // get distinct values for that question
+      if (!q) return;
       var map = {};
       self.responses.forEach(function (r) {
         var v = r[qName];
@@ -720,30 +807,25 @@
           })
           .join("");
     }
-    if (compQ) {
+    if (compQ)
       compQ.onchange = function () {
         refreshCompareValues();
       };
-    }
-    if (compV) {
+    if (compV)
       compV.onchange = function () {
         self.compare.value = this.value;
         renderList();
       };
-    }
     refreshCompareValues();
-
     function getChartTypeFor(q) {
       var def =
         q.type === "boolean" ? "donut" : q.type === "checkbox" ? "hbar" : "bar";
       var pref = self.chartPrefs[q.name] || def;
       if (!self.isPro) {
-        // BASIC only bar/pie
         if (["bar", "pie"].indexOf(pref) === -1) pref = "bar";
       }
       return pref;
     }
-
     function buildFilterOptions(filterText) {
       var ft = (filterText || "").toLowerCase().trim();
       var opts = [
@@ -841,7 +923,6 @@
       list.hidden = true;
       renderList();
     };
-
     function renderList() {
       body.innerHTML = "";
       if (!self.responses.length) {
@@ -854,7 +935,6 @@
         toShow = questions.filter(function (q) {
           return q.name === self.currentFilter;
         });
-      // apply compare filter if pro
       var baseResponses = self.responses;
       var filteredResponses = baseResponses;
       if (self.isPro && self.compare.q && self.compare.value) {
@@ -865,7 +945,6 @@
           return arr.indexOf(String(self.compare.value)) !== -1;
         });
       }
-
       toShow.forEach(function (q) {
         var analysis = analyzeQuestion(q, filteredResponses);
         var currentType = getChartTypeFor(q);
@@ -942,34 +1021,6 @@
           "</div></div>";
         var content = "";
         if (analysis.labels && analysis.labels.length) {
-          content +=
-            '<canvas class="aura-dash-canvas" data-chart="' +
-            q.name +
-            '" style="width:100%;height:220px;margin-top:10px"></canvas><div class="aura-dash-bar" style="margin-top:10px;display:grid;gap:6px">';
-          analysis.labels.forEach(function (label, i) {
-            var val = analysis.values[i];
-            var pct = self.responses.length
-              ? Math.round((val / filteredResponses.length) * 100)
-              : 0;
-            var displayVal =
-              self.displayMode === "percent"
-                ? pct + "%"
-                : val + " (" + pct + "%)";
-            return (content +=
-              '<div class="aura-dash-bar-row" style="display:flex;gap:8px;align-items:center"><span style="flex:1;font:500 12px system-ui;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' +
-              escapeHtml(label) +
-              '</span><b style="font:700 12px system-ui">' +
-              displayVal +
-              '</b><div class="aura-dash-bar-track" style="width:60px;height:6px;background:#e9f3ec;border-radius:999px;overflow:hidden"><div class="aura-dash-bar-fill" style="width:' +
-              pct +
-              "%;height:100%;background:" +
-              (self.brandColors[i % self.brandColors.length] || "#123a2e") +
-              '"></div></div></div>');
-          });
-          // fix for loop above using forEach return not work, rebuild
-        }
-        // rebuild bar rows correctly
-        if (analysis.labels && analysis.labels.length) {
           var rows = "";
           analysis.labels.forEach(function (label, i) {
             var val = analysis.values[i];
@@ -997,12 +1048,6 @@
             '" style="width:100%;height:220px;margin-top:10px"></canvas><div style="margin-top:10px;display:grid;gap:6px">' +
             rows +
             "</div>";
-          if (
-            self.isPro === false &&
-            filteredResponses.length !== baseResponses.length
-          ) {
-            /* basic should not have compare, but ignore */
-          }
         } else if (analysis.textValues) {
           content =
             '<div class="aura-dash-text-list" style="margin-top:10px;display:grid;gap:6px;max-height:220px;overflow:auto">' +

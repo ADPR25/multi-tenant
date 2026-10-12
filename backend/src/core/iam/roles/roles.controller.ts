@@ -39,15 +39,6 @@ export class RolesController {
     @CurrentUser() user: CurrentUserPayload,
   ) {
     const effectiveCompanyId = this.isSuper(user) ? dto.companyId : companyId;
-
-    console.log(
-      dto,
-      "tokenCompany:",
-      companyId,
-      "effective:",
-      effectiveCompanyId,
-    );
-
     if (!effectiveCompanyId) {
       throw new ConflictException("companyId companyId is required");
     }

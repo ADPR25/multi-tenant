@@ -8,6 +8,7 @@ export interface SurveyPayload {
 }
 
 export interface Survey {
+  [key: string]: unknown;
   id: string;
   companyId: string;
   title: string;
@@ -17,6 +18,12 @@ export interface Survey {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  survey?: Record<string, unknown>;
+}
+
+export interface SurveyResponsePayload {
+  surveyId: string;
+  response: Record<string, unknown>;
 }
 
 export interface SurveyFetchParams {
@@ -43,7 +50,7 @@ function buildQuery(params: SurveyFetchParams) {
   if (params.search) q.set("search", String(params.search));
   if (params.state !== undefined) q.set("state", String(params.state));
   if (params.isActive !== undefined) {
-    q.set("state", String(params.isActive));
+    q.set("isActive", String(params.isActive));
   }
   return q.toString() ? `?${q.toString()}` : "";
 }
@@ -59,8 +66,23 @@ export const surveysService = {
     return api.request<Survey>(`/projects/surveys/${id}`);
   },
 
+  getByCode(code: string) {
+    return api.request<Survey>(`/projects/surveys/by-code/${code}`);
+  },
+
+  getByChar(survey: string) {
+    return api.request<Survey>(`/projects/surveys/by-char/${survey}`);
+  },
+
   create(payload: SurveyPayload) {
     return api.request<Survey>(`/projects/surveys`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  createResponse(payload: SurveyResponsePayload) {
+    return api.request(`/projects/surveys/response`, {
       method: "POST",
       body: JSON.stringify(payload),
     });

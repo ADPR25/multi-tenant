@@ -7,6 +7,7 @@ import {
   IsInt,
   MaxLength,
   Min,
+  IsNumber,
 } from "class-validator";
 import { ProjectStatus } from "../../enums/project-status.enum";
 
@@ -45,4 +46,8 @@ export class CreateActivityDto {
   @IsOptional()
   @IsDateString()
   endDate?: string | null;
+
+  @IsOptional()
+  @IsNumber()
+  progress?: number | null
 }

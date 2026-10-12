@@ -2,7 +2,7 @@ var IsDesplegable = false;
 
 (function (global) {
   "use strict";
-  var VERSION = "1.4.0";
+  var VERSION = "PRO:1.0.1";
   var types = [
     { type: "text", label: "Texto corto", icon: "T", category: "Básicos" },
     { type: "textarea", label: "Texto largo", icon: "¶", category: "Básicos" },
@@ -194,6 +194,14 @@ var IsDesplegable = false;
     });
     return result;
   }
+  function getSelectableQuestions(schema) {
+    return getAllQuestions(schema).filter(function (q) {
+      return (
+        CHOICE_TYPES.indexOf(q.type) !== -1 ||
+        ["boolean", "rating", "scale", "slider"].indexOf(q.type) !== -1
+      );
+    });
+  }
   function getQuestionByName(schema, name) {
     return (
       getAllQuestions(schema).find(function (q) {
@@ -340,15 +348,15 @@ var IsDesplegable = false;
       value: v.trim(),
     };
   }
-  function getQuestionConditions(question) {
-    if (question && Array.isArray(question.auraConditions))
-      return question.auraConditions.map(normalizeCondition);
+  function getQuestionConditions(item) {
+    if (item && Array.isArray(item.auraConditions))
+      return item.auraConditions.map(normalizeCondition);
     return [];
   }
   function getOperator(operator) {
     return (
       OPERATORS.find(function (i) {
-        return i.value === operator;  
+        return i.value === operator;
       }) || OPERATORS[0]
     );
   }
@@ -395,15 +403,15 @@ var IsDesplegable = false;
       expressionValue(condition.value, sourceQuestion)
     );
   }
-  function rebuildVisibleIf(question, schema) {
-    var conditions = getQuestionConditions(question).filter(function (c) {
+  function rebuildVisibleIf(item, schema) {
+    var conditions = getQuestionConditions(item).filter(function (c) {
       return c.question;
     });
     if (!conditions.length) {
-      delete question.visibleIf;
-      delete question.auraConditions;
-      delete question.auraConditionLogic;
-      delete question.auraConditionAction;
+      delete item.visibleIf;
+      delete item.auraConditions;
+      delete item.auraConditionLogic;
+      delete item.auraConditionAction;
       return;
     }
     var expressions = conditions
@@ -412,19 +420,19 @@ var IsDesplegable = false;
       })
       .filter(Boolean);
     if (!expressions.length) {
-      delete question.visibleIf;
+      delete item.visibleIf;
       return;
     }
-    var logic = question.auraConditionLogic === "or" ? " or " : " and ";
+    var logic = item.auraConditionLogic === "or" ? " or " : " and ";
     var expression = expressions
-      .map(function (item) {
-        return "(" + item + ")";
+      .map(function (i) {
+        return "(" + i + ")";
       })
       .join(logic);
-    if (question.auraConditionAction === "hide")
-      question.visibleIf = "!(" + expression + ")";
-    else question.visibleIf = expression;
-    question.auraConditions = conditions;
+    if (item.auraConditionAction === "hide")
+      item.visibleIf = "!(" + expression + ")";
+    else item.visibleIf = expression;
+    item.auraConditions = conditions;
   }
   function paletteMarkup(creator) {
     var groups = {};
@@ -432,8 +440,6 @@ var IsDesplegable = false;
       if (!groups[item.category]) groups[item.category] = [];
       groups[item.category].push(item);
     });
-
-    // --- Normalizar / Migrar timeLimit ---
     var raw = creator.schema.timeLimit || {};
     var tl = {
       enabled: !!raw.enabled,
@@ -448,85 +454,53 @@ var IsDesplegable = false;
         unit: (raw.max && raw.max.unit) || raw.unit || "minutes",
       },
     };
-    // guardar migración
     creator.schema.timeLimit = tl;
-
     var generalHtml =
-      '<div class="creator-general">' +
-      '<div class="creator-category-title"><i>◷</i><span>GENERAL</span></div>' +
+      '<div class="creator-general"><div class="creator-category-title"><i>◷</i><span>GENERAL</span></div>' +
       '<div class="creator-general-card' +
       (tl.enabled ? " is-active" : "") +
-      '">' +
-      '<div class="creator-general-row">' +
-      "<div><b>Tiempo</b><small>Limitar duración de la encuesta</small></div>" +
+      '"><div class="creator-general-row"><div><b>Tiempo</b><small>Limitar duración de la encuesta</small></div>' +
       '<label class="aura-switch"><input type="checkbox" data-general-field="timeEnabled" ' +
       (tl.enabled ? "checked" : "") +
-      '><span class="aura-switch-track"><span class="aura-switch-thumb"></span></span></label>' +
-      "</div>" +
+      '><span class="aura-switch-track"><span class="aura-switch-thumb"></span></span></label></div>' +
       (tl.enabled
-        ? '<div class="creator-general-time">' +
-          '<div class="aura-time-group' +
+        ? '<div class="creator-general-time"><div class="aura-time-group' +
           (tl.min.enabled ? " is-active" : "") +
-          '">' +
-          '<div class="aura-time-group-head">' +
-          "<span>Tiempo mínimo</span>" +
-          '<label class="aura-switch aura-switch-sm"><input type="checkbox" data-general-field="minEnabled" ' +
+          '"><div class="aura-time-group-head"><span>Tiempo mínimo</span><label class="aura-switch aura-switch-sm"><input type="checkbox" data-general-field="minEnabled" ' +
           (tl.min.enabled ? "checked" : "") +
-          '><span class="aura-switch-track"><span class="aura-switch-thumb"></span></span></label>' +
-          "</div>" +
+          '><span class="aura-switch-track"><span class="aura-switch-thumb"></span></span></label></div>' +
           (tl.min.enabled
-            ? '<div class="aura-time-inputs">' +
-              '<input type="number" min="0" class="inspector-input" data-general-field="minValue" value="' +
+            ? '<div class="aura-time-inputs"><input type="number" min="0" class="inspector-input" data-general-field="minValue" value="' +
               tl.min.value +
-              '">' +
-              '<select class="inspector-input" data-general-field="minUnit">' +
-              '<option value="seconds" ' +
+              '"><select class="inspector-input" data-general-field="minUnit"><option value="seconds" ' +
               (tl.min.unit === "seconds" ? "selected" : "") +
-              ">Segundos</option>" +
-              '<option value="minutes" ' +
+              '>Segundos</option><option value="minutes" ' +
               (tl.min.unit === "minutes" ? "selected" : "") +
-              ">Minutos</option>" +
-              '<option value="hours" ' +
+              '>Minutos</option><option value="hours" ' +
               (tl.min.unit === "hours" ? "selected" : "") +
-              ">Horas</option>" +
-              "</select>" +
-              "</div>"
+              ">Horas</option></select></div>"
             : "") +
           "</div>" +
           '<div class="aura-time-group' +
           (tl.max.enabled ? " is-active" : "") +
-          '">' +
-          '<div class="aura-time-group-head">' +
-          "<span>Tiempo máximo</span>" +
-          '<label class="aura-switch aura-switch-sm"><input type="checkbox" data-general-field="maxEnabled" ' +
+          '"><div class="aura-time-group-head"><span>Tiempo máximo</span><label class="aura-switch aura-switch-sm"><input type="checkbox" data-general-field="maxEnabled" ' +
           (tl.max.enabled ? "checked" : "") +
-          '><span class="aura-switch-track"><span class="aura-switch-thumb"></span></span></label>' +
-          "</div>" +
+          '><span class="aura-switch-track"><span class="aura-switch-thumb"></span></span></label></div>' +
           (tl.max.enabled
-            ? '<div class="aura-time-inputs">' +
-              '<input type="number" min="1" class="inspector-input" data-general-field="maxValue" value="' +
+            ? '<div class="aura-time-inputs"><input type="number" min="1" class="inspector-input" data-general-field="maxValue" value="' +
               tl.max.value +
-              '">' +
-              '<select class="inspector-input" data-general-field="maxUnit">' +
-              '<option value="seconds" ' +
+              '"><select class="inspector-input" data-general-field="maxUnit"><option value="seconds" ' +
               (tl.max.unit === "seconds" ? "selected" : "") +
-              ">Segundos</option>" +
-              '<option value="minutes" ' +
+              '>Segundos</option><option value="minutes" ' +
               (tl.max.unit === "minutes" ? "selected" : "") +
-              ">Minutos</option>" +
-              '<option value="hours" ' +
+              '>Minutos</option><option value="hours" ' +
               (tl.max.unit === "hours" ? "selected" : "") +
-              ">Horas</option>" +
-              "</select>" +
-              "</div>"
+              ">Horas</option></select></div>"
             : "") +
           "</div>" +
-          '<span class="creator-general-hint">Usa el mínimo para evitar envíos demasiado rápidos y el máximo para auto-enviar al agotar el tiempo.</span>' +
-          "</div>"
+          '<span class="creator-general-hint">Usa el mínimo para evitar envíos demasiado rápidos y el máximo para auto-enviar al agotar el tiempo.</span></div>'
         : "") +
-      "</div>" +
-      "</div>";
-
+      "</div></div>";
     var categoriesHtml = Object.keys(groups)
       .map(function (category) {
         var open = !IsDesplegable || creator.openCategories[category] === true;
@@ -561,7 +535,6 @@ var IsDesplegable = false;
         );
       })
       .join("");
-
     return generalHtml + categoriesHtml;
   }
   function AuraSurveyCreator(target, options) {
@@ -595,8 +568,16 @@ var IsDesplegable = false;
     var self = this;
     var seen = {};
     this.schema.pages.forEach(function (page) {
-      if (!page.name) page.name = "page" + (page.pages.length + 1);
+      if (!page.name)
+        page.name = "page" + (self.schema.pages.indexOf(page) + 1);
       if (!Array.isArray(page.elements)) page.elements = [];
+      if (!Array.isArray(page.auraConditions)) page.auraConditions = [];
+      if (!page.auraConditionLogic) page.auraConditionLogic = "and";
+      if (!page.auraConditionAction) page.auraConditionAction = "hide";
+      if (page.visibleIf && !page.auraConditions.length)
+        self.tryParseVisibleIf(page);
+      if (page.auraConditions)
+        page.auraConditions = page.auraConditions.map(normalizeCondition);
       page.elements.forEach(function (question) {
         if (!question.name || seen[question.name])
           question.name = uniqueNameGlobal(
@@ -613,17 +594,17 @@ var IsDesplegable = false;
       });
     });
   };
-  AuraSurveyCreator.prototype.tryParseVisibleIf = function (question) {
-    var expression = String(question.visibleIf || "");
+  AuraSurveyCreator.prototype.tryParseVisibleIf = function (item) {
+    var expression = String(item.visibleIf || "");
     var match = expression.match(
       /^\(?\{([^}]+)\}\s*(=|!=|contains|notcontains|>=|<=|>|<)\s*['"]?(.*?)['"]?\)?$/,
     );
     if (!match) return;
-    question.auraConditions = [
+    item.auraConditions = [
       { question: match[1], operator: match[2], value: match[3] },
     ];
-    question.auraConditionLogic = "and";
-    question.auraConditionAction = "show";
+    item.auraConditionLogic = "and";
+    item.auraConditionAction = "show";
   };
   AuraSurveyCreator.prototype.on = function (event, callback) {
     if (!this._listeners[event]) this._listeners[event] = [];
@@ -689,13 +670,19 @@ var IsDesplegable = false;
     );
   };
   AuraSurveyCreator.prototype.renderConditionQuestionOptions = function (
-    currentQuestion,
+    currentItem,
     selectedName,
+    isPage,
   ) {
-    var questions = getAllQuestions(this.schema);
-    return questions
+    var all = getSelectableQuestions(this.schema);
+    var currentPage = this.currentPage();
+    return all
       .filter(function (q) {
-        return q.name !== currentQuestion.name;
+        if (!isPage && q.name === currentItem.name) return false;
+        if (isPage) {
+          return currentPage.elements.indexOf(q) === -1;
+        }
+        return true;
       })
       .map(function (q) {
         return (
@@ -772,7 +759,7 @@ var IsDesplegable = false;
         "</select>"
       );
     }
-    if (["number", "rating", "scale", "slider"].indexOf(source.type) !== -1) {
+    if (["number", "rating", "scale", "slider"].indexOf(source.type) !== -1)
       return (
         '<input type="number" class="inspector-input condition-value" data-condition-field="value" data-condition-index="' +
         index +
@@ -780,7 +767,6 @@ var IsDesplegable = false;
         escapeHtml(condition.value) +
         '" placeholder="Ej: 5">'
       );
-    }
     if (source.type === "date")
       return (
         '<input type="date" class="inspector-input condition-value" data-condition-field="value" data-condition-index="' +
@@ -813,13 +799,12 @@ var IsDesplegable = false;
       '" placeholder="Valor">'
     );
   };
-  AuraSurveyCreator.prototype.renderConditionalLogic = function (question) {
-    var conditions = getQuestionConditions(question);
-    var hasAvailableQuestions = getAllQuestions(this.schema).some(
-      function (item) {
-        return item.name !== question.name;
-      },
-    );
+  AuraSurveyCreator.prototype.renderConditionalLogic = function (item, isPage) {
+    var conditions = getQuestionConditions(item);
+    var hasAvailableQuestions = getAllQuestions(this.schema).some(function (q) {
+      if (isPage) return true;
+      return q.name !== item.name;
+    });
     var rows = conditions
       .map(
         function (condition, index) {
@@ -833,19 +818,23 @@ var IsDesplegable = false;
             '</div><div class="aura-condition-fields"><select class="inspector-input condition-question" data-condition-field="question" data-condition-index="' +
             index +
             '"><option value="">¿Qué pregunta?</option>' +
-            this.renderConditionQuestionOptions(question, condition.question) +
+            this.renderConditionQuestionOptions(
+              item,
+              condition.question,
+              !!isPage,
+            ) +
             '</select><select class="inspector-input condition-operator" data-condition-field="operator" data-condition-index="' +
             index +
             '">' +
             ops
-              .map(function (item) {
+              .map(function (op) {
                 return (
                   '<option value="' +
-                  item.value +
+                  op.value +
                   '" ' +
-                  (item.value === condition.operator ? "selected" : "") +
+                  (op.value === condition.operator ? "selected" : "") +
                   ">" +
-                  escapeHtml(item.label) +
+                  escapeHtml(op.label) +
                   "</option>"
                 );
               })
@@ -859,20 +848,30 @@ var IsDesplegable = false;
         }.bind(this),
       )
       .join("");
+    var title = isPage
+      ? "Visibilidad de esta página"
+      : "Visibilidad condicional";
+    var desc = isPage
+      ? "Si se cumple, se oculta/muestra la página completa."
+      : "Decide cuándo debe aparecer esta pregunta.";
     return (
-      '<div class="inspector-divider"></div><div class="aura-conditions-panel"><div class="aura-conditions-title"><div><strong>Visibilidad condicional</strong><small>Decide cuándo debe aparecer esta pregunta.</small></div></div>' +
+      '<div class="inspector-divider"></div><div class="aura-conditions-panel"><div class="aura-conditions-title"><div><strong>' +
+      title +
+      "</strong><small>" +
+      desc +
+      "</small></div></div>" +
       (!hasAvailableQuestions
         ? '<div class="aura-condition-empty">Primero agrega otra pregunta.</div>'
         : "") +
       (conditions.length
         ? '<label class="inspector-label">Comportamiento<select class="inspector-input" data-condition-action-mode><option value="show" ' +
-          (question.auraConditionAction !== "hide" ? "selected" : "") +
+          (item.auraConditionAction !== "hide" ? "selected" : "") +
           '>Mostrar cuando se cumpla</option><option value="hide" ' +
-          (question.auraConditionAction === "hide" ? "selected" : "") +
+          (item.auraConditionAction === "hide" ? "selected" : "") +
           '>Ocultar cuando se cumpla</option></select></label><div class="aura-condition-combine"><span>Combinar:</span><select class="inspector-input" data-condition-logic><option value="and" ' +
-          (question.auraConditionLogic !== "or" ? "selected" : "") +
+          (item.auraConditionLogic !== "or" ? "selected" : "") +
           '>Todas (Y)</option><option value="or" ' +
-          (question.auraConditionLogic === "or" ? "selected" : "") +
+          (item.auraConditionLogic === "or" ? "selected" : "") +
           ">Cualquiera (O)</option></select></div>"
         : "") +
       '<div class="aura-condition-list">' +
@@ -881,21 +880,36 @@ var IsDesplegable = false;
       (hasAvailableQuestions
         ? '<button type="button" class="aura-condition-add" data-condition-action="add">+ Añadir condición</button>'
         : "") +
-      (question.visibleIf
+      (item.visibleIf
         ? '<div class="aura-condition-expression"><span>Expresión</span><code>' +
-          escapeHtml(question.visibleIf) +
+          escapeHtml(item.visibleIf) +
           "</code></div>"
         : "") +
       "</div>"
     );
   };
-
-  // === AQUI ESTA EL CAMBIO PRINCIPAL PARA OCULTAR option_ ===
   AuraSurveyCreator.prototype.renderInspector = function () {
     var page = this.currentPage();
     var question = page.elements[this.selectedIndex];
-    if (!question)
-      return '<div class="inspector-empty"><span>✦</span><strong>Selecciona una pregunta</strong></div>';
+    if (!question) {
+      var pageHasCond = getQuestionConditions(page).length > 0;
+      return (
+        '<div class="inspector-heading"><div><span class="creator-eyebrow">PÁGINA</span><strong>' +
+        escapeHtml(page.title || "Página") +
+        (pageHasCond
+          ? ' <span class="creator-condition-badge">Condicional</span>'
+          : "") +
+        '</strong></div><button type="button" data-action="close-inspector">×</button></div>' +
+        '<label class="inspector-label">Título de página<input class="inspector-input" data-page-field="title" value="' +
+        escapeHtml(page.title || "") +
+        '"></label>' +
+        '<label class="inspector-label">Descripción<textarea class="inspector-input inspector-textarea" data-page-field="description">' +
+        escapeHtml(page.description || "") +
+        "</textarea></label>" +
+        this.renderConditionalLogic(page, true) +
+        '<div class="inspector-divider"></div><div style="font-size:12px;opacity:.7">Tip: Selecciona una pregunta para editar sus opciones. Si dejas ninguna seleccionada, editas la página.</div>'
+      );
+    }
     var typeInfo = findType(question.type) || {
       icon: "?",
       label: question.type,
@@ -903,7 +917,7 @@ var IsDesplegable = false;
     var choiceEditor = "";
     if (isChoiceType(question.type)) {
       choiceEditor =
-        '<div class="inspector-divider"></div><div class="inspector-label">Opciones<span>Solo el texto visible para el usuario</span></div><div class="choice-editor">' +
+        '<div class="inspector-divider"></div><div class="inspector-label">Opciones<span>Solo el texto visible</span></div><div class="choice-editor">' +
         (question.choices || [])
           .map(function (choice, index) {
             var item =
@@ -915,7 +929,9 @@ var IsDesplegable = false;
               index +
               '" value="' +
               escapeHtml(item.text) +
-              '" placeholder="Ej: Opción 1"><button type="button" data-choice-action="remove" data-choice-index="' +
+              '" placeholder="Ej: Opción 1"><span class="choice-value-hint">' +
+              escapeHtml(item.value) +
+              '</span><button type="button" data-choice-action="remove" data-choice-index="' +
               index +
               '">×</button></div>'
             );
@@ -963,11 +979,7 @@ var IsDesplegable = false;
         '"></label><label class="inspector-label">Paso<input class="inspector-input" type="number" data-question-field="step" value="' +
         (question.step == null ? 1 : question.step) +
         '"></label>';
-
-    // CAMPO VIDEO YOUTUBE ARREGLADO
     if (question.type === "video") {
-      var isYoutube =
-        String(question.src || "").indexOf("youtube.com/embed") !== -1;
       extra +=
         '<div class="inspector-divider"></div><label class="inspector-label">URL del Video de YouTube<input class="inspector-input" id="aura-video-url" data-question-field="src" value="' +
         escapeHtml(question.src || "") +
@@ -981,14 +993,11 @@ var IsDesplegable = false;
         (question.controls === false ? "" : "checked") +
         "><span>Mostrar controles</span></label>";
     }
-
-    if (question.type === "image") {
+    if (question.type === "image")
       extra +=
         '<label class="inspector-label">URL de la Imagen<input class="inspector-input" data-question-field="src" value="' +
         escapeHtml(question.src || "") +
         '" placeholder="https://..."></label>';
-    }
-
     return (
       '<div class="inspector-heading"><div><span class="creator-eyebrow">PROPIEDADES</span><strong>' +
       escapeHtml(typeInfo.label) +
@@ -1005,30 +1014,22 @@ var IsDesplegable = false;
       "><span>Obligatoria</span></label>" +
       extra +
       choiceEditor +
-      this.renderConditionalLogic(question) +
+      this.renderConditionalLogic(question, false) +
       '<div class="inspector-divider"></div><button type="button" class="creator-button creator-button-danger" data-action="delete-selected">Eliminar pregunta</button>'
     );
   };
   AuraSurveyCreator.prototype.setMeta = function (meta) {
     if (!meta) return this;
-    if (typeof meta.title === "string") {
-      this.schema.title = meta.title;
-    }
-    if (typeof meta.description === "string") {
+    if (typeof meta.title === "string") this.schema.title = meta.title;
+    if (typeof meta.description === "string")
       this.schema.description = meta.description;
-    }
-
     if (this.root) {
       var titleInput = this.root.querySelector('[data-field="schema-title"]');
-      if (titleInput && document.activeElement !== titleInput) {
+      if (titleInput && document.activeElement !== titleInput)
         titleInput.value = this.schema.title || "";
-      }
       var h1 = this.root.querySelector(".creator-canvas-heading h1");
-      if (h1) {
-        h1.textContent = this.schema.title || "Nueva encuesta";
-      }
+      if (h1) h1.textContent = this.schema.title || "Nueva encuesta";
     }
-
     this.persist();
     this.emit("change", this.getSchema());
     return this;
@@ -1038,6 +1039,7 @@ var IsDesplegable = false;
     var page = this.currentPage();
     var palette = this.root.querySelector(".creator-palette");
     var paletteScrollTop = palette ? palette.scrollTop : 0;
+    var pageHasCond = getQuestionConditions(page).length > 0;
     this.root.innerHTML =
       '<header class="creator-topbar"><div class="creator-brand"><span>A</span><span><b>Aura</b><small>Survey Creator</small></span></div><div class="creator-title"><input data-field="schema-title" value="' +
       escapeHtml(this.schema.title) +
@@ -1048,6 +1050,7 @@ var IsDesplegable = false;
       '</h1></div><button type="button" class="creator-button creator-button-green" data-action="add-page">+ Nueva página</button></div><div class="creator-tabs">' +
       this.schema.pages
         .map(function (item, index) {
+          var cond = getQuestionConditions(item).length ? " •◷" : "";
           return (
             '<button type="button" class="creator-tab ' +
             (index === self.pageIndex ? "active" : "") +
@@ -1057,13 +1060,18 @@ var IsDesplegable = false;
             String(index + 1).padStart(2, "0") +
             " <span>" +
             escapeHtml(item.title || "Página " + (index + 1)) +
+            cond +
             "</span></button>"
           );
         })
         .join("") +
       '</div><section class="creator-page-card"><div class="creator-page-header"><input data-field="page-title" value="' +
       escapeHtml(page.title || "") +
-      '"></div><div class="creator-question-list">' +
+      '" placeholder="Título de la página">' +
+      (pageHasCond
+        ? '<span class="creator-condition-badge" style="margin-left:10px">Página condicional</span>'
+        : "") +
+      '</div><div class="creator-question-list">' +
       (page.elements || []).map(this.renderQuestion.bind(this)).join("") +
       '</div></section><div class="creator-page-footer"><button type="button" class="creator-button creator-button-light" data-action="delete-page">Eliminar página</button><span>Página ' +
       (this.pageIndex + 1) +
@@ -1150,6 +1158,14 @@ var IsDesplegable = false;
         self.persist();
         self.emit("change", self.getSchema());
       };
+    this.root.querySelectorAll("[data-page-field]").forEach(function (f) {
+      f.oninput = function () {
+        var page = self.currentPage();
+        page[f.dataset.pageField] = f.value;
+        self.persist();
+        self.emit("change", self.getSchema());
+      };
+    });
     this.root.querySelectorAll("[data-question-field]").forEach(function (f) {
       f.oninput = function () {
         self.updateQuestion(f);
@@ -1160,7 +1176,6 @@ var IsDesplegable = false;
     });
     this.root.querySelectorAll("[data-general-field]").forEach(function (f) {
       var field = f.dataset.generalField;
-
       var ensure = function () {
         if (!self.schema.timeLimit)
           self.schema.timeLimit = {
@@ -1181,34 +1196,26 @@ var IsDesplegable = false;
             unit: "minutes",
           };
       };
-
       var isNumberField =
         field === "minValue" || field === "maxValue" || field === "timeValue";
       var isCheckField =
         field === "timeEnabled" ||
         field === "minEnabled" ||
         field === "maxEnabled";
-
       function handleGeneralChange() {
         ensure();
         var tl = self.schema.timeLimit;
-
         if (field === "timeEnabled") tl.enabled = f.checked;
         if (field === "minEnabled") tl.min.enabled = f.checked;
         if (field === "maxEnabled") tl.max.enabled = f.checked;
-
         if (field === "minValue") tl.min.value = Number(f.value) || 0;
         if (field === "minUnit") tl.min.unit = f.value;
-
         if (field === "maxValue") tl.max.value = Number(f.value) || 1;
         if (field === "maxUnit") tl.max.unit = f.value;
-
         if (field === "timeValue") tl.max.value = Number(f.value) || 1;
         if (field === "timeUnit") tl.max.unit = f.value;
-
         self.persist();
         self.emit("change", self.getSchema());
-
         if (isCheckField || !isNumberField) {
           var active = document.activeElement;
           var activeField = active ? active.dataset.generalField : null;
@@ -1221,7 +1228,6 @@ var IsDesplegable = false;
           }
         }
       }
-
       f.onchange = handleGeneralChange;
       if (f.type === "number") {
         f.oninput = function () {
@@ -1235,12 +1241,10 @@ var IsDesplegable = false;
         };
       }
     });
-
     this.bindChoices();
     this.bindConditions();
     this.bindQuestionDragAndDrop();
   };
-  //
   AuraSurveyCreator.prototype.bindChoices = function () {
     var self = this;
     this.root.querySelectorAll("[data-choice-field]").forEach(function (field) {
@@ -1248,15 +1252,10 @@ var IsDesplegable = false;
         var q = self.currentPage().elements[self.selectedIndex];
         if (!q) return;
         var index = Number(field.dataset.choiceIndex);
-        if (!q.choices) q.choices = [];
         var choice = q.choices[index];
-        if (typeof choice !== "object") {
-          choice = { value: choice, text: choice };
-          q.choices[index] = choice;
-        }
-        // EL TEXTO ES LO QUE VE EL USUARIO, EL VALUE SE GENERA SOLO
-        choice.text = field.value;
-        choice.value = slug(field.value) || "option_" + (index + 1);
+        if (typeof choice !== "object")
+          choice = { value: "option_" + (index + 1), text: choice };
+        choice.text = field.value; // value NUNCA se toca
         self.persist();
         self.emit("change", self.getSchema());
       };
@@ -1308,20 +1307,26 @@ var IsDesplegable = false;
     var logic = this.root.querySelector("[data-condition-logic]");
     if (logic)
       logic.onchange = function () {
-        var q = self.currentPage().elements[self.selectedIndex];
-        if (!q) return;
-        q.auraConditionLogic = logic.value;
-        rebuildVisibleIf(q, self.schema);
+        var target =
+          self.selectedIndex === -1
+            ? self.currentPage()
+            : self.currentPage().elements[self.selectedIndex];
+        if (!target) return;
+        target.auraConditionLogic = logic.value;
+        rebuildVisibleIf(target, self.schema);
         self.persist();
         self.emit("change", self.getSchema());
       };
     var action = this.root.querySelector("[data-condition-action-mode]");
     if (action)
       action.onchange = function () {
-        var q = self.currentPage().elements[self.selectedIndex];
-        if (!q) return;
-        q.auraConditionAction = action.value;
-        rebuildVisibleIf(q, self.schema);
+        var target =
+          self.selectedIndex === -1
+            ? self.currentPage()
+            : self.currentPage().elements[self.selectedIndex];
+        if (!target) return;
+        target.auraConditionAction = action.value;
+        rebuildVisibleIf(target, self.schema);
         self.persist();
         self.emit("change", self.getSchema());
       };
@@ -1330,12 +1335,15 @@ var IsDesplegable = false;
       .forEach(function (b) {
         b.onclick = function (e) {
           e.stopPropagation();
-          var q = self.currentPage().elements[self.selectedIndex];
-          if (!q) return;
-          var conditions = getQuestionConditions(q);
+          var target =
+            self.selectedIndex === -1
+              ? self.currentPage()
+              : self.currentPage().elements[self.selectedIndex];
+          if (!target) return;
+          var conditions = getQuestionConditions(target);
           conditions.splice(Number(b.dataset.conditionIndex), 1);
-          q.auraConditions = conditions;
-          rebuildVisibleIf(q, self.schema);
+          target.auraConditions = conditions;
+          rebuildVisibleIf(target, self.schema);
           self.persist();
           self.renderShell();
           self.emit("change", self.getSchema());
@@ -1345,22 +1353,29 @@ var IsDesplegable = false;
     if (add)
       add.onclick = function (e) {
         e.stopPropagation();
-        var q = self.currentPage().elements[self.selectedIndex];
-        if (!q) return;
-        var conditions = getQuestionConditions(q);
-        var available = getAllQuestions(self.schema).filter(function (i) {
-          return i.name !== q.name;
-        });
+        var target =
+          self.selectedIndex === -1
+            ? self.currentPage()
+            : self.currentPage().elements[self.selectedIndex];
+        if (!target) return;
+        var conditions = getQuestionConditions(target);
+        var available = getSelectableQuestions(self.schema).filter(
+          function (i) {
+            return self.selectedIndex === -1 ? true : i.name !== target.name;
+          },
+        );
         if (!available.length) return;
         conditions.push({
           question: available[0].name,
           operator: getOperatorListForSource(available[0])[0].value,
           value: self.getDefaultConditionValue(available[0]),
         });
-        q.auraConditions = conditions;
-        q.auraConditionLogic = q.auraConditionLogic || "and";
-        q.auraConditionAction = q.auraConditionAction || "show";
-        rebuildVisibleIf(q, self.schema);
+        target.auraConditions = conditions;
+        target.auraConditionLogic = target.auraConditionLogic || "and";
+        target.auraConditionAction =
+          target.auraConditionAction ||
+          (self.selectedIndex === -1 ? "hide" : "show");
+        rebuildVisibleIf(target, self.schema);
         self.persist();
         self.renderShell();
         self.emit("change", self.getSchema());
@@ -1381,10 +1396,13 @@ var IsDesplegable = false;
     return "";
   };
   AuraSurveyCreator.prototype.updateCondition = function (field) {
-    var q = this.currentPage().elements[this.selectedIndex];
-    if (!q) return;
+    var target =
+      this.selectedIndex === -1
+        ? this.currentPage()
+        : this.currentPage().elements[this.selectedIndex];
+    if (!target) return;
     var index = Number(field.dataset.conditionIndex);
-    var conditions = getQuestionConditions(q);
+    var conditions = getQuestionConditions(target);
     if (!conditions[index]) conditions[index] = normalizeCondition({});
     conditions[index][field.dataset.conditionField] = field.value;
     if (field.dataset.conditionField === "question") {
@@ -1394,21 +1412,20 @@ var IsDesplegable = false;
         !allowedOps.some(function (o) {
           return o.value === conditions[index].operator;
         })
-      ) {
+      )
         conditions[index].operator = allowedOps[0].value;
-      }
       conditions[index].value = this.getDefaultConditionValue(source);
     }
-    q.auraConditions = conditions;
-    q.auraConditionLogic =
+    target.auraConditions = conditions;
+    target.auraConditionLogic =
       (this.root.querySelector("[data-condition-logic]") || {}).value ||
-      q.auraConditionLogic ||
+      target.auraConditionLogic ||
       "and";
-    q.auraConditionAction =
+    target.auraConditionAction =
       (this.root.querySelector("[data-condition-action-mode]") || {}).value ||
-      q.auraConditionAction ||
+      target.auraConditionAction ||
       "show";
-    rebuildVisibleIf(q, this.schema);
+    rebuildVisibleIf(target, this.schema);
     this.persist();
     this.emit("change", this.getSchema());
     if (
@@ -1484,7 +1501,14 @@ var IsDesplegable = false;
       this.schema.pages,
       "page" + (this.schema.pages.length + 1),
     );
-    this.schema.pages.push({ name: name, title: "Nueva página", elements: [] });
+    this.schema.pages.push({
+      name: name,
+      title: "Nueva página",
+      elements: [],
+      auraConditions: [],
+      auraConditionLogic: "and",
+      auraConditionAction: "hide",
+    });
     this.pageIndex = this.schema.pages.length - 1;
     this.selectedIndex = -1;
     this.persist();

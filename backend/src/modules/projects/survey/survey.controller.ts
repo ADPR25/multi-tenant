@@ -17,6 +17,8 @@ import { FilterDto } from "@/common/filters/filter.dto";
 import { JwtAuthGuard } from "@/common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "@/common/guards/permissions.guard";
 import { RequirePermissions } from "@/common/decorators/permissions.decorator";
+import { Public } from "@/common/decorators/public.decorator";
+import { CreateSurveyResponseDto } from "./dto/create-response.dto";
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller("surveys")
@@ -25,19 +27,19 @@ export class SurveyController {
 
   @Post()
   @RequirePermissions("survey:create")
-  create(
-    @Body() dto: CreateSurveyDto,
-    @CurrentCompanyId() companyId: string,
-  ) {
+  create(@Body() dto: CreateSurveyDto, @CurrentCompanyId() companyId: string) {
     return this.surveyService.create(dto, companyId);
+  }
+
+  @Public()
+  @Post("/response")
+  createResponse(@Body() dto: CreateSurveyResponseDto) {
+    return this.surveyService.createResponse(dto);
   }
 
   @Get()
   @RequirePermissions("survey:read")
-  findAll(
-    @CurrentCompanyId() companyId: string,
-    @Query() filter: FilterDto,
-  ) {
+  findAll(@CurrentCompanyId() companyId: string, @Query() filter: FilterDto) {
     const isActive =
       filter.state !== undefined ? filter.state === "true" : undefined;
     return this.surveyService.findAll(
@@ -45,15 +47,25 @@ export class SurveyController {
       filter,
       isActive,
       filter.search,
+      filter.find,
     );
+  }
+
+  @Public()
+  @Get("by-code/:code")
+  findByCode(@Param("code") code: string) {
+    return this.surveyService.findByCode(code);
+  }
+
+  @Public()
+  @Get("by-char/:surveyId")
+  findByChar(@Param("surveyId") surveyId: string) {
+    return this.surveyService.findByChar(surveyId);
   }
 
   @Get(":id")
   @RequirePermissions("survey:read")
-  findOne(
-    @Param("id") id: string,
-    @CurrentCompanyId() companyId: string,
-  ) {
+  findOne(@Param("id") id: string, @CurrentCompanyId() companyId: string) {
     return this.surveyService.findOne(id, companyId);
   }
 
@@ -69,10 +81,7 @@ export class SurveyController {
 
   @Delete(":id")
   @RequirePermissions("survey:delete")
-  remove(
-    @Param("id") id: string,
-    @CurrentCompanyId() companyId: string,
-  ) {
+  remove(@Param("id") id: string, @CurrentCompanyId() companyId: string) {
     return this.surveyService.remove(id, companyId);
   }
 }

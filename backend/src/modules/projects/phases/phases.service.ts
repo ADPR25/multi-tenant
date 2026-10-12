@@ -33,6 +33,7 @@ export class PhasesService {
       description: dto.description ?? null,
       sortOrder: dto.sortOrder ?? 0,
       status: dto.status,
+      progress: dto.progress ?? null,
       startDate: dto.startDate ? new Date(dto.startDate) : null,
       endDate: dto.endDate ? new Date(dto.endDate) : null,
       budget: dto.budget ?? null,
@@ -67,6 +68,7 @@ export class PhasesService {
     Object.assign(entity, {
       ...(dto.name !== undefined ? { name: dto.name } : {}),
       ...(dto.code !== undefined ? { code: dto.code } : {}),
+      ...(dto.progress !== undefined ? {progress: dto.progress} : {}),
       ...(dto.description !== undefined
         ? { description: dto.description ?? null }
         : {}),

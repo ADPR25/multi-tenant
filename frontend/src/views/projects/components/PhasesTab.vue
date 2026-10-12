@@ -30,6 +30,9 @@ const formRef = ref<{ validate: () => Promise<{ valid: boolean }> } | null>(
   null,
 );
 const saving = ref(false);
+const showDelete = ref(false);
+const phaseToDelete = ref<Phase | null>(null);
+const deleting = ref(false);
 
 const form = ref<PhaseForm>({
   code: "",
@@ -118,18 +121,30 @@ async function submit(): Promise<void> {
     showForm.value = false;
     await load();
   } catch (err: unknown) {
-    const message =
-      err instanceof Error ? err.message : "Error al guardar fase";
-    alert(message);
+    alert(err instanceof Error ? err.message : "Error al guardar fase");
   } finally {
     saving.value = false;
   }
 }
 
-async function removePhase(p: Phase): Promise<void> {
-  if (!confirm(`Eliminar fase ${p.name}?`)) return;
-  await phasesService.remove(p.id);
-  await load();
+function confirmDelete(p: Phase): void {
+  phaseToDelete.value = p;
+  showDelete.value = true;
+}
+
+async function removePhase(): Promise<void> {
+  if (!phaseToDelete.value) return;
+  deleting.value = true;
+  try {
+    await phasesService.remove(phaseToDelete.value.id);
+    showDelete.value = false;
+    phaseToDelete.value = null;
+    await load();
+  } catch (err: unknown) {
+    alert(err instanceof Error ? err.message : "Error al eliminar fase");
+  } finally {
+    deleting.value = false;
+  }
 }
 
 onMounted(load);
@@ -173,7 +188,7 @@ onMounted(load);
             size="x-small"
             variant="text"
             color="error"
-            @click="removePhase(ph)"
+            @click="confirmDelete(ph)"
             ><Trash2 class="h-4 w-4"
           /></v-btn>
         </div>
@@ -276,5 +291,40 @@ onMounted(load);
         >
       </v-card>
     </v-dialog>
+
+    <Teleport to="body">
+      <v-dialog v-model="showDelete" max-width="420" persistent>
+        <v-card class="rounded-xl">
+          <v-card-text class="text-center pt-8 pb-4">
+            <div
+              class="mx-auto bg-red-100 dark:bg-red-900/30 w-14 h-14 rounded-full flex items-center justify-center mb-4"
+            >
+              <Trash2 class="h-7 w-7 text-red-600" />
+            </div>
+            <h3 class="text-lg font-semibold mb-2">¿Eliminar fase?</h3>
+            <p class="text-sm text-gray-500">
+              Esta acción no se puede deshacer. Se eliminará permanentemente
+            </p>
+            <p class="text-sm font-bold text-red-600 mt-3">
+              "{{ phaseToDelete?.name }}"
+            </p>
+            <p v-if="phaseToDelete?.code" class="text-xs text-gray-400 mt-1">
+              {{ phaseToDelete.code }}
+            </p>
+          </v-card-text>
+          <v-card-actions class="px-6 pb-6">
+            <v-spacer />
+            <v-btn variant="text" @click="showDelete = false">Cancelar</v-btn>
+            <v-btn
+              color="error"
+              variant="flat"
+              :loading="deleting"
+              @click="removePhase"
+              >Eliminar</v-btn
+            >
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+    </Teleport>
   </div>
 </template>

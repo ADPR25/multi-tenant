@@ -12,30 +12,31 @@ export class ActivitiesService {
     private readonly repo: Repository<ProjectActivity>,
   ) {}
 
-  async create(dto: CreateActivityDto, companyId: string): Promise<ProjectActivity> {
+  async create(
+    dto: CreateActivityDto,
+    companyId: string,
+  ): Promise<ProjectActivity> {
     const entity = this.repo.create({
-      projectId: dto.projectId,
-      phaseId: dto.phaseId,
-      name: dto.name,
+      ...dto,
       companyId,
-      description: dto.description ?? null,
-      sortOrder: dto.sortOrder ?? 0,
-      status: dto.status,
-      responsibleId: dto.responsibleId ?? null,
-      startDate: dto.startDate ? new Date(dto.startDate) : null,
-      endDate: dto.endDate ? new Date(dto.endDate) : null,
     });
     return this.repo.save(entity);
   }
 
-  async findByProject(projectId: string, companyId: string): Promise<ProjectActivity[]> {
+  async findByProject(
+    projectId: string,
+    companyId: string,
+  ): Promise<ProjectActivity[]> {
     return this.repo.find({
       where: { projectId, companyId },
       order: { sortOrder: "ASC", createdAt: "ASC" },
     });
   }
 
-  async findByPhase(phaseId: string, companyId: string): Promise<ProjectActivity[]> {
+  async findByPhase(
+    phaseId: string,
+    companyId: string,
+  ): Promise<ProjectActivity[]> {
     return this.repo.find({
       where: { phaseId, companyId },
       order: { sortOrder: "ASC" },
@@ -48,12 +49,20 @@ export class ActivitiesService {
     return entity;
   }
 
-  async update(id: string, dto: UpdateActivityDto, companyId: string): Promise<ProjectActivity> {
+  async update(
+    id: string,
+    dto: UpdateActivityDto,
+    companyId: string,
+  ): Promise<ProjectActivity> {
     const entity = await this.findOne(id, companyId);
     Object.assign(entity, {
       ...dto,
-      ...(dto.startDate !== undefined ? { startDate: dto.startDate ? new Date(dto.startDate) : null } : {}),
-      ...(dto.endDate !== undefined ? { endDate: dto.endDate ? new Date(dto.endDate) : null } : {}),
+      ...(dto.startDate !== undefined
+        ? { startDate: dto.startDate ? new Date(dto.startDate) : null }
+        : {}),
+      ...(dto.endDate !== undefined
+        ? { endDate: dto.endDate ? new Date(dto.endDate) : null }
+        : {}),
     });
     return this.repo.save(entity);
   }

@@ -57,4 +57,8 @@ export class CreateTaskDto {
   @IsInt()
   @Min(0)
   sortOrder?: number;
+
+  @IsOptional()
+  @IsUUID()
+  surveyId?: string | null;
 }

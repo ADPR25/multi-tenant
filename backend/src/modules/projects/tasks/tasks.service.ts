@@ -16,19 +16,8 @@ export class TasksService {
 
   async create(dto: CreateTaskDto, companyId: string): Promise<ProjectTask> {
     const entity = this.repo.create({
-      projectId: dto.projectId,
-      phaseId: dto.phaseId ?? null,
-      activityId: dto.activityId,
-      title: dto.title,
-      companyId,
-      description: dto.description ?? null,
-      status: dto.status,
-      priority: dto.priority,
-      responsibleId: dto.responsibleId ?? null,
-      dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
-      estimatedHours: dto.estimatedHours ?? null,
-      actualHours: dto.actualHours ?? null,
-      sortOrder: dto.sortOrder ?? 0,
+      ...dto,
+      companyId
     });
     return this.repo.save(entity);
   }

@@ -17,7 +17,7 @@ export interface TaskPayload {
   actualHours?: string | null;
   sortOrder?: number;
   responsibleId?: string | null;
-  surveyId: string
+  surveyId: string | null;
 }
 
 export interface Task {
@@ -35,7 +35,7 @@ export interface Task {
   sortOrder: number;
   responsibleId: string | null;
   isActive: boolean;
-  surveyId: string;
+  surveyId: string | null;
   createdAt?: string;
 }
 

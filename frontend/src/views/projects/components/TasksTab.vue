@@ -50,6 +50,10 @@ const formRef = ref<{ validate: () => Promise<{ valid: boolean }> } | null>(
 );
 const saving = ref(false);
 
+const showDelete = ref(false);
+const taskToDelete = ref<Task | null>(null);
+const deleting = ref(false);
+
 const form = ref<TaskForm>({
   phaseId: "",
   activityId: "",
@@ -72,7 +76,6 @@ async function load(): Promise<void> {
       phasesService.listByProject(props.projectId),
       surveysService.list({ find: "select" }),
     ]);
-
     tasks.value = Array.isArray(tRes)
       ? tRes
       : ((tRes as { data?: Task[] }).data ?? []);
@@ -91,6 +94,7 @@ async function load(): Promise<void> {
 }
 
 function openCreate(): void {
+  assignSurvey.value = false;
   editing.value = null;
   form.value = {
     phaseId: "",
@@ -142,9 +146,8 @@ async function submit(): Promise<void> {
       dueDate: form.value.dueDate || null,
       estimatedHours: form.value.estimatedHours || null,
       sortOrder: Number(form.value.sortOrder),
-      ...(form.value.surveyId !== ""
-        ? { surveyId: form.value.surveyId }
-        : null),
+      surveyId:
+        assignSurvey.value && form.value.surveyId ? form.value.surveyId : null,
     };
     if (editing.value) {
       await tasksService.update(editing.value.id, payload);
@@ -154,27 +157,37 @@ async function submit(): Promise<void> {
     showForm.value = false;
     await load();
   } catch (err: unknown) {
-    const message =
-      err instanceof Error ? err.message : "Error al guardar tarea";
-    alert(message);
+    alert(err instanceof Error ? err.message : "Error al guardar tarea");
   } finally {
     saving.value = false;
   }
 }
 
-async function removeTask(t: Task): Promise<void> {
-  if (!confirm(`Eliminar ${t.title}?`)) return;
-  await tasksService.remove(t.id);
-  await load();
+function confirmDelete(t: Task): void {
+  taskToDelete.value = t;
+  showDelete.value = true;
+}
+
+async function removeTask(): Promise<void> {
+  if (!taskToDelete.value) return;
+  deleting.value = true;
+  try {
+    await tasksService.remove(taskToDelete.value.id);
+    showDelete.value = false;
+    taskToDelete.value = null;
+    await load();
+  } catch (err: unknown) {
+    alert(err instanceof Error ? err.message : "Error al eliminar tarea");
+  } finally {
+    deleting.value = false;
+  }
 }
 
 watch(
   () => form.value.activityId,
   (activityId) => {
     const activity = activities.value.find((a) => a.id === activityId);
-    if (activity) {
-      form.value.phaseId = activity.phaseId || "";
-    }
+    if (activity) form.value.phaseId = activity.phaseId || "";
   },
 );
 
@@ -189,6 +202,7 @@ onMounted(load);
         ><Plus class="h-4 w-4 mr-1" /> Nueva Tarea</v-btn
       >
     </div>
+
     <div v-if="loading" class="text-center py-6">Cargando...</div>
     <div v-else class="space-y-2">
       <div
@@ -244,7 +258,7 @@ onMounted(load);
             size="x-small"
             variant="text"
             color="error"
-            @click="removeTask(t)"
+            @click="confirmDelete(t)"
             ><Trash2 class="h-4 w-4"
           /></v-btn>
         </div>
@@ -333,25 +347,23 @@ onMounted(load);
                   variant="outlined"
                   density="compact"
               /></v-col>
-              <v-col cols="12">
-                <v-switch
+              <v-col cols="12"
+                ><v-switch
                   v-model="assignSurvey"
                   label="Asignar encuesta"
                   color="primary"
                   hide-details
-                />
-              </v-col>
-              <v-col v-if="assignSurvey" cols="12">
-                <v-label>Nombre encuesta</v-label>
-                <v-autocomplete
+              /></v-col>
+              <v-col v-if="assignSurvey" cols="12"
+                ><v-label>Nombre encuesta</v-label
+                ><v-autocomplete
                   v-model="form.surveyId"
                   :items="surveys"
                   :item-title="(item: Survey) => `${item.title} (${item.code})`"
                   item-value="id"
                   variant="outlined"
                   density="compact"
-                />
-              </v-col>
+              /></v-col>
             </v-row>
           </v-form>
         </v-card-text>
@@ -364,5 +376,37 @@ onMounted(load);
         >
       </v-card>
     </v-dialog>
+
+    <Teleport to="body">
+      <v-dialog v-model="showDelete" max-width="420" persistent>
+        <v-card class="rounded-xl">
+          <v-card-text class="text-center pt-8 pb-4">
+            <div
+              class="mx-auto bg-red-100 dark:bg-red-900/30 w-14 h-14 rounded-full flex items-center justify-center mb-4"
+            >
+              <Trash2 class="h-7 w-7 text-red-600" />
+            </div>
+            <h3 class="text-lg font-semibold mb-2">¿Eliminar tarea?</h3>
+            <p class="text-sm text-gray-500">
+              Esta acción no se puede deshacer. Se eliminará permanentemente
+            </p>
+            <p class="text-sm font-bold text-red-600 mt-3">
+              "{{ taskToDelete?.title }}"
+            </p>
+          </v-card-text>
+          <v-card-actions class="px-6 pb-6">
+            <v-spacer />
+            <v-btn variant="text" @click="showDelete = false">Cancelar</v-btn>
+            <v-btn
+              color="error"
+              variant="flat"
+              :loading="deleting"
+              @click="removeTask"
+              >Eliminar</v-btn
+            >
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+    </Teleport>
   </div>
 </template>

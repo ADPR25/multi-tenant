@@ -5,6 +5,7 @@ import { ProjectPhase } from "../../phases/entities/project-phase.entity";
 import { ProjectActivity } from "../../activities/entities/project-activity.entity";
 import { User } from "@/core/iam/users/entities/user.entity";
 import { TaskStatus, TaskPriority } from "../../enums/task-status.enum";
+import { Survey } from "../../survey/entities/survey.entity";
 
 @Entity("project_tasks")
 @Index(["companyId", "activityId"])
@@ -77,4 +78,11 @@ export class ProjectTask extends BaseTenantEntity {
 
   @Column({ name: "is_active", default: true })
   isActive!: boolean;
+
+  @Column({ name: "survey_id", type: "uuid", nullable: true })
+  surveyId!: string | null;
+
+  @ManyToOne(() => Survey, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "survey_id" })
+  survey?: Survey | null;
 }

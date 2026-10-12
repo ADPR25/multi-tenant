@@ -29,4 +29,4 @@ export {
   obligationsService,
   requirementsService,
 } from "./logic/hiring/hiring-extras.service";
-export * from "./logic/projects/survei.service";
+export * from "./logic/projects/survey.service";

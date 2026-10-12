@@ -45,6 +45,12 @@ const staticRoutes: RouteRecordRaw[] = [
     component: () => import("../views/Auth/Signin.vue"),
     meta: { title: "Signin", public: true },
   },
+  {
+    path: "/survey-response/:code",
+    name: "Survey Response",
+    component: () => import("../views/surveys/response/index.vue"),
+    meta: { title: "Signin", public: true },
+  },
 ];
 
 const viewModules = import.meta.glob("../views/**/*.vue");

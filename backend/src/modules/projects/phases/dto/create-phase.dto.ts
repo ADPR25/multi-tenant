@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum, IsDateString, IsUUID, IsInt, MaxLength, Min } from "class-validator";
+import { IsString, IsOptional, IsEnum, IsDateString, IsUUID, IsInt, MaxLength, Min, IsNumber } from "class-validator";
 import { ProjectStatus } from "../../enums/project-status.enum";
 
 export class CreatePhaseDto {
@@ -36,4 +36,8 @@ export class CreatePhaseDto {
   @IsOptional() 
   @IsString() 
   budget?: string | null;
+
+  @IsOptional()
+  @IsNumber()
+  progress?: number | null
 }

@@ -13,6 +13,8 @@ import {
   PaginationDto,
 } from "@/common/dto/pagination.dto";
 import { paginatedResponse } from "@/common/helpers/pagination.helper";
+import { User } from "@/core/iam/users/entities/user.entity";
+import { ThirdParty } from "@/modules/third-parties/entities/third-party.entity";
 
 @Injectable()
 export class ProjectsService {
@@ -26,20 +28,23 @@ export class ProjectsService {
     });
     if (exists)
       throw new ConflictException(`Project ${dto.code} already exists`);
+
     const entity = this.repo.create({
-      code: dto.code,
-      name: dto.name,
       companyId,
+      code: dto.code.trim(),
+      name: dto.name.trim(),
       description: dto.description ?? null,
       status: dto.status,
       startDate: dto.startDate ? new Date(dto.startDate) : null,
       endDate: dto.endDate ? new Date(dto.endDate) : null,
       budget: dto.budget ?? null,
       progress: dto.progress ?? 0,
-      clientId: dto.clientId ?? null,
-      responsibleId: dto.responsibleId ?? null,
+      clientId: dto.clientId || null,
+      responsibleId: dto.responsibleId || null,
     });
-    return this.repo.save(entity);
+
+    const saved = await this.repo.save(entity);
+    return this.findOne(saved.id, companyId);
   }
 
   async findAll(
@@ -49,8 +54,15 @@ export class ProjectsService {
   ): Promise<PaginatedResponseDto<Project>> {
     const qb = this.repo
       .createQueryBuilder("project")
-      .leftJoinAndSelect("project.client", "client")
-      .leftJoinAndSelect("project.responsible", "responsible")
+      .select([
+        "project.id",
+        "project.name",
+        "project.clientId",
+        "project.progress",
+        "project.code",
+        "project.isActive",
+        "project.createdAt",
+      ])
       .where("project.companyId = :companyId", { companyId })
       .orderBy("project.createdAt", "DESC");
 
@@ -84,27 +96,35 @@ export class ProjectsService {
     companyId: string,
   ): Promise<Project> {
     const entity = await this.findOne(id, companyId);
-    Object.assign(entity, {
-      ...(dto.code !== undefined ? { code: dto.code } : {}),
-      ...(dto.name !== undefined ? { name: dto.name } : {}),
-      ...(dto.description !== undefined
-        ? { description: dto.description ?? null }
-        : {}),
-      ...(dto.status !== undefined ? { status: dto.status } : {}),
-      ...(dto.startDate !== undefined
-        ? { startDate: dto.startDate ? new Date(dto.startDate) : null }
-        : {}),
-      ...(dto.endDate !== undefined
-        ? { endDate: dto.endDate ? new Date(dto.endDate) : null }
-        : {}),
-      ...(dto.budget !== undefined ? { budget: dto.budget ?? null } : {}),
-      ...(dto.progress !== undefined ? { progress: dto.progress } : {}),
-      ...(dto.clientId !== undefined ? { clientId: dto.clientId ?? null } : {}),
-      ...(dto.responsibleId !== undefined
-        ? { responsibleId: dto.responsibleId ?? null }
-        : {}),
-    });
-    return this.repo.save(entity);
+
+    if (dto.code !== undefined) entity.code = dto.code;
+    if (dto.name !== undefined) entity.name = dto.name;
+    if (dto.description !== undefined)
+      entity.description = dto.description ?? null;
+    if (dto.status !== undefined) entity.status = dto.status;
+    if (dto.startDate !== undefined)
+      entity.startDate = dto.startDate ? new Date(dto.startDate) : null;
+    if (dto.endDate !== undefined)
+      entity.endDate = dto.endDate ? new Date(dto.endDate) : null;
+    if (dto.budget !== undefined) entity.budget = dto.budget ?? null;
+    if (dto.progress !== undefined) entity.progress = dto.progress;
+
+    if (dto.clientId !== undefined) {
+      entity.clientId = dto.clientId || null;
+      entity.client = dto.clientId
+        ? ({ id: dto.clientId } as ThirdParty)
+        : null;
+    }
+
+    if (dto.responsibleId !== undefined) {
+      entity.responsibleId = dto.responsibleId || null;
+      entity.responsible = dto.responsibleId
+        ? ({ id: dto.responsibleId } as User)
+        : null;
+    }
+
+    const saved = await this.repo.save(entity);
+    return this.findOne(saved.id, companyId);
   }
 
   async toggleActive(id: string, companyId: string): Promise<Project> {
