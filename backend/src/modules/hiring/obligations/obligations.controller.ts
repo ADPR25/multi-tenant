@@ -13,13 +13,13 @@ export class ObligationsController {
   constructor(private readonly service: ObligationsService) {}
 
   @Post()
-  @RequirePermissions("hiring:obligation:create")
+  @RequirePermissions("hiring:contract:create")
   create(@Body() dto: CreateObligationDto, @CurrentCompanyId() companyId: string) {
     return this.service.create(dto, companyId);
   }
 
   @Get("contract/:contractId")
-  @RequirePermissions("hiring:obligation:read")
+  @RequirePermissions("hiring:contract:read")
   findByContract(
     @Param("contractId") contractId: string,
     @CurrentCompanyId() companyId: string,
@@ -28,13 +28,13 @@ export class ObligationsController {
   }
 
   @Get(":id")
-  @RequirePermissions("hiring:obligation:read")
+  @RequirePermissions("hiring:contract:read")
   findOne(@Param("id") id: string, @CurrentCompanyId() companyId: string) {
     return this.service.findOne(id, companyId);
   }
 
   @Patch(":id")
-  @RequirePermissions("hiring:obligation:update")
+  @RequirePermissions("hiring:contract:update")
   update(
     @Param("id") id: string,
     @Body() dto: UpdateObligationDto,
@@ -44,13 +44,13 @@ export class ObligationsController {
   }
 
   @Delete(":id")
-  @RequirePermissions("hiring:obligation:delete")
+  @RequirePermissions("hiring:contract:delete")
   remove(@Param("id") id: string, @CurrentCompanyId() companyId: string) {
     return this.service.remove(id, companyId);
   }
 
   @Post("reorder/:contractId")
-  @RequirePermissions("hiring:obligation:update")
+  @RequirePermissions("hiring:contract:update")
   reorder(
     @Param("contractId") contractId: string,
     @Body("order") orderIds: string[],

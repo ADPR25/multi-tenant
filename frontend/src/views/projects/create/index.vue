@@ -83,7 +83,7 @@ async function submit(): Promise<void> {
       code: form.value.code,
       name: form.value.name,
       description: form.value.description || null,
-      status: form.value.status as ProjectPayload["status"],
+      status: form.value.status,
       startDate: form.value.startDate || null,
       endDate: form.value.endDate || null,
       budget: form.value.budget ? String(form.value.budget) : null,
@@ -123,21 +123,6 @@ function onSuccessConfirm() {
 function getUserLabel(user: UserOption): string {
   const fullName = `${user.first_name || ""} ${user.last_name || ""}`.trim();
   return fullName || user.email || user.id;
-}
-
-function getThirdPartyLabel(tp: ThirdParty): string {
-  const record = tp as ThirdParty & {
-    razonSocial?: string;
-    businessName?: string;
-    nit?: string;
-  };
-  return (
-    record.razonSocial ||
-    record.businessName ||
-    record.name ||
-    record.nit ||
-    record.id
-  );
 }
 
 onMounted(async () => {
@@ -247,11 +232,12 @@ onMounted(async () => {
           <v-autocomplete
             v-model="form.clientId"
             :items="terceros"
-            :item-title="getThirdPartyLabel"
+            item-title="legalName"
             item-value="id"
             clearable
             variant="outlined"
             density="comfortable"
+            placeholder="Seleccione tercero"
           />
         </v-col>
         <v-col cols="12" md="6">

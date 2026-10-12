@@ -1,70 +1,46 @@
 import { api } from "@/services/api/api";
-import { buildQuery } from "@/services/api/buildQuery";
+import { buildQuery, type QueryValue } from "@/services/api/buildQuery";
 
-type QueryValue = string | number | boolean | null | undefined;
-
-export interface ContractQuery {
+export interface ContractQuery extends Record<string, QueryValue> {
   search?: string;
   page?: number;
   limit?: number | string;
-  state?: boolean;
-  [key: string]: QueryValue;
+  find?: string;
 }
-
 export interface ContractPayload {
-  codigo?: string;
-  numeroContrato?: string;
-  thirdPartyId?: string;
-  supervisorId?: string;
-  objeto?: string;
-  observacion?: string;
-  montoTotal?: string;
-  montoPrimerPago?: string;
-  vecesPagadas?: number;
-  fechaInicio?: string;
-  fechaCierre?: string;
-  proyectoNombre?: string;
-  proyectoId?: string;
-  [key: string]: QueryValue;
-}
-
-export interface Contract {
-  id: string;
-  codigo: string;
-  numeroContrato: string;
+  code: string;
+  contractNumber?: string | null;
   thirdPartyId: string;
   supervisorId?: string | null;
-  objeto: string;
-  observacion?: string | null;
-  montoTotal: string;
-  montoPrimerPago?: string | null;
-  vecesPagadas: number;
-  fechaInicio: string;
-  fechaCierre?: string | null;
-  proyectoNombre?: string | null;
-  proyectoId?: string | null;
-  isActive: boolean;
+  purpose: string;
+  observation?: string | null;
+  totalAmount: string;
+  firstPaymentAmount?: string | null;
+  timesPaid?: number;
+  startDate: string;
+  endDate?: string | null;
+  projectId?: string | null;
 }
-
+export interface Contract {
+  id: string;
+  code: string;
+  contractNumber: string | null;
+  thirdPartyId: string;
+  thirdParty?: { id: string; legalName: string } | null;
+  purpose: string;
+  totalAmount: string;
+  status: string;
+  isActive: boolean;
+  projectId: string | null;
+  startDate: string;
+  endDate: string | null;
+  observation: string | null;
+  firstPaymentAmount: string | null;
+  timesPaid: number;
+}
 export interface ContractsResponse {
   data: Contract[];
   total?: number;
-}
-
-export interface Requirement {
-  id: string;
-  contractId: string;
-  descripcion: string;
-}
-export interface Obligation {
-  id: string;
-  contractId: string;
-  descripcion: string;
-}
-export interface Addendum {
-  id: string;
-  contractId: string;
-  descripcion: string;
 }
 
 export const contractsService = {
@@ -91,23 +67,12 @@ export const contractsService = {
       method: "PATCH",
     });
   },
+  changeStatus(id: string, status: string) {
+    return api.request<Contract>(`/hiring/contracts/${id}/status/${status}`, {
+      method: "PATCH",
+    });
+  },
   remove(id: string) {
     return api.request<void>(`/hiring/contracts/${id}`, { method: "DELETE" });
   },
-  // extras
-  requirements(contractId: string) {
-    return api.request<Requirement[]>(
-      `/hiring/requirements/contract/${contractId}`,
-    );
-  },
-  obligations(contractId: string) {
-    return api.request<Obligation[]>(
-      `/hiring/obligations/contract/${contractId}`,
-    );
-  },
-  addendums(contractId: string) {
-    return api.request<Addendum[]>(`/hiring/addendums/contract/${contractId}`);
-  },
 };
-
-export default contractsService;

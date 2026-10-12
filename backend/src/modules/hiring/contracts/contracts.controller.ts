@@ -13,15 +13,12 @@ import { ContractsService } from "./contracts.service";
 import { CreateContractDto } from "./dto/create-contract.dto";
 import { UpdateContractDto } from "./dto/update-contract.dto";
 import { CurrentCompanyId } from "@/common/decorators/current-company.decorator";
-import {
-  PaginatedResponseDto,
-  PaginationDto,
-} from "@/common/dto/pagination.dto";
 import { RequirePermissions } from "@/common/decorators/permissions.decorator";
 import { ContractStatus } from "./enums/contract-status.enum";
 import { JwtAuthGuard } from "@/common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "@/common/guards/permissions.guard";
 import { Contract } from "./entities/contract.entity";
+import { FilterDto } from "@/common/filters/filter.dto";
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller("contracts")
@@ -39,14 +36,8 @@ export class ContractsController {
 
   @Get()
   @RequirePermissions("hiring:contract:read")
-  findAll(
-    @CurrentCompanyId() companyId: string,
-    @Query() pagination: PaginationDto,
-    @Query("state") state?: string,
-    @Query("search") search?: string,
-  ): Promise<PaginatedResponseDto<Contract>> {
-    const isActive = state !== undefined ? state === "true" : undefined;
-    return this.service.findAll(companyId, pagination, isActive, search);
+  findAll(@CurrentCompanyId() companyId: string, @Query() filter: FilterDto) {
+    return this.service.findAll(companyId, filter);
   }
 
   @Get(":id")

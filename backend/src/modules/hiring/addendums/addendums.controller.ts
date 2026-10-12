@@ -1,4 +1,12 @@
-import { Controller, Post, Body, Param, Get, Delete, UseGuards } from "@nestjs/common";
+import {
+  Controller,
+  Post,
+  Body,
+  Param,
+  Get,
+  Delete,
+  UseGuards,
+} from "@nestjs/common";
 import { AddendumsService } from "./addendums.service";
 import { CreateAddendumDto } from "./dto/create-addendum.dto";
 import { CurrentCompanyId } from "@/common/decorators/current-company.decorator";
@@ -9,9 +17,11 @@ import { PermissionsGuard } from "@/common/guards/permissions.guard";
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller("addendums")
 export class AddendumsController {
-  constructor(private readonly service: AddendumsService) { }
+  constructor(private readonly service: AddendumsService) {}
 
-  @Post() @RequirePermissions("hiring:contract:update") create(
+  @Post()
+  @RequirePermissions("hiring:contract:create")
+  create(
     @Body() dto: CreateAddendumDto,
     @CurrentCompanyId() companyId: string,
   ) {
@@ -26,7 +36,7 @@ export class AddendumsController {
   ) {
     return this.service.findByContract(id, companyId);
   }
-  
+
   @Delete(":id") @RequirePermissions("hiring:contract:update") remove(
     @Param("id") id: string,
     @CurrentCompanyId() companyId: string,

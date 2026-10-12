@@ -1,12 +1,11 @@
 <script setup lang="ts">
-defineOptions({
-  name: "DriveOpcion3View",
-});
+defineOptions({ name: "DriveOpcion3View" });
 
 import { ref, onMounted, computed } from "vue";
 import type { Ref } from "vue";
 import { foldersService, documentsService } from "@/services";
 import { get } from "@/store/authstore";
+import { usePermissions } from "@/composables/usePermissions";
 import {
   Folder,
   ArrowLeft,
@@ -22,32 +21,42 @@ import {
   Users,
   X,
   TrashIcon,
+  Info,
+  CheckCircle2,
+  FileUp,
+  Lock,
 } from "lucide-vue-next";
 
 interface FolderItem {
   id: string;
   name: string;
+  description?: string | null;
   ownerFolderName?: string | null;
   createdBy?: string;
   parentId?: string | null;
 }
-
 interface DocItem {
   id: string;
-  fileName: string;
+  fileName: string | null;
+  title?: string;
+  description?: string | null;
+  content?: string | null;
   storageKey?: string | null;
-  mimeType?: string;
+  mimeType?: string | null;
   categoryId?: string;
   typeId?: string;
-  title?: string;
+  createdAt?: string;
+  category?: { name: string } | null;
+  type?: { name: string } | null;
 }
-
 interface StoredUser {
   id?: string;
   sub?: string;
   _id?: string;
   userId?: string;
 }
+
+const { can, permissions, load: loadPerms, isSuper } = usePermissions();
 
 const breadcrumb = ref<FolderItem[]>([]);
 const currentFolderId = ref<string | null>(null);
@@ -64,7 +73,6 @@ const previewDoc = ref<DocItem | null>(null);
 const showPreview = ref(false);
 const previewBlobUrl = ref(null) as Ref<string | null>;
 const previewLoading = ref(false);
-
 const showDelete = ref(false);
 const deleteDoc = ref<DocItem | null>(null);
 
@@ -79,20 +87,20 @@ const storedUser = computed<StoredUser>(() => {
     const useAuthObj = authStore["useAuth"] as
       { user?: StoredUser } | undefined;
     if (useAuthObj?.user?.id) return useAuthObj.user;
-  } catch {
-    // ignore auth store error
+  } catch (e) {
+    console.error(e);
   }
   try {
     const r = localStorage.getItem("user");
     if (r) return JSON.parse(r) as StoredUser;
-  } catch {
-    // ignore parse error
+  } catch (e) {
+    console.error(e);
   }
   try {
     const r = localStorage.getItem("auth_user");
     if (r) return JSON.parse(r) as StoredUser;
-  } catch {
-    // ignore parse error
+  } catch (e) {
+    console.error(e);
   }
   try {
     const r = localStorage.getItem("auth");
@@ -100,8 +108,8 @@ const storedUser = computed<StoredUser>(() => {
       const j = JSON.parse(r) as { user?: StoredUser } & StoredUser;
       return j.user || j;
     }
-  } catch {
-    // ignore parse error
+  } catch (e) {
+    console.error(e);
   }
   return {};
 });
@@ -114,16 +122,38 @@ const currentUserId = computed(
     storedUser.value?.userId ||
     "",
 );
-
 const currentFolder = computed(
   () => breadcrumb.value[breadcrumb.value.length - 1] || null,
 );
 const isRoot = computed(() => !currentFolder.value);
+
+const isRevisor = computed(
+  () =>
+    isSuper.value ||
+    can("documents:drive:revisor") ||
+    permissions.value.includes("documents:drive:revisor"),
+);
+const isPersonalFolder = computed(() => !!currentFolder.value?.ownerFolderName);
 const isInsideMyPersonalFolder = computed(
   () =>
-    !!currentFolder.value?.ownerFolderName &&
+    isPersonalFolder.value &&
     currentFolder.value?.createdBy === currentUserId.value,
 );
+const canViewFiles = computed(
+  () =>
+    isInsideMyPersonalFolder.value ||
+    (isPersonalFolder.value && isRevisor.value),
+);
+
+const visibleFolders = computed(() => {
+  return folders.value.filter((f) => {
+    if (!f.ownerFolderName) return true;
+    if (f.createdBy === currentUserId.value) return true;
+    if (isRevisor.value) return true;
+    return false;
+  });
+});
+
 const hasMyPersonalFolder = computed(() =>
   folders.value.some(
     (f) => f.createdBy === currentUserId.value && !!f.ownerFolderName,
@@ -132,6 +162,14 @@ const hasMyPersonalFolder = computed(() =>
 const hasStructuralChild = computed(() =>
   folders.value.some((f) => !f.ownerFolderName),
 );
+
+const requiredDocs = computed(() => docs.value.filter((d) => !d.storageKey));
+const uploadedDocs = computed(() => docs.value.filter((d) => !!d.storageKey));
+const bannerDoc = computed(() => requiredDocs.value[0] ?? null);
+const uploadTemplate = computed(
+  () => requiredDocs.value[0] ?? parentRequirement.value ?? null,
+);
+
 const canCreatePersonal = computed(() => {
   if (isRoot.value) return false;
   if (isInsideMyPersonalFolder.value) return false;
@@ -142,13 +180,13 @@ const canCreatePersonal = computed(() => {
 });
 const canUploadHere = computed(() => isInsideMyPersonalFolder.value);
 
-const requiredDocs = computed(() => docs.value.filter((d) => !d.storageKey));
-const uploadedDocs = computed(() => docs.value.filter((d) => !!d.storageKey));
 const filteredDocs = computed(() => {
   let l = uploadedDocs.value;
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase();
-    l = l.filter((d) => (d.fileName || "").toLowerCase().includes(q));
+    l = l.filter((d) =>
+      (d.fileName || d.title || "").toLowerCase().includes(q),
+    );
   }
   return l;
 });
@@ -156,7 +194,6 @@ const filteredDocs = computed(() => {
 function getFileUrl(k: string): string {
   return documentsService.downloadUrl(k, true);
 }
-
 function isPdf(doc: DocItem): boolean {
   return (
     !!doc.mimeType?.includes("pdf") ||
@@ -187,6 +224,19 @@ async function load(id: string | null): Promise<void> {
     ]);
     folders.value = f || [];
     docs.value = d || [];
+
+    if (
+      currentFolder.value?.ownerFolderName &&
+      currentFolder.value?.createdBy !== currentUserId.value &&
+      !isRevisor.value
+    ) {
+      alert(
+        `Acceso denegado. Carpeta de ${currentFolder.value.ownerFolderName}`,
+      );
+      back();
+      return;
+    }
+
     const tpl = d.find((x) => !x.storageKey && x.categoryId && x.typeId);
     if (tpl) parentRequirement.value = tpl;
     else if (!id) parentRequirement.value = null;
@@ -194,13 +244,21 @@ async function load(id: string | null): Promise<void> {
     loading.value = false;
   }
 }
-
 function enter(f: FolderItem): void {
+  if (
+    f.ownerFolderName &&
+    f.createdBy !== currentUserId.value &&
+    !isRevisor.value
+  ) {
+    alert(
+      `Acceso denegado. Esta carpeta es de ${f.ownerFolderName}. Solo un revisor puede entrar.`,
+    );
+    return;
+  }
   breadcrumb.value.push(f);
   currentFolderId.value = f.id;
   void load(f.id);
 }
-
 function back(): void {
   breadcrumb.value.pop();
   currentFolderId.value = breadcrumb.value.length
@@ -209,14 +267,12 @@ function back(): void {
   if (!breadcrumb.value.length) parentRequirement.value = null;
   void load(currentFolderId.value);
 }
-
 function goRoot(): void {
   breadcrumb.value = [];
   currentFolderId.value = null;
   parentRequirement.value = null;
   void load(null);
 }
-
 function goTo(i: number): void {
   breadcrumb.value = breadcrumb.value.slice(0, i + 1);
   currentFolderId.value = breadcrumb.value[i].id;
@@ -229,18 +285,19 @@ async function createPersonal(): Promise<void> {
     await foldersService.createPersonal({ parentId: currentFolderId.value });
     await load(currentFolderId.value);
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : "Error al crear carpeta";
-    alert(msg);
+    alert(e instanceof Error ? e.message : "Error al crear carpeta");
   }
 }
-
 function triggerUpload(): void {
   fileInputRef.value?.click();
 }
-
 async function uploadFile(file: File): Promise<void> {
   if (!currentFolderId.value) return;
-  const template = requiredDocs.value[0] || parentRequirement.value;
+  if (!isInsideMyPersonalFolder.value) {
+    alert("Solo puedes subir dentro de tu carpeta personal");
+    return;
+  }
+  const template = uploadTemplate.value;
   if (!template?.categoryId || !template?.typeId) {
     alert("La carpeta padre no tiene configurada categoria y tipo");
     return;
@@ -260,13 +317,11 @@ async function uploadFile(file: File): Promise<void> {
     await documentsService.upload(fd);
     await load(currentFolderId.value);
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "Error al subir";
-    alert(msg);
+    alert(err instanceof Error ? err.message : "Error al subir");
   } finally {
     uploading.value = false;
   }
 }
-
 async function onFilePicked(e: Event): Promise<void> {
   const input = e.target as HTMLInputElement;
   const file = input.files?.[0];
@@ -274,17 +329,14 @@ async function onFilePicked(e: Event): Promise<void> {
   await uploadFile(file);
   input.value = "";
 }
-
 function onDragOver(e: DragEvent): void {
   e.preventDefault();
   if (canUploadHere.value) isDragging.value = true;
 }
-
 function onDragLeave(e: DragEvent): void {
   e.preventDefault();
   isDragging.value = false;
 }
-
 function onDrop(e: DragEvent): void {
   e.preventDefault();
   isDragging.value = false;
@@ -309,14 +361,12 @@ async function openPreview(doc: DocItem): Promise<void> {
     const blob = await res.blob();
     previewBlobUrl.value = URL.createObjectURL(blob);
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : "Error desconocido";
-    alert("No se pudo abrir: " + msg);
+    alert("No se pudo abrir: " + (e instanceof Error ? e.message : "Error"));
     showPreview.value = false;
   } finally {
     previewLoading.value = false;
   }
 }
-
 function closePreview(): void {
   showPreview.value = false;
   if (previewBlobUrl.value) {
@@ -324,32 +374,28 @@ function closePreview(): void {
     previewBlobUrl.value = null;
   }
 }
-
 function openDelete(doc: DocItem): void {
   deleteDoc.value = doc;
   showDelete.value = true;
 }
-
 function cancelDelete(): void {
   showDelete.value = false;
   deleteDoc.value = null;
 }
-
 const confirmDelete = async (): Promise<void> => {
   if (!deleteDoc.value?.id) return;
   try {
     await documentsService.delete(deleteDoc.value.id);
     await load(currentFolderId.value);
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : "Error al eliminar";
-    alert(msg);
+    alert(e instanceof Error ? e.message : "Error al eliminar");
   } finally {
     showDelete.value = false;
     deleteDoc.value = null;
   }
 };
-
-onMounted(() => {
+onMounted(async () => {
+  await loadPerms();
   void load(null);
 });
 
@@ -362,7 +408,6 @@ function folderGradient(i: number): string {
   ];
   return g[i % g.length];
 }
-
 function folderIconColor(i: number): string {
   const c = [
     "text-violet-600",
@@ -410,7 +455,7 @@ function folderIconColor(i: number): string {
       />
 
       <div class="flex items-center justify-between mb-8">
-        <div class="flex items-center gap-2.5 text-">
+        <div class="flex items-center gap-2.5">
           <button
             class="flex items-center gap-2 px-4 py-2 rounded-full bg-white border shadow-sm font-semibold hover:shadow-md transition"
             @click="goRoot"
@@ -421,21 +466,25 @@ function folderIconColor(i: number): string {
             v-for="(b, i) in breadcrumb"
             :key="b.id"
             class="flex items-center gap-2"
-          >
-            <span class="text-zinc-300">/</span>
-            <button
+            ><span class="text-zinc-300">/</span
+            ><button
               class="px-3 py-1.5 rounded-full bg-white border hover:shadow-sm text-zinc-600 font-medium"
               @click="() => goTo(i)"
             >
               {{ b.name }}
-            </button>
-          </span>
+            </button></span
+          >
+          <span
+            v-if="isRevisor"
+            class="ml-2 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500 text-white text- font-bold tracking-widest"
+            ><Eye class="h-3 w-3" /> REVISOR</span
+          >
         </div>
         <div
           class="hidden md:flex items-center gap-2 text- font-medium text-zinc-500 bg-white border px-3 py-1.5 rounded-full shadow-sm"
         >
-          <Users class="h-3 w-3" /> {{ folders.length }} carpetas · Workspace
-          empresarial
+          <Users class="h-3 w-3" /> {{ visibleFolders.length }} carpetas ·
+          Workspace empresarial
         </div>
       </div>
 
@@ -443,7 +492,7 @@ function folderIconColor(i: number): string {
         class="rounded- bg-white border shadow-[0_20px_60px_-20px_rgba(124,58,237,0.15)] p-8 mb-8 relative overflow-hidden"
       >
         <div
-          class="absolute top-0 right-0 w- h- bg-gradient-to-br from-violet-100 via-fuchsia-50 to-transparent rounded-full blur-2xl -translate-y-1/2 translate-x-1/3"
+          class="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-violet-100 via-fuchsia-50 to-transparent rounded-full blur-2xl -translate-y-1/2 translate-x-1/3"
         />
         <div class="relative flex items-center justify-between gap-6">
           <div class="flex gap-5">
@@ -462,21 +511,38 @@ function folderIconColor(i: number): string {
                 <span
                   v-if="!currentFolder"
                   class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-600 text-white text- font-bold tracking-widest"
+                  ><Sparkles class="h-3 w-3" /> NUEVO</span
                 >
-                  <Sparkles class="h-3 w-3" /> NUEVO
-                </span>
                 <span
                   v-if="isInsideMyPersonalFolder"
                   class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500 text-white text- font-bold tracking-widest"
+                  ><Shield class="h-3 w-3" /> PRIVADO</span
                 >
-                  <Shield class="h-3 w-3" /> PRIVADO
-                </span>
+                <span
+                  v-if="
+                    isPersonalFolder && isRevisor && !isInsideMyPersonalFolder
+                  "
+                  class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500 text-white text- font-bold tracking-widest"
+                  ><Eye class="h-3 w-3" /> REVISANDO:
+                  {{ currentFolder?.ownerFolderName }}</span
+                >
               </div>
               <p
                 class="mt-3 text-[13.5px] text-zinc-500 max-w- leading-relaxed"
               >
-                Organiza todo en un lugar colorido, buscable y seguro. Arrastra
-                archivos, previsualiza y comparte en segundos.
+                <span v-if="isRoot">Gestión documental centralizada.</span>
+                <span v-else-if="isInsideMyPersonalFolder"
+                  >Carpeta personal protegida. Solo tú y RRHH pueden ver estos
+                  archivos.</span
+                >
+                <span v-else-if="isPersonalFolder && isRevisor"
+                  >Viendo archivos de {{ currentFolder?.ownerFolderName }} como
+                  revisor.</span
+                >
+                <span v-else
+                  >Carpeta del sistema · {{ visibleFolders.length }} subcarpetas
+                  · {{ uploadedDocs.length }} archivos</span
+                >
               </p>
             </div>
           </div>
@@ -494,8 +560,9 @@ function folderIconColor(i: number): string {
               class="h-12 px-7 rounded-full bg-violet-600 text-white text- font-semibold shadow-[0_10px_20px_rgba(124,58,237,0.3)] hover:bg-violet-700 transition flex items-center disabled:opacity-60"
               @click="triggerUpload"
             >
-              <Upload class="h-4 w-4 mr-2" />
-              {{ uploading ? "Subiendo..." : "Subir" }}
+              <Upload class="h-4 w-4 mr-2" />{{
+                uploading ? "Subiendo..." : "Subir"
+              }}
             </button>
           </div>
         </div>
@@ -508,9 +575,66 @@ function folderIconColor(i: number): string {
       </div>
 
       <template v-else>
+        <div v-if="bannerDoc" class="mb-8">
+          <div
+            class="relative overflow-hidden rounded- p- bg-gradient-to-br from-violet-200 via-fuchsia-200 to-amber-100 shadow-[0_12px_40px_-16px_rgba(124,58,237,0.3)]"
+          >
+            <div
+              class="rounded- bg-gradient-to-br from-white via-[#fdfcff] to-white p-6 sm:p-7 flex gap-5"
+            >
+              <div
+                class="h-12 w-12 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center shadow-lg shrink-0"
+              >
+                <FileText class="h-6 w-6 text-white" />
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex flex-wrap items-center gap-2 mb-2">
+                  <h3 class="font-bold text- text-zinc-900">
+                    {{ bannerDoc.title }}
+                  </h3>
+                  <span
+                    class="inline-flex items-center gap-1 text- font-bold tracking-widest px-2.5 py-1 rounded-full bg-violet-600 text-white"
+                    ><Info class="h-3 w-3" /> INSTRUCCIÓN</span
+                  ><span
+                    v-if="bannerDoc.category?.name || bannerDoc.type?.name"
+                    class="text- px-2.5 py-1 rounded-full bg-zinc-900 text-white"
+                    >{{ bannerDoc.category?.name }} •
+                    {{ bannerDoc.type?.name }}</span
+                  >
+                </div>
+                <p class="text- font-medium text-zinc-800">
+                  {{ bannerDoc.description }}
+                </p>
+                <div
+                  v-if="bannerDoc.content"
+                  class="mt-4 rounded-xl bg-violet-50/80 border border-violet-200/60 p-4 flex gap-3"
+                >
+                  <div
+                    class="h-8 w-8 rounded-full bg-white border border-violet-200 flex items-center justify-center shrink-0"
+                  >
+                    <CheckCircle2 class="h-4 w-4 text-violet-600" />
+                  </div>
+                  <div>
+                    <p
+                      class="text- font-bold tracking-widest text-violet-700 mb-1"
+                    >
+                      QUÉ DEBES SUBIR
+                    </p>
+                    <p class="text- text-zinc-700">{{ bannerDoc.content }}</p>
+                  </div>
+                </div>
+                <div class="mt-4 flex items-center gap-2 text- text-zinc-500">
+                  <FileUp class="h-3.5 w-3.5" /> PDF, JPG, PNG, DOCX, XLSX • Máx
+                  20MB • Auditado
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
           <div
-            v-for="(f, i) in folders"
+            v-for="(f, i) in visibleFolders"
             :key="f.id"
             class="group rounded- border-2 p-6 cursor-pointer hover:shadow-[0_20px_40px_-16px_rgba(0,0,0,0.15)] hover:-translate-y-1 transition-all"
             :class="folderGradient(i)"
@@ -525,11 +649,29 @@ function folderIconColor(i: number): string {
                   :class="folderIconColor(i)"
                 />
               </div>
-              <div
-                v-if="f.createdBy === currentUserId"
-                class="h-7 w-7 rounded-full bg-zinc-900 text-white flex items-center justify-center"
-              >
-                <Shield class="h-3.5 w-3.5" />
+              <div class="flex gap-1">
+                <div
+                  v-if="f.createdBy === currentUserId"
+                  class="h-7 w-7 rounded-full bg-zinc-900 text-white flex items-center justify-center"
+                >
+                  <Shield class="h-3.5 w-3.5" />
+                </div>
+                <div
+                  v-if="isRevisor && f.ownerFolderName"
+                  class="h-7 w-7 rounded-full bg-amber-500 text-white flex items-center justify-center"
+                >
+                  <Eye class="h-3.5 w-3.5" />
+                </div>
+                <div
+                  v-if="
+                    f.ownerFolderName &&
+                    f.createdBy !== currentUserId &&
+                    !isRevisor
+                  "
+                  class="h-7 w-7 rounded-full bg-zinc-200 text-zinc-400 flex items-center justify-center"
+                >
+                  <Lock class="h-3.5 w-3.5" />
+                </div>
               </div>
             </div>
             <p class="font-bold text- text-zinc-900">{{ f.name }}</p>
@@ -537,7 +679,7 @@ function folderIconColor(i: number): string {
               {{
                 f.ownerFolderName
                   ? `De ${f.ownerFolderName}`
-                  : "Carpeta del equipo"
+                  : f.description || "Carpeta del equipo"
               }}
             </p>
             <div
@@ -546,30 +688,44 @@ function folderIconColor(i: number): string {
               <span class="h-1 w-1 rounded-full bg-zinc-400" /> Abrir carpeta
             </div>
           </div>
+          <div
+            v-if="!visibleFolders.length && !isRoot"
+            class="col-span-4 rounded- border border-dashed border-zinc-300 bg-zinc-50 p-8 text-center"
+          >
+            <p class="text- font-medium">No hay carpetas visibles</p>
+            <p class="text- text-zinc-400 mt-1">
+              Las carpetas personales de otros están ocultas
+            </p>
+          </div>
         </div>
 
         <div
-          v-if="currentFolder?.ownerFolderName"
+          v-if="canViewFiles"
           class="rounded- bg-white border shadow-sm overflow-hidden"
         >
           <div class="px-7 py-5 border-b flex items-center justify-between">
             <h3 class="text- font-bold tracking-wide flex items-center gap-2">
               <span
                 class="h-6 w-6 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center"
-              >
-                <FileText class="h-3.5 w-3.5" />
-              </span>
+                ><FileText class="h-3.5 w-3.5"
+              /></span>
               ARCHIVOS EN {{ currentFolder?.name?.toUpperCase() }} ·
               {{ filteredDocs.length }}
+              <span
+                v-if="
+                  isRevisor && isPersonalFolder && !isInsideMyPersonalFolder
+                "
+                class="ml-2 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200"
+                >MODO REVISOR</span
+              >
             </h3>
             <div class="relative">
               <Search
                 class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400"
-              />
-              <input
+              /><input
                 v-model="searchQuery"
                 placeholder="Buscar..."
-                class="h-9 w- pl-9 rounded-full bg-zinc-50 border text- focus:outline-none focus:ring-2 focus:ring-violet-200 focus:border-violet-300"
+                class="h-9 w-32 pl-9 rounded-full bg-zinc-50 border text- focus:outline-none focus:ring-2 focus:ring-violet-200 focus:border-violet-300"
               />
             </div>
           </div>
@@ -588,17 +744,21 @@ function folderIconColor(i: number): string {
               </div>
               <div class="flex-1 min-w-0">
                 <p class="font-semibold text-[13.5px] truncate">
-                  {{ doc.fileName }}
+                  {{ doc.fileName || doc.title }}
                 </p>
                 <p class="text- text-zinc-500 mt-0.5 truncate">
-                  {{ doc.mimeType }}
+                  {{ doc.mimeType }} ·
+                  {{
+                    doc.createdAt
+                      ? new Date(doc.createdAt).toLocaleDateString()
+                      : "Reciente"
+                  }}
                 </p>
               </div>
               <div class="flex gap-1.5">
                 <button
                   v-if="isPdf(doc)"
                   class="h-7 w-7 rounded-full bg-zinc-900 text-white flex items-center justify-center hover:bg-black"
-                  title="Vista previa"
                   @click="() => void openPreview(doc)"
                 >
                   <Eye class="h-3 w-3" />
@@ -608,12 +768,13 @@ function folderIconColor(i: number): string {
                   :href="getFileUrl(doc.storageKey)"
                   target="_blank"
                   class="h-7 w-7 rounded-full border border-zinc-200 flex items-center justify-center hover:border-zinc-900 transition"
-                >
-                  <Download class="h-3 w-3" />
-                </a>
+                  ><Download class="h-3 w-3"
+                /></a>
                 <button
+                  v-if="
+                    can('documents:docs:delete') || isInsideMyPersonalFolder
+                  "
                   class="h-7 w-7 rounded-full border border-zinc-200 flex items-center justify-center hover:border-red-300 hover:text-red-500 transition"
-                  title="Eliminar"
                   @click="() => openDelete(doc)"
                 >
                   <TrashIcon class="h-3 w-3" />
@@ -629,6 +790,13 @@ function folderIconColor(i: number): string {
             </div>
             <p class="text- font-medium">No hay archivos aún</p>
             <p class="text- text-zinc-500 mt-1">Arrastra tus documentos aquí</p>
+            <button
+              v-if="canUploadHere"
+              class="mt-4 h-9 px-5 rounded-full bg-zinc-900 text-white text-"
+              @click="triggerUpload"
+            >
+              Subir documento
+            </button>
           </div>
         </div>
       </template>
@@ -636,13 +804,13 @@ function folderIconColor(i: number): string {
   </div>
 
   <Teleport to="body">
-    <Transition name="fade">
-      <div
+    <Transition name="fade"
+      ><div
         v-if="showPreview"
         class="fixed inset-0 z-[99999] bg-[#0a0a0a]/80 backdrop-blur-xl flex flex-col"
       >
         <div
-          class="h- shrink-0 bg-white/95 backdrop-blur border-b flex items-center justify-between px-6"
+          class="h-14 shrink-0 bg-white/95 backdrop-blur border-b flex items-center justify-between px-6"
         >
           <div class="flex items-center gap-3 min-w-0">
             <div
@@ -678,23 +846,23 @@ function folderIconColor(i: number): string {
             :src="previewBlobUrl"
             class="w-full h-full max-w- bg-white rounded- shadow-[0_30px_90px_rgba(0,0,0,0.5)] border-0"
           />
-        </div>
-      </div>
-    </Transition>
+        </div></div
+    ></Transition>
   </Teleport>
 
   <v-dialog v-model="showDelete" max-width="450" persistent>
-    <v-card class="rounded-2xl">
-      <v-card-title class="flex items-center gap-3 pt-6 px-6">
-        <div
+    <v-card class="rounded-2xl"
+      ><v-card-title class="flex items-center gap-3 pt-6 px-6"
+        ><div
           class="h-10 w-10 rounded-full bg-red-50 border border-red-100 flex items-center justify-center"
         >
           <TrashIcon class="h-5 w-5 text-red-500" />
         </div>
-        <h3 class="text-lg font-semibold text-zinc-900">Eliminar documento</h3>
-      </v-card-title>
-      <v-card-text class="px-6 pb-2 text-gray-600">
-        <p class="text-">
+        <h3 class="text-lg font-semibold text-zinc-900">
+          Eliminar documento
+        </h3></v-card-title
+      ><v-card-text class="px-6 pb-2 text-gray-600"
+        ><p class="text-">
           ¿Eliminar
           <span class="font-semibold text-zinc-900">{{
             deleteDoc?.fileName
@@ -703,20 +871,18 @@ function folderIconColor(i: number): string {
         </p>
         <p class="mt-2 text- tracking-widest uppercase text-zinc-400">
           Esta acción no se puede deshacer
-        </p>
-      </v-card-text>
-      <v-card-actions class="p-6 pt-4">
-        <v-btn variant="text" @click="cancelDelete">Cancelar</v-btn>
-        <v-spacer />
-        <v-btn
+        </p></v-card-text
+      ><v-card-actions class="p-6 pt-4"
+        ><v-btn variant="text" @click="cancelDelete">Cancelar</v-btn
+        ><v-spacer /><v-btn
           color="red"
           variant="flat"
           class="rounded-full"
           @click="() => void confirmDelete()"
           >Confirmar</v-btn
-        >
-      </v-card-actions>
-    </v-card>
+        ></v-card-actions
+      ></v-card
+    >
   </v-dialog>
 </template>
 

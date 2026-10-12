@@ -37,7 +37,6 @@ export class FoldersController {
   }
 
   @Post("personal")
-  @RequirePermissions("documents:folders:create")
   createPersonal(
     @Body("parentId") parentId: string,
     @CurrentCompanyId() companyId: string,
@@ -47,7 +46,6 @@ export class FoldersController {
   }
 
   @Get()
-  @RequirePermissions("documents:folders:read")
   findAll(@CurrentCompanyId() companyId: string, @Query() filter: FilterDto) {
     const isActive =
       filter.state !== undefined ? filter.state === "true" : undefined;

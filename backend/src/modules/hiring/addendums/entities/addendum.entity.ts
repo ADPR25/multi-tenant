@@ -4,7 +4,7 @@ import { Contract } from "../../contracts/entities/contract.entity";
 
 export enum AddendumType {
   AMENDMENT = "AMENDMENT",
-  EXTENSION = "EXTENSION", 
+  EXTENSION = "EXTENSION",
   ADDITION = "ADDITION",
 }
 
@@ -15,17 +15,28 @@ export class Addendum extends BaseTenantEntity {
   @Column({ name: "contract_id", type: "uuid" })
   contractId!: string;
 
-  @ManyToOne(() => Contract, { onDelete: "CASCADE" })
+  @ManyToOne(() => Contract, (c) => c.addendums, { onDelete: "CASCADE" })
   @JoinColumn({ name: "contract_id" })
   contract!: Contract;
 
-  @Column({ name: "type", type: "enum", enum: AddendumType, default: AddendumType.AMENDMENT })
+  @Column({
+    name: "type",
+    type: "enum",
+    enum: AddendumType,
+    default: AddendumType.AMENDMENT,
+  })
   type!: AddendumType;
 
   @Column({ name: "description", type: "text" })
   description!: string;
 
-  @Column({ name: "additional_amount", type: "decimal", precision: 18, scale: 2, nullable: true })
+  @Column({
+    name: "additional_amount",
+    type: "decimal",
+    precision: 18,
+    scale: 2,
+    nullable: true,
+  })
   additionalAmount!: string | null;
 
   @Column({ name: "additional_days", type: "int", nullable: true })

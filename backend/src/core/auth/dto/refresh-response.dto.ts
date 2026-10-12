@@ -11,6 +11,7 @@ export class LoginResponseDto extends RefreshResponseDto {
     companyId: string;
     roleId: string;
     roleCode: string;
+    name: string;
     isPrincipal: boolean;
   };
 }

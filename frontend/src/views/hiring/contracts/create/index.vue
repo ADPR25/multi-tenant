@@ -1,45 +1,34 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
-import { contractsService } from "@/services/logic/hiring/contracts.service";
+import {
+  contractsService,
+  type ContractPayload,
+  type Contract,
+} from "@/services/logic/hiring/contracts.service";
 import {
   thirdPartiesService,
   type ThirdParty,
+  type ThirdPartiesResponse,
 } from "@/services/logic/third-parties/third-parties.service";
+import { projectsService, type Project } from "@/services";
 import { Save, X } from "lucide-vue-next";
 
-defineOptions({
-  name: "ContractCreateForm",
-});
+defineOptions({ name: "ContractCreateForm" });
 
-interface ContractItem {
-  id?: string;
-  codigo?: string;
-  numeroContrato?: string;
-  numero_contrato?: string;
-  thirdPartyId?: string;
+type ContractFormItem = Partial<Contract> & {
+  contract_number?: string;
   third_party_id?: string;
-  supervisorId?: string;
-  supervisor_id?: string;
   objeto?: string;
   observacion?: string;
-  montoTotal?: string;
   monto_total?: string;
-  montoPrimerPago?: string;
-  vecesPagadas?: number;
-  fechaInicio?: string;
-  fechaCierre?: string;
-  proyectoNombre?: string;
-  proyecto_nombre?: string;
-  proyectoId?: string;
-  proyecto_id?: string;
-}
+};
 
-interface ThirdPartyListResponse {
-  data?: ThirdParty[];
-}
+type PaginatedProjects = {
+  data: Project[];
+};
 
 const props = defineProps<{
-  item?: ContractItem;
+  item?: ContractFormItem;
 }>();
 
 const emit = defineEmits<{
@@ -52,27 +41,26 @@ const formRef = ref<{ validate: () => Promise<{ valid: boolean }> } | null>(
 );
 const saving = ref(false);
 const terceros = ref<ThirdParty[]>([]);
+const projects = ref<Project[]>([]);
 
-const form = ref({
-  codigo: props.item?.codigo || "",
-  numeroContrato:
-    props.item?.numeroContrato || props.item?.numero_contrato || "",
+const form = ref<ContractPayload>({
+  code: props.item?.code || "",
+  contractNumber:
+    props.item?.contractNumber || props.item?.contract_number || null,
   thirdPartyId: props.item?.thirdPartyId || props.item?.third_party_id || "",
-  supervisorId: props.item?.supervisorId || props.item?.supervisor_id || "",
-  objeto: props.item?.objeto || "",
-  observacion: props.item?.observacion || "",
-  montoTotal: props.item?.montoTotal || props.item?.monto_total || "",
-  montoPrimerPago: props.item?.montoPrimerPago || "",
-  vecesPagadas: props.item?.vecesPagadas || 1,
-  fechaInicio: props.item?.fechaInicio
-    ? props.item.fechaInicio.substring(0, 10)
+  supervisorId: props.item?.supervisorId || null,
+  purpose: props.item?.purpose || props.item?.objeto || "",
+  observation: props.item?.observation || props.item?.observacion || null,
+  totalAmount: props.item?.totalAmount || props.item?.monto_total || "",
+  firstPaymentAmount: props.item?.firstPaymentAmount || null,
+  timesPaid: props.item?.timesPaid ?? 1,
+  startDate: props.item?.startDate
+    ? String(props.item.startDate).substring(0, 10)
     : "",
-  fechaCierre: props.item?.fechaCierre
-    ? props.item.fechaCierre.substring(0, 10)
-    : "",
-  proyectoNombre:
-    props.item?.proyectoNombre || props.item?.proyecto_nombre || "",
-  proyectoId: props.item?.proyectoId || props.item?.proyecto_id || "",
+  endDate: props.item?.endDate
+    ? String(props.item.endDate).substring(0, 10)
+    : null,
+  projectId: props.item?.projectId || null,
 });
 
 async function submit(): Promise<void> {
@@ -81,16 +69,22 @@ async function submit(): Promise<void> {
   if (!valid) return;
   saving.value = true;
   try {
+    const payload: ContractPayload = {
+      ...form.value,
+      contractNumber: form.value.contractNumber || null,
+      firstPaymentAmount: form.value.firstPaymentAmount || null,
+      endDate: form.value.endDate || null,
+      projectId: form.value.projectId || null,
+      totalAmount: String(form.value.totalAmount),
+    };
     if (props.item?.id) {
-      await contractsService.update(props.item.id, form.value);
+      await contractsService.update(props.item.id, payload);
     } else {
-      await contractsService.create(form.value);
+      await contractsService.create(payload);
     }
     emit("created");
   } catch (err: unknown) {
-    const message =
-      err instanceof Error ? err.message : "Error al guardar contrato";
-    alert(message);
+    alert(err instanceof Error ? err.message : "Error al guardar contrato");
   } finally {
     saving.value = false;
   }
@@ -98,28 +92,36 @@ async function submit(): Promise<void> {
 
 onMounted(async () => {
   try {
-    const res = await thirdPartiesService.list({
-      limit: "all",
-      state: true,
-    });
-    const list = res as ThirdPartyListResponse | ThirdParty[];
-    terceros.value = Array.isArray(list) ? list : list.data || [];
+    const res = await thirdPartiesService.listSelect();
+    const pRes = (await projectsService.list()) as
+      Project[] | PaginatedProjects;
+    projects.value = Array.isArray(pRes) ? pRes : pRes.data || [];
+
+    const data = res as ThirdParty[] | ThirdPartiesResponse;
+    terceros.value = Array.isArray(data) ? data : data.data || [];
   } catch {
-    terceros.value = [];
+    try {
+      const res = await thirdPartiesService.list({
+        limit: "all",
+        isActive: true,
+      });
+      const data = res as ThirdParty[] | ThirdPartiesResponse;
+      terceros.value = Array.isArray(data) ? data : data.data || [];
+    } catch {
+      terceros.value = [];
+    }
   }
 });
 </script>
 
 <template>
-  <div
-    class="rounded-2xl border bg-white p-6 dark:bg-white/5 dark:border-gray-800"
-  >
+  <div class="rounded-2xl border bg-white p-6 dark:bg-white/5">
     <v-form ref="formRef" @submit.prevent="submit">
       <v-row>
         <v-col cols="12" md="3"
           ><v-label>Código *</v-label
           ><v-text-field
-            v-model="form.codigo"
+            v-model="form.code"
             variant="outlined"
             density="comfortable"
             :rules="[(v: string) => !!v || 'Req']"
@@ -127,95 +129,73 @@ onMounted(async () => {
         <v-col cols="12" md="3"
           ><v-label>N° Contrato</v-label
           ><v-text-field
-            v-model="form.numeroContrato"
+            v-model="form.contractNumber"
             variant="outlined"
             density="comfortable"
         /></v-col>
-        <v-col cols="12" md="6"
-          ><v-label>Tercero *</v-label>
+        <v-col cols="12" md="6">
+          <v-label>Tercero *</v-label>
           <v-autocomplete
             v-model="form.thirdPartyId"
             :items="terceros"
-            item-title="razonSocial"
+            item-title="legalName"
             item-value="id"
             variant="outlined"
             density="comfortable"
             :rules="[(v: string) => !!v || 'Req']"
+            placeholder="Seleccione contratista"
           />
         </v-col>
         <v-col cols="12"
-          ><v-label>Objeto *</v-label
+          ><v-label>Objeto / Purpose *</v-label
           ><v-textarea
-            v-model="form.objeto"
+            v-model="form.purpose"
             variant="outlined"
-            density="comfortable"
-            rows="2"
+            rows="3"
             :rules="[(v: string) => !!v || 'Req']"
         /></v-col>
         <v-col cols="12"
           ><v-label>Observación</v-label
-          ><v-textarea
-            v-model="form.observacion"
-            variant="outlined"
-            density="comfortable"
-            rows="2"
+          ><v-textarea v-model="form.observation" variant="outlined" rows="2"
         /></v-col>
-        <v-col cols="12" md="3"
+        <v-col cols="12" md="4"
           ><v-label>Monto Total *</v-label
           ><v-text-field
-            v-model="form.montoTotal"
+            v-model="form.totalAmount"
             type="number"
             variant="outlined"
-            density="comfortable"
             :rules="[(v: string) => !!v || 'Req']"
         /></v-col>
-        <v-col cols="12" md="3"
+        <v-col cols="12" md="4"
           ><v-label>Primer Pago</v-label
           ><v-text-field
-            v-model="form.montoPrimerPago"
+            v-model="form.firstPaymentAmount"
             type="number"
             variant="outlined"
-            density="comfortable"
         /></v-col>
-        <v-col cols="12" md="2"
+        <v-col cols="12" md="4"
           ><v-label>Veces Pagadas</v-label
           ><v-text-field
-            v-model="form.vecesPagadas"
+            v-model="form.timesPaid"
             type="number"
             variant="outlined"
-            density="comfortable"
         /></v-col>
-        <v-col cols="12" md="2"
+        <v-col cols="12" md="6"
           ><v-label>Fecha Inicio *</v-label
-          ><v-text-field
-            v-model="form.fechaInicio"
-            type="date"
-            variant="outlined"
-            density="comfortable"
-            :rules="[(v: string) => !!v || 'Req']"
-        /></v-col>
-        <v-col cols="12" md="2"
-          ><v-label>Fecha Cierre</v-label
-          ><v-text-field
-            v-model="form.fechaCierre"
-            type="date"
-            variant="outlined"
-            density="comfortable"
+          ><v-date-input v-model="form.startDate" variant="outlined"
         /></v-col>
         <v-col cols="12" md="6"
-          ><v-label>Proyecto Nombre</v-label
-          ><v-text-field
-            v-model="form.proyectoNombre"
-            variant="outlined"
-            density="comfortable"
+          ><v-label>Fecha Fin</v-label
+          ><v-date-input v-model="form.endDate" variant="outlined"
         /></v-col>
-        <v-col cols="12" md="6"
-          ><v-label>Proyecto ID</v-label
-          ><v-text-field
-            v-model="form.proyectoId"
+        <v-col cols="12"
+          ><v-label>Proyecto</v-label
+          ><v-autocomplete
+            :items="projects"
+            item-value="id"
+            item-title="name"
+            v-model="form.projectId"
             variant="outlined"
-            density="comfortable"
-            placeholder="UUID opcional"
         /></v-col>
       </v-row>
       <div class="flex justify-end gap-2 mt-4">

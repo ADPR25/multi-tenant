@@ -44,11 +44,7 @@ export class CreateContractDto {
   @IsOptional()
   @IsDateString()
   endDate?: string;
-
-  @IsOptional()
-  @IsString()
-  projectName?: string;
-
+  
   @IsOptional()
   @IsUUID()
   projectId?: string;

@@ -129,7 +129,7 @@ export class AuthService {
     });
 
     await this.sessionRepo.save(session);
-
+    
     return {
       access_token,
       refresh_token: token,
@@ -138,6 +138,7 @@ export class AuthService {
         email: user.email,
         document_number: user.document_number,
         companyId: user.companyId,
+        name: `${user.first_name} ${user.last_name}`,
         roleId: user.roleId,
         roleCode: role.code,
         isPrincipal: role.isPrincipal,

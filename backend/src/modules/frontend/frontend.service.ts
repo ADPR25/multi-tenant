@@ -105,7 +105,7 @@ export class FrontendService {
           return routes.length
             ? routes.flatMap((r) => r.permissions ?? [])
             : (mod.permissions ?? []);
-        }).filter((n) => !!n), 
+        }).filter((n) => !!n),
       ),
     ];
     if (!allNames.length) return;
@@ -157,7 +157,12 @@ export class FrontendService {
     const allowedPaths = new Set(
       this.flattenSidebar(sidebar).map((s) => s.path),
     );
-    return this.filterSidebarByPaths(allowedPaths);
+    const filtered = this.filterSidebarByPaths(allowedPaths);
+    if (filtered.length === 1 && filtered[0].children?.length) {
+      return filtered[0].children;
+    }
+
+    return filtered;
   }
 
   async getRoutesForRole(

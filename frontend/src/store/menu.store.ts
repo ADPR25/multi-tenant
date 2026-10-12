@@ -5,6 +5,7 @@ interface MenuItem {
   id?: string;
   path?: string;
   name?: string;
+  title?: string;
   icon?: string;
   children?: MenuItem[];
   [key: string]: unknown;
@@ -25,6 +26,17 @@ export const useMenuStore = defineStore("menu", {
     loaded: false,
     loading: false,
   }),
+  getters: {
+    displaySidebar: (state): MenuItem[] => {
+      if (state.sidebar.length === 1 && state.sidebar[0].children?.length) {
+        return state.sidebar[0].children;
+      }
+      return state.sidebar;
+    },
+    isSingleModule: (state): boolean => {
+      return state.sidebar.length === 1 && !!state.sidebar[0].children?.length;
+    },
+  },
   actions: {
     async fetchAll() {
       if (this.loaded || this.loading) return;

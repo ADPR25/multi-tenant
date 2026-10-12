@@ -1,49 +1,28 @@
 import { api } from "@/services/api/api";
 
-type QueryValue = string | number | boolean | null | undefined;
-
-export interface RequirementPayload {
-  contractId?: string;
-  descripcion?: string;
-  esObligatorio?: boolean;
-  [key: string]: QueryValue;
-}
-
 export interface Requirement {
   id: string;
   contractId: string;
-  descripcion: string;
-  esObligatorio: boolean;
+  name: string;
+  isRequired: boolean;
+  isDelivered: boolean;
+  observation?: string | null;
 }
-
-export interface ObligationPayload {
-  contractId?: string;
-  descripcion?: string;
-  tipo?: string;
-  [key: string]: QueryValue;
-}
-
 export interface Obligation {
   id: string;
   contractId: string;
-  descripcion: string;
-  tipo: string;
+  description: string;
+  sortOrder: number;
+  isActive: boolean;
 }
-
-export interface AddendumPayload {
-  contractId?: string;
-  descripcion?: string;
-  montoAdicional?: string | null;
-  fechaAdicion?: string | null;
-  [key: string]: QueryValue;
-}
-
 export interface Addendum {
   id: string;
   contractId: string;
-  descripcion: string;
-  montoAdicional?: string | null;
-  fechaAdicion?: string | null;
+  type: "AMENDMENT" | "EXTENSION" | "ADDITION";
+  description: string;
+  additionalAmount?: string | null;
+  additionalDays?: number | null;
+  startDate?: string | null;
 }
 
 export const requirementsService = {
@@ -52,16 +31,20 @@ export const requirementsService = {
       `/hiring/requirements/contract/${contractId}`,
     );
   },
-  create(p: RequirementPayload) {
+  create(p: {
+    contractId: string;
+    name: string;
+    isRequired?: boolean;
+    observation?: string;
+  }) {
     return api.request<Requirement>("/hiring/requirements", {
       method: "POST",
       body: JSON.stringify(p),
     });
   },
-  update(id: string, p: Partial<RequirementPayload>) {
-    return api.request<Requirement>(`/hiring/requirements/${id}`, {
+  toggle(id: string) {
+    return api.request<Requirement>(`/hiring/requirements/${id}/toggle`, {
       method: "PATCH",
-      body: JSON.stringify(p),
     });
   },
   remove(id: string) {
@@ -70,20 +53,19 @@ export const requirementsService = {
     });
   },
 };
-
 export const obligationsService = {
   listByContract(contractId: string) {
     return api.request<Obligation[]>(
       `/hiring/obligations/contract/${contractId}`,
     );
   },
-  create(p: ObligationPayload) {
+  create(p: { contractId: string; description: string; sortOrder?: number }) {
     return api.request<Obligation>("/hiring/obligations", {
       method: "POST",
       body: JSON.stringify(p),
     });
   },
-  update(id: string, p: Partial<ObligationPayload>) {
+  update(id: string, p: { description?: string }) {
     return api.request<Obligation>(`/hiring/obligations/${id}`, {
       method: "PATCH",
       body: JSON.stringify(p),
@@ -93,12 +75,17 @@ export const obligationsService = {
     return api.request<void>(`/hiring/obligations/${id}`, { method: "DELETE" });
   },
 };
-
 export const addendumsService = {
   listByContract(contractId: string) {
     return api.request<Addendum[]>(`/hiring/addendums/contract/${contractId}`);
   },
-  create(p: AddendumPayload) {
+  create(p: {
+    contractId: string;
+    type: string;
+    description: string;
+    additionalAmount?: string;
+    additionalDays?: number;
+  }) {
     return api.request<Addendum>("/hiring/addendums", {
       method: "POST",
       body: JSON.stringify(p),

@@ -88,6 +88,8 @@ export class UsersService {
         email: true,
         password: true,
         document_number: true,
+        last_name: true,
+        first_name: true,
         companyId: true,
         roleId: true,
         isActive: true,

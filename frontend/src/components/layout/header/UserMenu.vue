@@ -30,7 +30,7 @@
         <span
           class="block font-medium text-gray-700 text-theme-sm dark:text-gray-400"
         >
-          {{ user.firstName }} {{ user.lastName }}
+          {{ user.name }}
         </span>
 
         <span
@@ -72,6 +72,7 @@ interface AuthUser {
   lastName?: string;
   email?: string;
   roleCode?: string;
+  name?: string;
 }
 
 const user = get.useAuth("user") as AuthUser;

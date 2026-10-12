@@ -1,11 +1,10 @@
 <script setup lang="ts">
-defineOptions({
-  name: "DriveOpcion1View",
-});
+defineOptions({ name: "DriveOpcion1View" });
 
 import { ref, onMounted, computed } from "vue";
 import { foldersService, documentsService } from "@/services";
 import { get } from "@/store/authstore";
+import { usePermissions } from "@/composables/usePermissions";
 import {
   Folder,
   Plus,
@@ -24,6 +23,9 @@ import {
   Users,
   HardDrive,
   TrashIcon,
+  Info,
+  CheckCircle2,
+  FileUp,
 } from "lucide-vue-next";
 
 interface FolderItem {
@@ -34,28 +36,33 @@ interface FolderItem {
   createdBy?: string;
   parentId?: string | null;
 }
-
 interface DocItem {
   id: string;
-  fileName: string;
+  fileName: string | null;
   title?: string;
+  description?: string | null;
+  content?: string | null;
   storageKey?: string | null;
-  mimeType?: string;
+  mimeType?: string | null;
   categoryId?: string;
   typeId?: string;
+  createdAt?: string;
+  category?: { name: string } | null;
+  type?: { name: string } | null;
+  folder?: { name: string } | null;
 }
-
 interface StoredUser {
   id?: string;
   sub?: string;
   _id?: string;
   userId?: string;
 }
-
 type Wrapped<T> = { data?: T[] } | T[];
 type AuthStore = {
   useAuth?: { user?: StoredUser } | ((k: string) => StoredUser);
 };
+
+const { can, permissions, load: loadPerms, isSuper } = usePermissions();
 
 const breadcrumb = ref<FolderItem[]>([]);
 const currentFolderId = ref<string | null>(null);
@@ -88,8 +95,8 @@ const storedUser = computed<StoredUser>(() => {
     if (useAuth && typeof useAuth === "object" && "user" in useAuth) {
       if (useAuth.user?.id) return useAuth.user;
     }
-  } catch {
-    // ignore
+  } catch (e) {
+    console.error(e);
   }
   const readLS = (key: string): StoredUser | null => {
     try {
@@ -112,16 +119,38 @@ const currentUserId = computed(
     storedUser.value.userId ??
     "",
 );
-
 const currentFolder = computed(
   () => breadcrumb.value[breadcrumb.value.length - 1] ?? null,
 );
 const isRoot = computed(() => !currentFolder.value);
+
+const isRevisor = computed(
+  () =>
+    isSuper.value ||
+    can("documents:drive:revisor") ||
+    permissions.value.includes("documents:drive:revisor"),
+);
+const isPersonalFolder = computed(() => !!currentFolder.value?.ownerFolderName);
 const isInsideMyPersonalFolder = computed(
   () =>
-    !!currentFolder.value?.ownerFolderName &&
+    isPersonalFolder.value &&
     currentFolder.value?.createdBy === currentUserId.value,
 );
+const canViewFiles = computed(
+  () =>
+    isInsideMyPersonalFolder.value ||
+    (isPersonalFolder.value && isRevisor.value),
+);
+
+const visibleFolders = computed(() => {
+  return folders.value.filter((f) => {
+    if (!f.ownerFolderName) return true;
+    if (f.createdBy === currentUserId.value) return true;
+    if (isRevisor.value) return true; 
+    return false;
+  });
+});
+
 const hasMyPersonalFolder = computed(() =>
   folders.value.some(
     (f) => f.createdBy === currentUserId.value && !!f.ownerFolderName,
@@ -130,17 +159,23 @@ const hasMyPersonalFolder = computed(() =>
 const hasStructuralChild = computed(() =>
   folders.value.some((f) => !f.ownerFolderName),
 );
+
+const requiredDocs = computed(() => docs.value.filter((d) => !d.storageKey));
+const uploadedDocs = computed(() => docs.value.filter((d) => !!d.storageKey));
+const bannerDoc = computed(() => requiredDocs.value[0] ?? null);
+const uploadTemplate = computed(
+  () => requiredDocs.value[0] ?? parentRequirement.value ?? null,
+);
+
 const canCreatePersonal = computed(() => {
   if (isRoot.value) return false;
   if (isInsideMyPersonalFolder.value) return false;
-  if (currentFolder.value?.ownerFolderName) return false;
+  if (isPersonalFolder.value) return false;
   if (hasMyPersonalFolder.value) return false;
   if (hasStructuralChild.value) return false;
   return !!currentFolder.value;
 });
 const canUploadHere = computed(() => isInsideMyPersonalFolder.value);
-const requiredDocs = computed(() => docs.value.filter((d) => !d.storageKey));
-const uploadedDocs = computed(() => docs.value.filter((d) => !!d.storageKey));
 
 function isPdf(doc: DocItem): boolean {
   return (
@@ -148,11 +183,9 @@ function isPdf(doc: DocItem): boolean {
     !!doc.fileName?.toLowerCase().endsWith(".pdf")
   );
 }
-
 function getFileUrl(storageKey: string): string {
   return documentsService.downloadUrl(storageKey, true);
 }
-
 async function openPreview(doc: DocItem): Promise<void> {
   previewDoc.value = doc;
   showPreview.value = true;
@@ -166,19 +199,18 @@ async function openPreview(doc: DocItem): Promise<void> {
     const blob = await res.blob();
     previewBlobUrl.value = URL.createObjectURL(blob);
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : "Error desconocido";
-    alert("No se pudo abrir PDF: " + msg);
+    alert(
+      "No se pudo abrir PDF: " + (e instanceof Error ? e.message : "Error"),
+    );
     showPreview.value = false;
   } finally {
     previewLoading.value = false;
   }
 }
-
 function openDelete(doc: DocItem): void {
   deleteDoc.value = doc;
   showDelete.value = true;
 }
-
 function closePreview(): void {
   showPreview.value = false;
   if (previewBlobUrl.value?.startsWith("blob:"))
@@ -203,19 +235,42 @@ async function load(id: string | null): Promise<void> {
     ]);
     folders.value = f ?? [];
     docs.value = d ?? [];
+
+    // BLOQUEO: si intentan entrar a personal ajena sin ser revisor
+    if (
+      currentFolder.value?.ownerFolderName &&
+      currentFolder.value?.createdBy !== currentUserId.value &&
+      !isRevisor.value
+    ) {
+      alert(
+        `Acceso denegado. Carpeta de ${currentFolder.value.ownerFolderName}`,
+      );
+      back();
+      return;
+    }
+
     const tpl = d.find((x) => !x.storageKey && x.categoryId && x.typeId);
     if (tpl) parentRequirement.value = tpl;
+    else if (!id) parentRequirement.value = null;
   } finally {
     loading.value = false;
   }
 }
-
 function enter(folder: FolderItem): void {
+  if (
+    folder.ownerFolderName &&
+    folder.createdBy !== currentUserId.value &&
+    !isRevisor.value
+  ) {
+    alert(
+      `Acceso denegado. Esta carpeta es de ${folder.ownerFolderName}. Solo un revisor puede entrar.`,
+    );
+    return;
+  }
   breadcrumb.value.push(folder);
   currentFolderId.value = folder.id;
   void load(folder.id);
 }
-
 function back(): void {
   breadcrumb.value.pop();
   currentFolderId.value = breadcrumb.value.length
@@ -224,14 +279,12 @@ function back(): void {
   if (!breadcrumb.value.length) parentRequirement.value = null;
   void load(currentFolderId.value);
 }
-
 function goRoot(): void {
   breadcrumb.value = [];
   currentFolderId.value = null;
   parentRequirement.value = null;
   void load(null);
 }
-
 function goTo(i: number): void {
   breadcrumb.value = breadcrumb.value.slice(0, i + 1);
   currentFolderId.value = breadcrumb.value[i].id;
@@ -244,34 +297,33 @@ const confirmDelete = async (): Promise<void> => {
     await documentsService.delete(deleteDoc.value.id);
     await load(currentFolderId.value);
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : "Error al eliminar";
-    alert(msg);
+    alert(e instanceof Error ? e.message : "Error al eliminar");
   } finally {
     showDelete.value = false;
     deleteDoc.value = null;
   }
 };
-
 async function createPersonal(): Promise<void> {
   if (!currentFolderId.value) return;
   try {
     await foldersService.createPersonal({ parentId: currentFolderId.value });
     await load(currentFolderId.value);
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : "Error al crear carpeta";
-    alert(msg);
+    alert(e instanceof Error ? e.message : "Error al crear carpeta");
   }
 }
-
 function triggerUpload(): void {
   fileInputRef.value?.click();
 }
-
 async function onFilePicked(e: Event): Promise<void> {
   const input = e.target as HTMLInputElement;
   const file = input.files?.[0];
   if (!file || !currentFolderId.value) return;
-  const template = requiredDocs.value[0] ?? parentRequirement.value;
+  if (!isInsideMyPersonalFolder.value) {
+    alert("Solo puedes subir dentro de tu carpeta personal");
+    return;
+  }
+  const template = uploadTemplate.value;
   if (!template?.categoryId || !template?.typeId) {
     alert("La carpeta padre no tiene configurada categoria y tipo");
     return;
@@ -291,15 +343,14 @@ async function onFilePicked(e: Event): Promise<void> {
     await documentsService.upload(fd);
     await load(currentFolderId.value);
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "Error al subir";
-    alert(msg);
+    alert(err instanceof Error ? err.message : "Error al subir");
   } finally {
     uploading.value = false;
     if (input) input.value = "";
   }
 }
-
-onMounted(() => {
+onMounted(async () => {
+  await loadPerms();
   void load(null);
 });
 </script>
@@ -316,31 +367,33 @@ onMounted(() => {
       />
 
       <div class="flex items-center justify-between mb-8">
-        <div class="flex items-center gap-2.5 text-">
+        <div class="flex items-center gap-2.5">
           <div
             class="flex items-center gap-2 font-semibold text-zinc-900 bg-white border border-zinc-200 px-3 py-1.5 rounded-full shadow-sm cursor-pointer"
             @click="goRoot"
           >
             <HardDrive class="h-4 w-4 text-zinc-700" /> Mi Drive
           </div>
-          <template v-for="(b, i) in breadcrumb" :key="b.id">
-            <span class="text-zinc-300">/</span>
-            <button
+          <template v-for="(b, i) in breadcrumb" :key="b.id"
+            ><span class="text-zinc-300">/</span
+            ><button
               class="px-2.5 py-1 rounded-full hover:bg-white hover:shadow-sm border border-transparent hover:border-zinc-200 transition-all text-zinc-500 hover:text-zinc-900 font-medium"
               @click="() => goTo(i)"
             >
               {{ b.name }}
-            </button>
-          </template>
+            </button></template
+          >
         </div>
         <div
           class="hidden md:flex items-center gap-2 text- font-medium tracking-widest text-zinc-400"
         >
           <span class="flex items-center gap-1"
             ><Shield class="h-3 w-3" /> ENCRIPTADO</span
+          ><span class="h-3 w-px bg-zinc-200" />
+          <span v-if="isRevisor" class="flex items-center gap-1 text-amber-600"
+            ><Eye class="h-3 w-3" /> MODO REVISOR</span
           >
-          <span class="h-3 w-px bg-zinc-200" />
-          <span class="flex items-center gap-1"
+          <span v-else class="flex items-center gap-1"
             ><Users class="h-3 w-3" /> EMPRESARIAL</span
           >
         </div>
@@ -373,33 +426,37 @@ onMounted(() => {
                 <span
                   v-if="isInsideMyPersonalFolder"
                   class="inline-flex items-center gap-1.5 text- font-semibold tracking-widest bg-[#101828] text-white px-3 py-1.5 rounded-full ring-1 ring-white/10"
-                >
-                  <span
+                  ><span
                     class="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"
                   />
-                  PRIVADO
-                </span>
+                  PRIVADO</span
+                >
+                <span
+                  v-else-if="isPersonalFolder && isRevisor"
+                  class="inline-flex items-center gap-1.5 text- font-semibold tracking-widest bg-amber-500 text-white px-3 py-1.5 rounded-full"
+                  ><Eye class="h-3 w-3" /> REVISANDO:
+                  {{ currentFolder?.ownerFolderName }}</span
+                >
                 <span
                   v-else-if="isRoot"
                   class="inline-flex items-center gap-1.5 text- font-semibold tracking-widest bg-indigo-600 text-white px-3 py-1.5 rounded-full"
+                  ><Sparkles class="h-3 w-3" /> WORKSPACE</span
                 >
-                  <Sparkles class="h-3 w-3" /> WORKSPACE
-                </span>
               </div>
               <p
                 class="mt-2.5 text-[13.5px] text-zinc-500 max-w- leading-relaxed"
               >
-                <span v-if="isRoot"
-                  >Gestión documental centralizada. Organiza, protege y audita
-                  la información de tu empresa.</span
-                >
+                <span v-if="isRoot">Gestión documental centralizada.</span>
                 <span v-else-if="isInsideMyPersonalFolder"
-                  >Carpeta personal protegida. Solo tú y RRHH pueden ver estos
-                  archivos. Todo queda registrado.</span
+                  >Carpeta personal protegida.</span
+                >
+                <span v-else-if="isPersonalFolder && isRevisor"
+                  >Viendo archivos de {{ currentFolder?.ownerFolderName }} como
+                  revisor.</span
                 >
                 <span v-else
-                  >Carpeta del sistema · {{ folders.length }} subcarpetas ·
-                  {{ uploadedDocs.length }} archivos</span
+                  >Carpeta del sistema · {{ visibleFolders.length }} subcarpetas
+                  · {{ uploadedDocs.length }} archivos</span
                 >
               </p>
             </div>
@@ -407,7 +464,7 @@ onMounted(() => {
           <div class="flex gap-2.5 shrink-0">
             <button
               v-if="canCreatePersonal"
-              class="h- px-6 rounded-full bg-zinc-900 text-white text-[13.5px] font-semibold flex items-center shadow-[0_4px_14px_rgba(0,0,0,0.2)] hover:bg-black transition"
+              class="h-11 px-6 rounded-full bg-zinc-900 text-white text-[13.5px] font-semibold flex items-center shadow-[0_4px_14px_rgba(0,0,0,0.2)] hover:bg-black transition"
               @click="() => void createPersonal()"
             >
               <Plus class="h-4 w-4 mr-2" /> Crear mi carpeta
@@ -415,11 +472,12 @@ onMounted(() => {
             <button
               v-if="canUploadHere"
               :disabled="uploading"
-              class="h- px-6 rounded-full bg-[#3c50e0] text-white text-[13.5px] font-semibold flex items-center shadow-[0_8px_20px_rgba(60,80,224,0.3)] hover:bg-[#3445c7] transition disabled:opacity-60"
+              class="h-11 px-6 rounded-full bg-[#3c50e0] text-white text-[13.5px] font-semibold flex items-center shadow-[0_8px_20px_rgba(60,80,224,0.3)] hover:bg-[#3445c7] transition disabled:opacity-60"
               @click="triggerUpload"
             >
-              <Upload class="h-4 w-4 mr-2" />
-              {{ uploading ? "Subiendo..." : "Subir documento" }}
+              <Upload class="h-4 w-4 mr-2" />{{
+                uploading ? "Subiendo..." : "Subir documento"
+              }}
             </button>
           </div>
         </div>
@@ -427,7 +485,7 @@ onMounted(() => {
 
       <div v-if="loading" class="py-24 flex flex-col items-center gap-3">
         <div
-          class="h-10 w-10 border- border-zinc-200 border-t-zinc-900 rounded-full animate-spin"
+          class="h-10 w-10 border-2 border-zinc-200 border-t-zinc-900 rounded-full animate-spin"
         />
         <p class="text- tracking-widest font-semibold text-zinc-400">
           CARGANDO VAULT
@@ -435,6 +493,74 @@ onMounted(() => {
       </div>
 
       <template v-else>
+        <div v-if="bannerDoc" class="mb-8">
+          <div
+            class="relative overflow-hidden rounded- p- bg-gradient-to-br from-amber-200 via-orange-200 to-amber-100 shadow-[0_12px_40px_-16px_rgba(245,158,11,0.35)]"
+          >
+            <div
+              class="rounded- bg-gradient-to-br from-white via-[#fffcf5] to-white"
+            >
+              <div class="p-6 sm:p-7 flex gap-4 sm:gap-5">
+                <div
+                  class="h-12 w-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/20 shrink-0"
+                >
+                  <FileText class="h-6 w-6 text-white" />
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex flex-wrap items-center gap-2 mb-2">
+                    <h3 class="font-bold text- text-zinc-900">
+                      {{ bannerDoc.title }}
+                    </h3>
+                    <span
+                      class="inline-flex items-center gap-1 text- font-bold tracking-widest px-2.5 py-1 rounded-full bg-amber-500 text-white"
+                      ><Info class="h-3 w-3" /> INSTRUCCIÓN</span
+                    >
+                    <span
+                      v-if="bannerDoc.category?.name || bannerDoc.type?.name"
+                      class="text- px-2.5 py-1 rounded-full bg-zinc-900 text-white font-medium"
+                      >{{ bannerDoc.category?.name }} •
+                      {{ bannerDoc.type?.name }}</span
+                    >
+                  </div>
+                  <p
+                    class="text-[13.5px] font-medium text-zinc-800 leading-relaxed"
+                  >
+                    {{
+                      bannerDoc.description ||
+                      "Sube aquí los documentos correspondientes"
+                    }}
+                  </p>
+                  <div
+                    v-if="bannerDoc.content"
+                    class="mt-4 rounded-xl bg-amber-50/80 border border-amber-200/60 p-4 flex gap-3"
+                  >
+                    <div
+                      class="h-8 w-8 rounded-full bg-white border border-amber-200 flex items-center justify-center shrink-0 mt-0.5"
+                    >
+                      <CheckCircle2 class="h-4 w-4 text-amber-600" />
+                    </div>
+                    <div>
+                      <p
+                        class="text- font-bold tracking-widest text-amber-700 mb-1"
+                      >
+                        QUÉ DEBES SUBIR
+                      </p>
+                      <p class="text- text-zinc-700 leading-relaxed">
+                        {{ bannerDoc.content }}
+                      </p>
+                    </div>
+                  </div>
+                  <div class="mt-4 flex items-center gap-2 text- text-zinc-500">
+                    <FileUp class="h-3.5 w-3.5" /> Formatos permitidos: PDF,
+                    JPG, PNG, DOCX, XLSX • Máx 20MB • Los archivos quedan
+                    auditados
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="mb-10">
           <div class="flex items-center justify-between mb-5">
             <h3
@@ -443,30 +569,34 @@ onMounted(() => {
               <Layers class="h-3.5 w-3.5" /> CARPETAS
             </h3>
             <span
-              v-if="folders.length"
+              v-if="visibleFolders.length"
               class="text- font-medium bg-white border px-2.5 py-1 rounded-full text-zinc-500"
-              >{{ folders.length }} carpetas</span
+              >{{ visibleFolders.length }} carpetas</span
             >
           </div>
           <div
             class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4"
           >
             <div
-              v-for="f in folders"
+              v-for="f in visibleFolders"
               :key="f.id"
-              class="group relative rounded- border border-zinc-200 bg-white p- hover:shadow-[0_12px_32px_-12px_rgba(0,0,0,0.18)] hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
+              class="group relative rounded- border border-zinc-200 bg-white p-0 hover:shadow-[0_12px_32px_-12px_rgba(0,0,0,0.18)] hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
               @click="() => enter(f)"
             >
               <div class="rounded- bg-white p-5 h-full">
                 <div class="flex justify-between items-start mb-6">
                   <div
-                    class="h- w- rounded- bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 flex items-center justify-center shadow-inner group-hover:scale-105 transition"
+                    class="h-11 w-11 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 flex items-center justify-center shadow-inner group-hover:scale-105 transition"
                   >
                     <Folder class="h-7 w-7 text-amber-500 fill-amber-200/60" />
                   </div>
                   <div class="flex items-center gap-1.5">
                     <Lock
-                      v-if="f.ownerFolderName && f.createdBy !== currentUserId"
+                      v-if="
+                        f.ownerFolderName &&
+                        f.createdBy !== currentUserId &&
+                        !isRevisor
+                      "
                       class="h-3.5 w-3.5 text-zinc-300"
                     />
                     <div
@@ -474,6 +604,12 @@ onMounted(() => {
                       class="h-7 w-7 rounded-full bg-[#101828] text-white flex items-center justify-center shadow-sm"
                     >
                       <Shield class="h-3.5 w-3.5" />
+                    </div>
+                    <div
+                      v-if="isRevisor && f.ownerFolderName"
+                      class="h-7 w-7 rounded-full bg-amber-500 text-white flex items-center justify-center shadow-sm"
+                    >
+                      <Eye class="h-3.5 w-3.5" />
                     </div>
                   </div>
                 </div>
@@ -488,8 +624,7 @@ onMounted(() => {
                     class="inline-flex items-center gap-1"
                     ><span class="h-1 w-1 rounded-full bg-zinc-400" /> De:
                     {{ f.ownerFolderName }}</span
-                  >
-                  <span v-else>{{
+                  ><span v-else>{{
                     f.description || "Carpeta empresarial"
                   }}</span>
                 </p>
@@ -507,7 +642,18 @@ onMounted(() => {
               </div>
             </div>
             <div
-              v-if="!folders.length && isRoot"
+              v-if="!visibleFolders.length && !isRoot"
+              class="col-span-4 rounded- border border-dashed border-zinc-300 bg-zinc-50/50 p-6 flex flex-col items-center justify-center text-center min-h-"
+            >
+              <p class="text- font-medium text-zinc-600">
+                No hay carpetas visibles
+              </p>
+              <p class="text- text-zinc-400 mt-1">
+                Las carpetas personales de otros usuarios están ocultas
+              </p>
+            </div>
+            <div
+              v-if="!visibleFolders.length && isRoot"
               class="rounded- border border-dashed border-zinc-300 bg-zinc-50/50 p-6 flex flex-col items-center justify-center text-center min-h-"
             >
               <div
@@ -526,7 +672,7 @@ onMounted(() => {
         </div>
 
         <div
-          v-if="currentFolder?.ownerFolderName"
+          v-if="canViewFiles"
           class="rounded- border border-zinc-200 bg-white shadow-[0_8px_30px_-16px_rgba(0,0,0,0.15)] overflow-hidden"
         >
           <div
@@ -535,8 +681,17 @@ onMounted(() => {
             <h3
               class="text- font-bold tracking-[0.18em] text-zinc-500 flex items-center gap-2"
             >
-              <FileIcon class="h-4 w-4" /> ARCHIVOS EN
-              {{ (currentFolder?.name || "").toUpperCase() }}
+              <FileIcon class="h-4 w-4" />{{
+                currentFolder
+                  ? `ARCHIVOS EN ${currentFolder.name.toUpperCase()}`
+                  : "ARCHIVOS"
+              }}<span
+                v-if="
+                  isRevisor && isPersonalFolder && !isInsideMyPersonalFolder
+                "
+                class="ml-2 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200"
+                >MODO REVISOR</span
+              >
             </h3>
             <span
               v-if="uploadedDocs.length"
@@ -544,7 +699,6 @@ onMounted(() => {
               >{{ uploadedDocs.length }} archivos</span
             >
           </div>
-
           <div
             v-if="!uploadedDocs.length"
             class="px-6 py-16 flex flex-col items-center text-center"
@@ -555,19 +709,17 @@ onMounted(() => {
               <FileText class="h-9 w-9 text-zinc-300" />
             </div>
             <p class="font-semibold text-zinc-900">Vault vacío</p>
-            <p class="text- text-zinc-500 mt-1 max-w-">
-              Aún no has subido documentos a tu carpeta privada. Los archivos
-              aquí están cifrados y auditados.
+            <p class="text-[12.5px] text-zinc-500 mt-1 max-w-">
+              Aún no hay archivos en esta carpeta personal.
             </p>
             <button
               v-if="canUploadHere"
               class="mt-5 h-10 px-5 rounded-full bg-zinc-900 text-white text- font-medium"
               @click="triggerUpload"
             >
-              Subir primer documento
+              Subir documento
             </button>
           </div>
-
           <div v-else class="divide-y divide-zinc-100">
             <div
               v-for="doc in uploadedDocs"
@@ -575,7 +727,7 @@ onMounted(() => {
               class="group px-5 sm:px-7 py-4 flex items-center gap-4 hover:bg-zinc-50/70 transition"
             >
               <div
-                class="h-11 w-11 rounded- bg-[#eef2ff] border border-indigo-100 flex items-center justify-center shrink-0"
+                class="h-11 w-11 rounded-xl bg-[#eef2ff] border border-indigo-100 flex items-center justify-center shrink-0"
               >
                 <FileText class="h-5 w-5 text-[#3c50e0]" />
               </div>
@@ -589,8 +741,14 @@ onMounted(() => {
                     >{{
                       doc.mimeType?.split("/").pop()?.toUpperCase() || "DOC"
                     }}</span
+                  ><span class="text- text-zinc-400"
+                    >·
+                    {{
+                      doc.createdAt
+                        ? new Date(doc.createdAt).toLocaleDateString()
+                        : "Reciente"
+                    }}</span
                   >
-                  <span class="text- text-zinc-400">· Seguro</span>
                 </div>
               </div>
               <div
@@ -599,7 +757,6 @@ onMounted(() => {
                 <button
                   v-if="isPdf(doc)"
                   class="h-9 w-9 rounded-full bg-zinc-900 text-white flex items-center justify-center hover:bg-black shadow-sm"
-                  title="Vista previa"
                   @click="() => void openPreview(doc)"
                 >
                   <Eye class="h-4 w-4" />
@@ -609,10 +766,12 @@ onMounted(() => {
                   :href="getFileUrl(doc.storageKey)"
                   target="_blank"
                   class="h-9 w-9 rounded-full bg-white border border-zinc-200 flex items-center justify-center hover:border-zinc-900 hover:text-zinc-900 transition"
-                >
-                  <Download class="h-4 w-4" />
-                </a>
+                  ><Download class="h-4 w-4"
+                /></a>
                 <button
+                  v-if="
+                    can('documents:docs:delete') || isInsideMyPersonalFolder
+                  "
                   class="h-9 w-9 rounded-full bg-white border border-zinc-200 flex items-center justify-center hover:border-zinc-900 hover:text-zinc-900 transition"
                   @click="() => openDelete(doc)"
                 >
@@ -627,13 +786,13 @@ onMounted(() => {
   </div>
 
   <Teleport to="body">
-    <Transition name="fade">
-      <div
+    <Transition name="fade"
+      ><div
         v-if="showPreview"
         class="fixed inset-0 z-[99999] bg-[#0a0a0a]/80 backdrop-blur-xl flex flex-col"
       >
         <div
-          class="h- shrink-0 bg-white/95 backdrop-blur border-b flex items-center justify-between px-6"
+          class="h-14 shrink-0 bg-white/95 backdrop-blur border-b flex items-center justify-between px-6"
         >
           <div class="flex items-center gap-3 min-w-0">
             <div
@@ -669,39 +828,45 @@ onMounted(() => {
             :src="previewBlobUrl"
             class="w-full h-full max-w- bg-white rounded- shadow-[0_30px_90px_rgba(0,0,0,0.5)] border-0"
           />
-        </div>
-      </div>
-    </Transition>
+        </div></div
+    ></Transition>
   </Teleport>
 
-  <v-dialog v-model="showDelete" max-width="450" persistent>
-    <v-card class="rounded-2xl">
-      <v-card-title class="flex items-center gap-3 pt-6 px-6">
-        <div
-          class="h-10 w-10 rounded-full bg-red-50 border border-red-100 flex items-center justify-center"
-        >
-          <TrashIcon class="h-5 w-5 text-red-500" />
-        </div>
-        <h3 class="text-lg font-semibold text-zinc-900">Eliminar documento</h3>
-      </v-card-title>
-      <v-card-text class="px-6 pb-2 text-gray-600">
-        <p>Eliminar documento: {{ deleteDoc?.fileName }}</p>
-        <p class="mt-3 text-sm">¿Deseas continuar?</p>
-      </v-card-text>
-      <v-card-actions class="p-6 pt-4">
-        <v-btn
-          variant="text"
-          @click="((showDelete = false), (deleteDoc = null))"
-        >
-          Cancelar
-        </v-btn>
-        <v-spacer />
-        <v-btn color="error" variant="flat" @click="() => void confirmDelete()"
-          >Confirmar</v-btn
-        >
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+  <Teleport to="body">
+    <v-dialog v-model="showDelete" max-width="450" persistent
+      ><v-card class="rounded-2xl"
+        ><v-card-title class="flex items-center gap-3 pt-6 px-6"
+          ><div
+            class="h-10 w-10 rounded-full bg-red-50 border border-red-100 flex items-center justify-center"
+          >
+            <TrashIcon class="h-5 w-5 text-red-500" />
+          </div>
+          <h3 class="text-lg font-semibold text-zinc-900">
+            Eliminar documento
+          </h3></v-card-title
+        ><v-card-text class="px-6 pb-2 text-gray-600"
+          ><p>
+            Eliminar documento:
+            <span class="font-bold text-zinc-900">{{
+              deleteDoc?.fileName || deleteDoc?.title
+            }}</span>
+          </p>
+          <p class="mt-3 text-sm">¿Deseas continuar?</p></v-card-text
+        ><v-card-actions class="p-6 pt-4"
+          ><v-btn
+            variant="text"
+            @click="((showDelete = false), (deleteDoc = null))"
+            >Cancelar</v-btn
+          ><v-spacer /><v-btn
+            color="error"
+            variant="flat"
+            @click="() => void confirmDelete()"
+            >Confirmar</v-btn
+          ></v-card-actions
+        ></v-card
+      ></v-dialog
+    >
+  </Teleport>
 </template>
 
 <style scoped>

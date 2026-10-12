@@ -1,8 +1,17 @@
 import { BaseTenantEntity } from "@/infrastructure/database/base-tenant.entity";
-import { Column, Entity, Index, ManyToOne, JoinColumn } from "typeorm";
+import {
+  Column,
+  Entity,
+  Index,
+  ManyToOne,
+  JoinColumn,
+  OneToMany,
+} from "typeorm";
 import { ContractStatus } from "../enums/contract-status.enum";
 import { User } from "@/core/iam/users/entities/user.entity";
 import { ThirdParty } from "@/modules/third-parties/entities/third-party.entity";
+import { Project } from "@/modules/projects/projects/entities/project.entity";
+import { Addendum } from "../../addendums/entities/addendum.entity";
 
 @Entity("hiring_contracts")
 @Index(["companyId", "code"], { unique: true })
@@ -118,12 +127,16 @@ export class Contract extends BaseTenantEntity {
   @Column({ name: "signature_metadata", type: "jsonb", nullable: true })
   signatureMetadata!: Record<string, unknown> | null;
 
-  @Column({ name: "project_name", length: 200, nullable: true })
-  projectName!: string | null;
-
-  @Column({ name: "project_id", type: "uuid", nullable: true })
-  projectId!: string | null;
-
   @Column({ name: "is_active", default: true })
   isActive!: boolean;
+
+  @Column({ name: "project_id", type: "uuid", nullable: true })
+  projectId!: string;
+
+  @ManyToOne(() => Project, { onDelete: "RESTRICT" })
+  @JoinColumn({ name: "project_id" })
+  project?: Project;
+
+  @OneToMany(() => Addendum, (a) => a.contract)
+  addendums?: Addendum[];
 }

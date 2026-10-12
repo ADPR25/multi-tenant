@@ -3,42 +3,16 @@ import { ref } from "vue";
 import {
   thirdPartiesService,
   type ThirdPartyPayload,
+  type ThirdPartyType,
+  type ThirdPartyPersonType,
+  type ThirdParty,
 } from "@/services/logic/third-parties/third-parties.service";
 import { Save, X } from "lucide-vue-next";
 
-defineOptions({
-  name: "ThirdPartyCreateForm",
-});
-
-interface ThirdPartyItem {
-  id?: string;
-  nit?: string;
-  dv?: string;
-  razonSocial?: string;
-  razon_social?: string;
-  nombreComercial?: string;
-  nombre_comercial?: string;
-  tipo?: string;
-  tipoPersona?: string;
-  tipo_persona?: string;
-  email?: string;
-  telefono?: string;
-  ciudad?: string;
-  direccion?: string;
-  banco?: string;
-  tipoCuenta?: string;
-  tipo_cuenta?: string;
-  cuentaBancaria?: string;
-  cuenta_bancaria?: string;
-  actividadEconomica?: string;
-  actividad_economica?: string;
-  responsableIva?: boolean;
-  responsable_iva?: boolean;
-  notas?: string;
-}
+defineOptions({ name: "ThirdPartyCreateForm" });
 
 const props = defineProps<{
-  item?: ThirdPartyItem;
+  item?: ThirdParty;
 }>();
 
 const emit = defineEmits<{
@@ -52,32 +26,36 @@ const formRef = ref<{ validate: () => Promise<{ valid: boolean }> } | null>(
 const saving = ref(false);
 
 const form = ref<ThirdPartyPayload>({
-  nit: props.item?.nit || "",
-  dv: props.item?.dv || "",
-  razonSocial: props.item?.razonSocial || props.item?.razon_social || "",
-  nombreComercial:
-    props.item?.nombreComercial || props.item?.nombre_comercial || "",
-  tipo: (props.item?.tipo as ThirdPartyPayload["tipo"]) || "CONTRATISTA",
-  tipoPersona: (props.item?.tipoPersona ||
-    props.item?.tipo_persona ||
-    "JURIDICA"),
-  email: props.item?.email || "",
-  telefono: props.item?.telefono || "",
-  ciudad: props.item?.ciudad || "",
-  direccion: props.item?.direccion || "",
-  banco: props.item?.banco || "",
-  tipoCuenta: props.item?.tipoCuenta || props.item?.tipo_cuenta || "",
-  cuentaBancaria:
-    props.item?.cuentaBancaria || props.item?.cuenta_bancaria || "",
-  actividadEconomica:
-    props.item?.actividadEconomica || props.item?.actividad_economica || "",
-  responsableIva:
-    props.item?.responsableIva || props.item?.responsable_iva || false,
-  notas: props.item?.notas || "",
+  taxId: props.item?.taxId || "",
+  verificationDigit: props.item?.verificationDigit || null,
+  legalName: props.item?.legalName || "",
+  tradeName: props.item?.tradeName || null,
+  type: props.item?.type || "CONTRACTOR",
+  personType: props.item?.personType || "LEGAL_ENTITY",
+  email: props.item?.email || null,
+  phone: props.item?.phone || null,
+  city: props.item?.city || null,
+  address: props.item?.address || null,
+  bankName: props.item?.bankName || null,
+  bankAccountType: props.item?.bankAccountType || null,
+  bankAccountNumber: props.item?.bankAccountNumber || null,
+  economicActivity: props.item?.economicActivity || null,
+  isVatResponsible: props.item?.isVatResponsible || false,
+  notes: props.item?.notes || null,
 });
 
-const tipos = ["CLIENTE", "PROVEEDOR", "CONTRATISTA", "EMPLEADO", "AMBOS"];
-const tiposPersona = ["NATURAL", "JURIDICA"];
+const tipos: { title: string; value: ThirdPartyType }[] = [
+  { title: "CLIENTE", value: "CLIENT" },
+  { title: "PROVEEDOR", value: "SUPPLIER" },
+  { title: "CONTRATISTA", value: "CONTRACTOR" },
+  { title: "EMPLEADO", value: "EMPLOYEE" },
+  { title: "AMBOS", value: "BOTH" },
+];
+
+const tiposPersona: { title: string; value: ThirdPartyPersonType }[] = [
+  { title: "NATURAL", value: "INDIVIDUAL" },
+  { title: "JURIDICA", value: "LEGAL_ENTITY" },
+];
 
 async function submit(): Promise<void> {
   if (!formRef.value) return;
@@ -109,30 +87,30 @@ async function submit(): Promise<void> {
         <v-col cols="12" md="3"
           ><v-label>NIT *</v-label
           ><v-text-field
-            v-model="form.nit"
+            v-model="form.taxId"
             variant="outlined"
             density="comfortable"
-            :rules="[(v) => !!v || 'Req']"
+            :rules="[(v: string) => !!v || 'Req']"
         /></v-col>
         <v-col cols="12" md="1"
           ><v-label>DV</v-label
           ><v-text-field
-            v-model="form.dv"
+            v-model="form.verificationDigit"
             variant="outlined"
             density="comfortable"
         /></v-col>
         <v-col cols="12" md="5"
           ><v-label>Razón Social *</v-label
           ><v-text-field
-            v-model="form.razonSocial"
+            v-model="form.legalName"
             variant="outlined"
             density="comfortable"
-            :rules="[(v) => !!v || 'Req']"
+            :rules="[(v: string) => !!v || 'Req']"
         /></v-col>
         <v-col cols="12" md="3"
           ><v-label>Nombre Comercial</v-label
           ><v-text-field
-            v-model="form.nombreComercial"
+            v-model="form.tradeName"
             variant="outlined"
             density="comfortable"
         /></v-col>
@@ -140,17 +118,21 @@ async function submit(): Promise<void> {
         <v-col cols="12" md="3"
           ><v-label>Tipo *</v-label
           ><v-select
-            v-model="form.tipo"
+            v-model="form.type"
             :items="tipos"
+            item-title="title"
+            item-value="value"
             variant="outlined"
             density="comfortable"
-            :rules="[(v) => !!v || 'Req']"
+            :rules="[(v: string) => !!v || 'Req']"
         /></v-col>
         <v-col cols="12" md="3"
           ><v-label>Tipo Persona</v-label
           ><v-select
-            v-model="form.tipoPersona"
+            v-model="form.personType"
             :items="tiposPersona"
+            item-title="title"
+            item-value="value"
             variant="outlined"
             density="comfortable"
         /></v-col>
@@ -164,7 +146,7 @@ async function submit(): Promise<void> {
         <v-col cols="12" md="3"
           ><v-label>Teléfono</v-label
           ><v-text-field
-            v-model="form.telefono"
+            v-model="form.phone"
             variant="outlined"
             density="comfortable"
         /></v-col>
@@ -172,21 +154,21 @@ async function submit(): Promise<void> {
         <v-col cols="12" md="3"
           ><v-label>Ciudad</v-label
           ><v-text-field
-            v-model="form.ciudad"
+            v-model="form.city"
             variant="outlined"
             density="comfortable"
         /></v-col>
         <v-col cols="12" md="5"
           ><v-label>Dirección</v-label
           ><v-text-field
-            v-model="form.direccion"
+            v-model="form.address"
             variant="outlined"
             density="comfortable"
         /></v-col>
         <v-col cols="12" md="4"
           ><v-label>Actividad Económica</v-label
           ><v-text-field
-            v-model="form.actividadEconomica"
+            v-model="form.economicActivity"
             variant="outlined"
             density="comfortable"
         /></v-col>
@@ -194,28 +176,28 @@ async function submit(): Promise<void> {
         <v-col cols="12" md="3"
           ><v-label>Banco</v-label
           ><v-text-field
-            v-model="form.banco"
+            v-model="form.bankName"
             variant="outlined"
             density="comfortable"
         /></v-col>
         <v-col cols="12" md="3"
           ><v-label>Tipo Cuenta</v-label
           ><v-select
-            v-model="form.tipoCuenta"
-            :items="['AHORROS', 'CORRIENTE']"
+            v-model="form.bankAccountType"
+            :items="['SAVINGS', 'CHECKING']"
             variant="outlined"
             density="comfortable"
         /></v-col>
         <v-col cols="12" md="3"
           ><v-label>Cuenta Bancaria</v-label
           ><v-text-field
-            v-model="form.cuentaBancaria"
+            v-model="form.bankAccountNumber"
             variant="outlined"
             density="comfortable"
         /></v-col>
         <v-col cols="12" md="3" class="flex items-center gap-2 pt-8"
           ><v-checkbox
-            v-model="form.responsableIva"
+            v-model="form.isVatResponsible"
             label="Responsable IVA"
             density="compact"
         /></v-col>
@@ -223,7 +205,7 @@ async function submit(): Promise<void> {
         <v-col cols="12"
           ><v-label>Notas</v-label
           ><v-textarea
-            v-model="form.notas"
+            v-model="form.notes"
             variant="outlined"
             density="comfortable"
             rows="2"

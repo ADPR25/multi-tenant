@@ -47,7 +47,6 @@ export class DocsController {
   }
 
   @Post("upload")
-  @RequirePermissions("documents:docs:create")
   @UseInterceptors(
     FileInterceptor("file", {
       storage: memoryStorage(),
@@ -74,7 +73,6 @@ export class DocsController {
   }
 
   @Get()
-  @RequirePermissions("documents:docs:read")
   findAll(
     @CurrentCompanyId() companyId: string,
     @Query() pagination: DocsFilterDto,
@@ -123,7 +121,6 @@ export class DocsController {
   }
 
   @Delete(":id")
-  @RequirePermissions("documents:docs:delete")
   remove(
     @Param("id") id: string,
     @CurrentCompanyId() companyId: string,

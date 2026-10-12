@@ -41,6 +41,9 @@ const dialogActive = ref(false);
 const toggling = ref(false);
 const itemToToggle = ref<ProjectItem | null>(null);
 const isSelectedActive = computed(() => !!itemToToggle.value?.isActive);
+const showDelete = ref(false);
+const itemToDelete = ref<ProjectItem | null>(null);
+const deleting = ref(false);
 
 const headers = [
   { title: "Código", key: "code" },
@@ -55,11 +58,11 @@ function openCreate(): void {
   mode.value = "create";
 }
 const openEdit = async (item: ProjectItem) => {
-  const itemEdit = await projectsService.getById(item.id)
+  const itemEdit = await projectsService.getById(item.id);
   selected.value = itemEdit;
   selectedId.value = itemEdit.id;
   mode.value = "edit";
-}
+};
 function closeList(): void {
   mode.value = "list";
   selected.value = null;
@@ -71,7 +74,7 @@ function confirmToggle(item: ProjectItem): void {
   dialogActive.value = true;
 }
 function handleCreated(p: CreatedProject | Project): void {
-  selectedId.value = p?.id || null;
+  selectedId.value = (p)?.id || null;
   mode.value = "edit";
   tableRef.value?.reload();
   if (!selectedId.value) closeList();
@@ -84,25 +87,29 @@ async function toggle(): Promise<void> {
     dialogActive.value = false;
     itemToToggle.value = null;
     tableRef.value?.reload();
-  } catch (err: unknown) {
-    const message =
-      err instanceof Error ? err.message : "Error al cambiar estado";
-    alert(message);
   } finally {
     toggling.value = false;
   }
 }
-async function remove(item: ProjectItem): Promise<void> {
-  if (!confirm(`Eliminar proyecto ${item.code}?`)) return;
+
+function confirmDelete(item: ProjectItem): void {
+  itemToDelete.value = item;
+  showDelete.value = true;
+}
+async function removeProject(): Promise<void> {
+  if (!itemToDelete.value) return;
+  deleting.value = true;
   try {
-    await projectsService.remove(item.id);
+    await projectsService.remove(itemToDelete.value.id);
+    showDelete.value = false;
+    itemToDelete.value = null;
     tableRef.value?.reload();
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Error al eliminar";
-    alert(message);
+  } finally {
+    deleting.value = false;
   }
 }
 </script>
+
 <template>
   <AdminLayout>
     <div v-if="mode === 'list'">
@@ -168,7 +175,7 @@ async function remove(item: ProjectItem): Promise<void> {
               size="x-small"
               variant="text"
               color="error"
-              @click="remove(item)"
+              @click="confirmDelete(item)"
               ><Trash2 class="h-4 w-4"
             /></v-btn>
           </div>
@@ -198,23 +205,89 @@ async function remove(item: ProjectItem): Promise<void> {
       />
     </div>
 
-    <v-dialog v-model="dialogActive" max-width="420">
-      <v-card
-        ><v-card-title>Cambiar estado</v-card-title
-        ><v-card-text
-          >¿{{
-            isSelectedActive ? "Desactivar" : "Activar"
-          }}
-          proyecto?</v-card-text
-        >
-        <v-card-actions
-          ><v-spacer /><v-btn variant="text" @click="dialogActive = false"
-            >Cancelar</v-btn
-          ><v-btn color="primary" :loading="toggling" @click="toggle"
-            >Confirmar</v-btn
-          ></v-card-actions
-        >
-      </v-card>
-    </v-dialog>
+    <!-- Dialog Activar / Desactivar -->
+    <Teleport to="body">
+      <v-dialog v-model="dialogActive" max-width="420" persistent>
+        <v-card class="rounded-xl">
+          <v-card-text class="text-center pt-8 pb-4">
+            <div
+              :class="
+                isSelectedActive
+                  ? 'bg-orange-100 dark:bg-orange-900/30'
+                  : 'bg-green-100 dark:bg-green-900/30'
+              "
+              class="mx-auto w-14 h-14 rounded-full flex items-center justify-center mb-4"
+            >
+              <Power
+                :class="isSelectedActive ? 'text-orange-600' : 'text-green-600'"
+                class="h-7 w-7"
+              />
+            </div>
+            <h3 class="text-lg font-semibold mb-2">
+              {{
+                isSelectedActive
+                  ? "¿Desactivar proyecto?"
+                  : "¿Activar proyecto?"
+              }}
+            </h3>
+            <p class="text-sm text-gray-500">
+              El proyecto
+              <span class="font-bold">{{ itemToToggle?.code }}</span> -
+              {{ itemToToggle?.name }} pasará a
+              <span class="font-bold">{{
+                isSelectedActive ? "inactivo" : "activo"
+              }}</span
+              >.
+            </p>
+          </v-card-text>
+          <v-card-actions class="px-6 pb-6"
+            ><v-spacer />
+            <v-btn variant="text" @click="dialogActive = false">Cancelar</v-btn>
+            <v-btn
+              :color="isSelectedActive ? 'warning' : 'success'"
+              variant="flat"
+              :loading="toggling"
+              @click="toggle"
+              >{{ isSelectedActive ? "Desactivar" : "Activar" }}</v-btn
+            >
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+    </Teleport>
+
+    <Teleport to="body">
+      <v-dialog v-model="showDelete" max-width="420" persistent>
+        <v-card class="rounded-xl">
+          <v-card-text class="text-center pt-8 pb-4">
+            <div
+              class="mx-auto bg-red-100 dark:bg-red-900/30 w-14 h-14 rounded-full flex items-center justify-center mb-4"
+            >
+              <Trash2 class="h-7 w-7 text-red-600" />
+            </div>
+            <h3 class="text-lg font-semibold mb-2">¿Eliminar proyecto?</h3>
+            <p class="text-sm text-gray-500">
+              Esta acción no se puede deshacer. Se eliminará permanentemente
+            </p>
+            <p class="text-sm font-bold text-red-600 mt-3">
+              "{{ itemToDelete?.name }}"
+            </p>
+            <p v-if="itemToDelete?.code" class="text-xs text-gray-400 mt-1">
+              {{ itemToDelete.code }}
+            </p>
+          </v-card-text>
+          <v-card-actions class="px-6 pb-6"
+            ><v-spacer />
+            <v-btn variant="text" @click="showDelete = false">Cancelar</v-btn>
+            <v-btn
+              color="error"
+              variant="flat"
+              :loading="deleting"
+              @click="removeProject"
+              >Eliminar</v-btn
+            >
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+    </Teleport>
   </AdminLayout>
 </template>
