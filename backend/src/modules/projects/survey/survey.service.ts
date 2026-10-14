@@ -56,19 +56,6 @@ export class SurveyService {
     private readonly repoResponse: Repository<SurveyResponse>,
   ) {}
 
-  private logFull(title: string, data: unknown) {
-    console.log(`\n========== ${title} ==========`);
-    console.log(
-      util.inspect(data, {
-        depth: null,
-        colors: true,
-        maxArrayLength: null,
-        maxStringLength: null,
-      }),
-    );
-    console.log(`========== END ${title} ==========\n`);
-  }
-
   private isActiveByDate(
     endDate: Survey["endDate"] | string | null | undefined,
   ): boolean {
@@ -394,6 +381,7 @@ export class SurveyService {
       rawResponse: unknown,
     ): string => {
       if (rawResponse === null || rawResponse === undefined) return "";
+
       if (col.isMatrix) {
         const rowKey = col.matrixRow;
         if (!rowKey) return "";
@@ -402,13 +390,26 @@ export class SurveyService {
         const cellValue = rawResponse[rowKey];
         if (cellValue === null || cellValue === undefined || cellValue === "")
           return "";
-
         if (Array.isArray(cellValue)) {
           return cellValue
             .map(
               (v) =>
                 findOptionText(col.options, col.columns, v) ?? toSafeString(v),
             )
+            .filter(Boolean)
+            .join(", ");
+        }
+
+        if (isRecord(cellValue)) {
+          const orderedValues =
+            col.columns && col.columns.length > 0
+              ? col.columns
+                  .map((c) => cellValue[c])
+                  .filter((v) => v != null && v !== "")
+              : Object.values(cellValue).filter((v) => v != null && v !== "");
+
+          return orderedValues
+            .map((v) => toSafeString(v))
             .filter(Boolean)
             .join(", ");
         }
@@ -430,9 +431,7 @@ export class SurveyService {
           .filter(Boolean)
           .join(", ");
       }
-      if (isRecord(rawResponse)) {
-        return toSafeString(rawResponse);
-      }
+      if (isRecord(rawResponse)) return toSafeString(rawResponse);
       if (!field?.options && !field?.columns) return toSafeString(rawResponse);
       return (
         findOptionText(field?.options, field?.columns, rawResponse) ??
