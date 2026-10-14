@@ -56,4 +56,20 @@ export const api = {
 
     return data as T;
   },
+
+  async requestBlob(path: string, options: RequestInit = {}): Promise<Blob> {
+    const backend_api =
+      (get.useAuth("backend_api") as string | null) ||
+      import.meta.env.VITE_BACKEND_API_URL;
+    const token = get.useAuth("token") as string | null;
+
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${String(token)}`;
+    const res = await fetch(`${backend_api as string}${path}`, {
+      ...options,
+      headers: { ...headers, ...(options.headers as Record<string, string>) },
+    });
+    if (!res.ok) throw new Error(`Error ${res.status} al descargar archivo`);
+    return await res.blob();
+  },
 };

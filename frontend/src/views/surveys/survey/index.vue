@@ -3,7 +3,6 @@ import { ref } from "vue";
 import AdminLayout from "@/components/layout/AdminLayout.vue";
 import AppDataTable from "@/components/common/AppDataTable.vue";
 import CreateView from "./create/index.vue";
-import DashboardView from "./graphics/index.vue";
 import { surveysService, type Survey } from "@/services";
 import { usePermissions } from "@/composables/usePermissions";
 import {
@@ -17,14 +16,14 @@ import {
   ExternalLink,
   Link2,
   Check,
-  ChartBar,
+  Printer,
 } from "lucide-vue-next";
 
 defineOptions({ name: "SurveyIndexView" });
 
 const { can } = usePermissions();
 
-const mode = ref<"list" | "create" | "edit" | "dashboard">("list");
+const mode = ref<"list" | "create" | "edit">("list");
 const selected = ref<Survey | null>(null);
 const tableRef = ref<{ reload: () => void } | null>(null);
 const showLinkModal = ref(false);
@@ -44,6 +43,22 @@ function openCreate() {
   mode.value = "create";
 }
 
+async function print(item: Survey) {
+  try {
+    const blob = await surveysService.print(item.id);
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `encuesta-${item.title ?? item.id}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error(e);
+  }
+}
+
 async function openEdit(item: Survey) {
   try {
     const data = await surveysService.getById(item.id);
@@ -52,11 +67,6 @@ async function openEdit(item: Survey) {
   } catch (e) {
     console.error(e);
   }
-}
-
-function openDashboard(item: Survey) {
-  selected.value = item;
-  mode.value = "dashboard";
 }
 
 function closeList() {
@@ -131,10 +141,10 @@ function openInNewTab() {
               icon
               size="x-small"
               variant="text"
-              color="primary"
-              @click="openDashboard(item)"
+              color="warning"
+              @click="print(item)"
             >
-              <ChartBar class="h-4 w-4" />
+              <Printer class="h-4 w-4" />
             </v-btn>
             <v-btn
               icon
@@ -169,30 +179,17 @@ function openInNewTab() {
     <div v-else>
       <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-bold">
-          <template v-if="mode === 'dashboard'"
-            >Dashboard - {{ selected?.title }}</template
-          >
-          <template v-else
-            >{{ mode === "edit" ? "Editar" : "Crear" }} Encuesta</template
-          >
+          {{ mode === "edit" ? "Editar" : "Crear" }} Encuesta
         </h1>
         <v-btn variant="text" icon @click="closeList"
           ><X class="h-5 w-5"
         /></v-btn>
       </div>
 
-      <!-- Vista de Dashboard -->
-      <DashboardView
-        v-if="mode === 'dashboard'"
-        :survey-id="selected?.id"
-        @close="closeList"
-      />
-
-      <!-- Vista de Crear/Editar -->
       <CreateView
-        v-else
         :key="selected?.id || 'create'"
         :item="selected"
+        :mode="mode"
         @close="closeList"
         @created="closeList"
       />

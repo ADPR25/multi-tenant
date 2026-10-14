@@ -4,24 +4,57 @@ defineOptions({ name: "SurveyResponseIndexView" });
 import { surveysService } from "@/services";
 import { useRoute } from "vue-router";
 import { onMounted, ref } from "vue";
+import { get } from "@/store/authstore";
 
 const route = useRoute();
 const mount = ref<HTMLDivElement | null>(null);
 const loading = ref(true);
 const IdSurvey = ref("");
 
-interface AuraSurveyInstance {
-  on: (event: string, cb: (data: Record<string, unknown>) => void) => void;
-  destroy?: () => void;
+const pendingFiles = ref<Map<string, File>>(new Map());
+
+interface CanvasFormValueChanged {
+  name: string;
+  value: unknown;
+  data: Record<string, unknown>;
 }
 
-interface AuraSurveyConstructor {
-  new (el: HTMLElement, schema: Record<string, unknown>): AuraSurveyInstance;
+interface CanvasFormInstance {
+  on: (
+    event:
+      "valueChanged" | "complete" | "fileUploaded" | "pageChanged" | "restart",
+    cb: (data: Record<string, unknown>) => void,
+  ) => void;
+  destroy?: () => void;
+}
+interface CanvasFormConstructor {
+  new (el: HTMLElement, schema: Record<string, unknown>): CanvasFormInstance;
+}
+
+interface UploadResult {
+  url: string;
+  storageKey: string;
+  filename: string;
+  subFolder?: string;
+}
+
+interface CanvasFormConfig {
+  UPLOAD_URL: string;
+  TOKEN: string;
+  MAX_FILE_MB: number;
+  uploadHandler: (
+    file: File | Blob,
+    fieldName?: string,
+    type?: string,
+  ) => Promise<UploadResult>;
 }
 
 declare global {
   interface Window {
-    AuraSurvey: AuraSurveyConstructor;
+    CanvasForm: CanvasFormConstructor;
+    CanvasFormSurvey: CanvasFormConstructor;
+    CanvasFormResponse: CanvasFormConstructor;
+    CANVASFORM_CONFIG: CanvasFormConfig;
   }
 }
 
@@ -39,7 +72,9 @@ const loadScript = (src: string): Promise<void> => {
       return;
     }
     if (existing) {
-      existing.addEventListener("load", () => resolve());
+      existing.addEventListener("load", () => {
+        resolve();
+      });
       return;
     }
     const script = document.createElement("script");
@@ -48,41 +83,148 @@ const loadScript = (src: string): Promise<void> => {
       script.dataset.loaded = "true";
       resolve();
     };
-    script.onerror = () => reject(new Error(`Not found ${src}`));
+    script.onerror = () => {
+      reject(new Error(`Not found ${src}`));
+    };
     document.body.appendChild(script);
   });
 };
 
-const loadAura = async (schema: Record<string, unknown>) => {
-  if (!document.querySelector('link[data-aura="survey"]')) {
-    const l2 = document.createElement("link");
-    l2.rel = "stylesheet";
-    l2.href = "/aura-survey/css/aura-survey.css";
-    l2.dataset.aura = "survey";
-    document.head.appendChild(l2);
+const loadCanvasForm = async (
+  schema: Record<string, unknown>,
+): Promise<void> => {
+  if (!document.querySelector('link[data-canvasform="survey"]')) {
+    const l = document.createElement("link");
+    l.rel = "stylesheet";
+    l.href = "/canvasform/css/canvasform.css";
+    l.dataset.canvasform = "survey";
+    document.head.appendChild(l);
   }
-  await loadScript("/aura-survey/js/aura-survey.js");
+
+  const backend_api =
+    (get.useAuth("backend_api") as string) ||
+    import.meta.env.VITE_BACKEND_API_URL;
+
+  window.CANVASFORM_CONFIG = {
+    UPLOAD_URL: `${backend_api}/uploads/survey/${IdSurvey.value}`,
+    TOKEN: "",
+    MAX_FILE_MB: 5,
+    uploadHandler: (
+      file: File | Blob,
+      fieldName?: string,
+    ): Promise<UploadResult> => {
+      const name = fieldName || `file_${Date.now()}`;
+      const f =
+        file instanceof File
+          ? file
+          : new File([file], `${name}-${Date.now()}.jpg`, {
+              type: "image/jpeg",
+            });
+
+      pendingFiles.value.set(name, f);
+      const previewUrl = URL.createObjectURL(f);
+
+      return Promise.resolve({
+        url: previewUrl,
+        storageKey: `pending:${name}`,
+        filename: f.name,
+        subFolder: "pending",
+      });
+    },
+  };
+
+  await loadScript("/canvasform/js/canvasform.js");
+
   if (!mount.value) return;
   mount.value.innerHTML = "";
 
-  const instance = new window.AuraSurvey(mount.value, schema);
-  instance.on("complete", (result) => {
-    const payload = {
-      surveyId: IdSurvey.value,
-      response: { ...result },
-    };
-    void surveysService.createResponse(payload);
+  const CanvasFormClass =
+    window.CanvasFormSurvey || window.CanvasForm || window.CanvasFormResponse;
+  if (!CanvasFormClass) {
+    console.error("CanvasForm no encontrado");
+    return;
+  }
+
+  const instance = new CanvasFormClass(mount.value, schema);
+
+  instance.on("valueChanged", (data: Record<string, unknown>) => {
+    const ev = data as unknown as CanvasFormValueChanged;
+    if (
+      ev.value === "" ||
+      ev.value == null ||
+      (Array.isArray(ev.value) && ev.value.length === 0)
+    ) {
+      if (pendingFiles.value.has(ev.name)) {
+        pendingFiles.value.delete(ev.name);
+      }
+    }
+  });
+
+  instance.on("complete", (result: Record<string, unknown>) => {
+    void (async (): Promise<void> => {
+      try {
+        loading.value = true;
+        const finalResponse: Record<string, unknown> = { ...result };
+
+        if (pendingFiles.value.size > 0) {
+          for (const [fieldName, file] of pendingFiles.value.entries()) {
+            const fd = new FormData();
+            fd.append("file", file);
+            fd.append("fieldName", fieldName);
+
+            const res = await fetch(
+              `${backend_api}/uploads/survey/${IdSurvey.value}`,
+              {
+                method: "POST",
+                body: fd,
+              },
+            );
+
+            if (!res.ok) {
+              throw new Error(`Error subiendo ${fieldName}`);
+            }
+
+            const json = (await res.json()) as {
+              url: string;
+              storageKey: string;
+              filename: string;
+              subFolder: string;
+            };
+
+            finalResponse[fieldName] = {
+              url: json.url,
+              storageKey: json.storageKey,
+              filename: json.filename,
+              subFolder: json.subFolder,
+              originalName: file.name,
+            };
+          }
+        }
+
+        const payload = {
+          surveyId: IdSurvey.value,
+          response: finalResponse,
+        };
+
+        await surveysService.createResponse(payload);
+        pendingFiles.value.clear();
+      } catch (e) {
+        console.error("Error enviando encuesta", e);
+      } finally {
+        loading.value = false;
+      }
+    })();
   });
 };
 
-const find = async () => {
+const find = async (): Promise<void> => {
   try {
     loading.value = true;
     const code = String(route.params.code);
     const data = (await surveysService.getByCode(code)) as SurveyResponse;
     IdSurvey.value = String(data.id);
-    const schema = data.survey ?? data;
-    await loadAura(schema);
+    const schema = (data.survey ?? data);
+    await loadCanvasForm(schema);
   } catch (e) {
     console.error(e);
   } finally {

@@ -70,8 +70,8 @@ export const surveysService = {
     return api.request<Survey>(`/projects/surveys/by-code/${code}`);
   },
 
-  getByChar(survey: string) {
-    return api.request<Survey>(`/projects/surveys/by-char/${survey}`);
+  print(id: string): Promise<Blob> {
+    return api.requestBlob(`/projects/surveys/${id}/print`);
   },
 
   create(payload: SurveyPayload) {

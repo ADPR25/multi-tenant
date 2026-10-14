@@ -9,6 +9,7 @@ import { Survey } from "./entities/survey.entity";
 import { CreateSurveyDto } from "./dto/create-survey.dto";
 import { UpdateSurveyDto } from "./dto/update-survey.dto";
 import { FilterDto } from "@/common/filters/filter.dto";
+import * as ExcelJS from "exceljs";
 import { SURVEY_VENCIDA_DEFAULT } from "./data/vencimiento";
 import {
   paginate,
@@ -17,57 +18,23 @@ import {
 import { CreateSurveyResponseDto } from "./dto/create-response.dto";
 import { SurveyResponse } from "./entities/survey-response.entity";
 
-type Choice = { text: string; value: string };
-type SurveyElement = {
-  name: string;
-  title: string;
-  type: string;
-  choices?: Choice[];
-};
-type SurveyPage = { elements: SurveyElement[] };
-type SurveySchema = { pages: SurveyPage[] };
-
 type SurveyWithVirtual = Survey & { isActive: boolean };
-
-type MetaInfo = {
-  title: string;
-  type: string;
-  choicesMap: Map<string, string>;
-};
-
-type CountBucket = {
-  __name: string;
-  type: string;
-  counts: Record<string, number>;
-};
-
-type ValueBucket = {
-  __name: string;
-  type: string;
-  values: unknown[];
-};
-
-type Bucket = CountBucket | ValueBucket;
-
-const CHOICE_TYPES = new Set<string>([
-  "radiogroup",
-  "checkbox",
-  "dropdown",
-  "ranking",
-]);
-
-const COUNTABLE_TYPES = new Set<string>([
-  ...CHOICE_TYPES,
-  "boolean",
-  "rating",
-  "scale",
-  "slider",
-]);
-
-function isCountBucket(b: Bucket): b is CountBucket {
-  return "counts" in b;
+interface SurveyChoice {
+  text: string;
+  value: string;
 }
-
+interface SurveyField {
+  id: string;
+  label: string;
+  options?: SurveyChoice[];
+}
+interface SurveyData {
+  title: string;
+  fields: SurveyField[];
+}
+interface SurveyResponseEntity {
+  response: Record<string, unknown> & { coordinates?: unknown };
+}
 @Injectable()
 export class SurveyService {
   constructor(
@@ -228,101 +195,6 @@ export class SurveyService {
     return survey;
   }
 
-  async findByChar(surveyId: string): Promise<Record<string, unknown>> {
-    const responses = await this.repoResponse.find({
-      where: { surveyId },
-      relations: { survey: true },
-    });
-
-    if (responses.length === 0) return {};
-
-    const firstSurvey = responses[0].survey;
-    const surveyDef = firstSurvey.survey as unknown as SurveySchema;
-
-    if (!surveyDef?.pages) return {};
-
-    const meta = new Map<string, MetaInfo>();
-
-    for (const page of surveyDef.pages) {
-      if (!page.elements) continue;
-      for (const el of page.elements) {
-        const choicesMap = new Map<string, string>();
-        if (el.choices) {
-          for (const c of el.choices) {
-            choicesMap.set(c.value, c.text);
-          }
-        }
-        meta.set(el.name, {
-          title: el.title,
-          type: el.type,
-          choicesMap,
-        });
-      }
-    }
-
-    const aggregated = new Map<string, Bucket>();
-
-    for (const [, m] of meta.entries()) {
-      if (COUNTABLE_TYPES.has(m.type)) {
-        const counts: Record<string, number> = {};
-
-        if (m.choicesMap.size > 0) {
-          for (const text of m.choicesMap.values()) {
-            counts[text] = 0;
-          }
-        } else if (m.type === "boolean") {
-          counts["Sí"] = 0;
-          counts["No"] = 0;
-        }
-
-        aggregated.set(m.title, {
-          __name: m.title,
-          type: m.type,
-          counts,
-        });
-      } else {
-        aggregated.set(m.title, {
-          __name: m.title,
-          type: m.type,
-          values: [],
-        });
-      }
-    }
-
-    for (const row of responses) {
-      const resp = row.response;
-      for (const [qName, qValue] of Object.entries(resp)) {
-        const m = meta.get(qName);
-        if (!m) continue;
-        const bucket = aggregated.get(m.title);
-        if (!bucket) continue;
-
-        if (isCountBucket(bucket)) {
-          const values = Array.isArray(qValue) ? qValue : [qValue];
-          for (const v of values) {
-            if (typeof v !== "string") continue;
-            const text = m.choicesMap.get(v) ?? v;
-            bucket.counts[text] = (bucket.counts[text] ?? 0) + 1;
-          }
-        } else {
-          bucket.values.push(qValue);
-        }
-      }
-    }
-
-    const result: Record<string, unknown> = {};
-    for (const [title, bucket] of aggregated.entries()) {
-      if (isCountBucket(bucket)) {
-        result[title] = bucket.counts;
-      } else {
-        result[title] =
-          bucket.values.length === 1 ? bucket.values[0] : bucket.values;
-      }
-    }
-
-    return result;
-  }
-
   async update(
     id: string,
     dto: UpdateSurveyDto,
@@ -361,5 +233,151 @@ export class SurveyService {
       throw new NotFoundException(`Survey with id ${id} not found`);
     }
     return this.repo.softRemove(survey);
+  }
+
+  async printExcel(id: string, companyId: string): Promise<Buffer> {
+    const schema = await this.findOne(id, companyId);
+    const responses = (await this.repoResponse.find({
+      where: { surveyId: id },
+    })) as SurveyResponseEntity[];
+
+    const surveyData = schema.survey as unknown as SurveyData;
+    const fields: SurveyField[] = surveyData.fields ?? [];
+    const fieldMap = new Map<string, SurveyField>(fields.map((f) => [f.id, f]));
+
+    const resolveValue = (fieldId: string, rawValue: unknown): string => {
+      if (rawValue === null || rawValue === undefined) return "";
+      const field = fieldMap.get(fieldId);
+
+      if (!field?.options) {
+        if (typeof rawValue === "string") return rawValue;
+        if (typeof rawValue === "number" || typeof rawValue === "boolean") {
+          return String(rawValue);
+        }
+        return "";
+      }
+
+      const opt = field.options.find((o) => o.value === rawValue);
+      if (opt) return opt.text;
+
+      if (typeof rawValue === "string") return rawValue;
+      if (typeof rawValue === "number" || typeof rawValue === "boolean") {
+        return String(rawValue);
+      }
+      return "";
+    };
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = "Tenliva";
+    workbook.created = new Date();
+    workbook.company = "Tenliva";
+
+    const sheet = workbook.addWorksheet("Respuestas", {
+      properties: { tabColor: { argb: "FF2563EB" } },
+      headerFooter: {
+        oddHeader: "&C&KCCCCCC&20 Tenliva",
+        oddFooter: "&C&K999999&9 Generado por Tenliva - Confidencial",
+      },
+    });
+
+    // --- ENCABEZADO TENLIVA CENTRADO ---
+    sheet.mergeCells(1, 1, 1, fields.length);
+    const brandCell = sheet.getCell("A1");
+    brandCell.value = "Tenliva";
+    brandCell.font = { bold: true, size: 18, color: { argb: "FF2563EB" } };
+    brandCell.alignment = { vertical: "middle", horizontal: "center" };
+    sheet.getRow(1).height = 28;
+
+    sheet.mergeCells(2, 1, 2, fields.length);
+    const titleCell = sheet.getCell("A2");
+    titleCell.value = surveyData.title ?? "Reporte de Encuesta";
+    titleCell.font = { bold: true, size: 14, color: { argb: "FF0F172A" } };
+    titleCell.alignment = { vertical: "middle", horizontal: "center" };
+    sheet.getRow(2).height = 22;
+
+    sheet.mergeCells(3, 1, 3, fields.length);
+    const infoCell = sheet.getCell("A3");
+    infoCell.value = `Fecha de creación del documento: ${new Date().toLocaleString("es-CO")} | Total: ${responses.length} respuestas`;
+    infoCell.font = { size: 10, color: { argb: "FF64748B" }, italic: true };
+    infoCell.alignment = { vertical: "middle", horizontal: "center" };
+    sheet.getRow(3).height = 18;
+
+    sheet.addRow([]); // fila 4 vacía
+
+    // --- HEADER ---
+    const headerRow = sheet.addRow(fields.map((f) => f.label));
+    headerRow.height = 26;
+    headerRow.eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 11 };
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FF0F172A" },
+      };
+      cell.alignment = {
+        vertical: "middle",
+        horizontal: "center",
+        wrapText: true,
+      };
+      cell.border = {
+        top: { style: "thin", color: { argb: "FFE2E8F0" } },
+        left: { style: "thin", color: { argb: "FFE2E8F0" } },
+        bottom: { style: "thin", color: { argb: "FFE2E8F0" } },
+        right: { style: "thin", color: { argb: "FFE2E8F0" } },
+      };
+    });
+
+    // --- DATOS ---
+    responses.forEach((r, idx) => {
+      const row = sheet.addRow(
+        fields.map((f) => resolveValue(f.id, r.response[f.id])),
+      );
+      row.eachCell((cell) => {
+        cell.alignment = { vertical: "middle", wrapText: true };
+        cell.font = { size: 11, color: { argb: "FF334155" } };
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: idx % 2 === 0 ? "FFFFFFFF" : "FFF8FAFC" },
+        };
+        cell.border = {
+          top: { style: "thin", color: { argb: "FFE2E8F0" } },
+          left: { style: "thin", color: { argb: "FFE2E8F0" } },
+          bottom: { style: "thin", color: { argb: "FFE2E8F0" } },
+          right: { style: "thin", color: { argb: "FFE2E8F0" } },
+        };
+      });
+    });
+
+    // --- ANCHOS ---
+    sheet.columns.forEach((col, i) => {
+      const field = fields[i];
+      if (!field) return;
+      let max = field.label.length;
+      for (const r of responses) {
+        const v = resolveValue(field.id, r.response[field.id]);
+        if (v.length > max) max = v.length;
+      }
+      col.width = Math.min(Math.max(max + 4, 18), 35);
+    });
+
+    sheet.autoFilter = {
+      from: { row: 5, column: 1 },
+      to: { row: 5, column: fields.length },
+    };
+    sheet.views = [{ state: "frozen", ySplit: 5 }];
+
+    // --- FOOTER ---
+    const lastRow = sheet.addRow([]);
+    sheet.mergeCells(lastRow.number + 1, 1, lastRow.number + 1, fields.length);
+    const footer = sheet.getCell(`A${lastRow.number + 1}`);
+    footer.value =
+      "Documento generado por Tenliva - Plataforma multiempresa | Módulo de Proyectos - Encuestas";
+    footer.font = { size: 9, color: { argb: "FF94A3B8" }, italic: true };
+    footer.alignment = { horizontal: "center", vertical: "middle" };
+    sheet.getRow(lastRow.number + 1).height = 20;
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    return Buffer.from(buffer);
   }
 }

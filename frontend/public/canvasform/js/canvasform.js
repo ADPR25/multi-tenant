@@ -1,8 +1,8 @@
 (function (global) {
   "use strict";
-  var VERSION = "PRO:1.0.1";
+  var VERSION = "V1.0.0";
   var defaults = {
-    title: "Aura survey",
+    title: "Canvasform survey",
     description: "",
     showProgress: true,
     showPageNumbers: true,
@@ -22,14 +22,6 @@
     "section",
     "image",
     "video",
-  ];
-  var CHOICE_TYPES = [
-    "radiogroup",
-    "checkbox",
-    "dropdown",
-    "ranking",
-    "imagechoice",
-    "emojis",
   ];
   function toSeconds(value, unit) {
     var v = Number(value) || 0;
@@ -181,8 +173,8 @@
     }
   }
   function buildVisibleIf(question) {
-    var conditions = Array.isArray(question.auraConditions)
-      ? question.auraConditions
+    var conditions = Array.isArray(question.canvasformConditions)
+      ? question.canvasformConditions
       : [];
     conditions = conditions.filter(function (c) {
       return c && c.question;
@@ -192,7 +184,7 @@
       return "";
     }
     var logic =
-      String(question.auraConditionLogic || "and").toLowerCase() === "or"
+      String(question.canvasformConditionLogic || "and").toLowerCase() === "or"
         ? " or "
         : " and ";
     var expression = conditions
@@ -204,7 +196,8 @@
       return "";
     }
     var action =
-      String(question.auraConditionAction || "show").toLowerCase() === "hide"
+      String(question.canvasformConditionAction || "show").toLowerCase() ===
+      "hide"
         ? "hide"
         : "show";
     if (action === "hide") {
@@ -264,22 +257,22 @@
   }
   function ensureConditionalState(question) {
     if (!question) return null;
-    if (!Array.isArray(question.auraConditions) && question.visibleIf) {
+    if (!Array.isArray(question.canvasformConditions) && question.visibleIf) {
       var parsed = parseSimpleVisibleIf(question.visibleIf);
       if (parsed) {
-        question.auraConditions = parsed.conditions;
-        question.auraConditionLogic = parsed.logic;
-        question.auraConditionAction = parsed.action;
+        question.canvasformConditions = parsed.conditions;
+        question.canvasformConditionLogic = parsed.logic;
+        question.canvasformConditionAction = parsed.action;
       }
     }
-    if (!Array.isArray(question.auraConditions)) {
-      question.auraConditions = [];
+    if (!Array.isArray(question.canvasformConditions)) {
+      question.canvasformConditions = [];
     }
-    if (!question.auraConditionLogic) {
-      question.auraConditionLogic = "and";
+    if (!question.canvasformConditionLogic) {
+      question.canvasformConditionLogic = "and";
     }
-    if (!question.auraConditionAction) {
-      question.auraConditionAction = "show";
+    if (!question.canvasformConditionAction) {
+      question.canvasformConditionAction = "show";
     }
     return question;
   }
@@ -308,12 +301,8 @@
     if (actual === true) actualString = "true";
     if (actual === false) actualString = "false";
     var expectedString = String(expected);
-
-    // --- FIX: NO convertir si/no a true/false ---
-    // Solo normalizamos para comparacion case-insensitive
     var actualNorm = actualString.trim().toLowerCase();
     var expectedNorm = expectedString.trim().toLowerCase();
-
     switch (operator) {
       case "empty":
         return (
@@ -419,11 +408,18 @@
         return actualNorm === expectedNorm;
     }
   }
-  function AuraSurvey(target, definition) {
+
+  function getCanvasConfig() {
+    return typeof window !== "undefined" && window.CANVASFORM_CONFIG
+      ? window.CANVASFORM_CONFIG
+      : {};
+  }
+
+  function CanvasForm(target, definition) {
     this.host =
       typeof target === "string" ? document.querySelector(target) : target;
     if (!this.host) {
-      throw new Error("AuraSurvey: no se encontró el contenedor.");
+      throw new Error("CanvasForm: no se encontró el contenedor.");
     }
     this.definition = merge(defaults, definition || {});
     this.pages =
@@ -446,14 +442,58 @@
     this._timerId = null;
     this._timeExpired = false;
     this._forceComplete = false;
+    this._geoLocation = this.definition.geoLocation || null;
+    this._geoData = null;
+    this._geoError = null;
+    this._geoStatus = "idle";
     this.normalizeSchema();
     this.render();
     this.startTimer();
+    this.captureGeoLocation();
   }
-  AuraSurvey.prototype.findQuestion = function (name) {
+  CanvasForm.prototype.findQuestion = function (name) {
     return findQuestionInPages(this.pages, name);
   };
-  AuraSurvey.prototype.getTimeLimitConfig = function () {
+  CanvasForm.prototype.getGeoLocationConfig = function () {
+    var g = this._geoLocation || this.definition.geoLocation;
+    if (!g || !g.enabled) return null;
+    return {
+      enabled: true,
+      highAccuracy: g.highAccuracy !== false,
+      captureOnStart: g.captureOnStart !== false,
+    };
+  };
+  CanvasForm.prototype.captureGeoLocation = function () {
+    var self = this;
+    var cfg = self.getGeoLocationConfig();
+    if (!cfg) return;
+    if (!navigator.geolocation) {
+      self._geoStatus = "no_support";
+      return;
+    }
+    self._geoStatus = "locating";
+    navigator.geolocation.getCurrentPosition(
+      function (pos) {
+        self._geoData = {
+          coordinates: {
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            accuracy: pos.coords.accuracy,
+            timestamp: new Date().toISOString(),
+          },
+        };
+        self._geoStatus = "ok";
+      },
+      function (err) {
+        self._geoStatus = err.code === 1 ? "denied" : "error";
+      },
+      { enableHighAccuracy: cfg.highAccuracy, timeout: 20000, maximumAge: 0 },
+    );
+  };
+  CanvasForm.prototype.getGeoData = function () {
+    return this._geoData ? clone(this._geoData) : null;
+  };
+  CanvasForm.prototype.getTimeLimitConfig = function () {
     var tl = this._timeLimit || this.definition.timeLimit;
     if (!tl || !tl.enabled) return null;
     if (tl.min || tl.max) {
@@ -480,10 +520,10 @@
       };
     }
   };
-  AuraSurvey.prototype.getElapsedSeconds = function () {
+  CanvasForm.prototype.getElapsedSeconds = function () {
     return Math.floor((Date.now() - this._startTime) / 1000);
   };
-  AuraSurvey.prototype.checkMinTime = function (isAuto) {
+  CanvasForm.prototype.checkMinTime = function (isAuto) {
     if (this._forceComplete && isAuto) return { ok: true };
     var cfg = this.getTimeLimitConfig();
     if (!cfg || !cfg.minEnabled) return { ok: true };
@@ -500,7 +540,7 @@
     }
     return { ok: true };
   };
-  AuraSurvey.prototype.startTimer = function () {
+  CanvasForm.prototype.startTimer = function () {
     var self = this;
     var cfg = self.getTimeLimitConfig();
     if (!cfg || !cfg.enabled) return;
@@ -508,61 +548,19 @@
     self._timerId = setInterval(function () {
       var elapsed = self.getElapsedSeconds();
       var timerEl = self.root
-        ? self.root.querySelector("[data-aura-timer]")
+        ? self.root.querySelector("[data-canvasform-timer]")
         : null;
       var timerBar = self.root
-        ? self.root.querySelector("[data-aura-timer-bar]")
+        ? self.root.querySelector("[data-canvasform-timer-bar]")
         : null;
-      var minHintEl = self.root
-        ? self.root.querySelector("[data-aura-min-hint]")
-        : null;
-      var submitBtn = self.root
-        ? self.root.querySelector("[data-aura-submit]")
-        : null;
-      var footer = self.root ? self.root.querySelector(".aura-footer") : null;
-
       if (timerEl && cfg.maxEnabled) {
         var remain = cfg.maxSeconds - elapsed;
         timerEl.textContent = "Tiempo restante: " + formatSeconds(remain);
-        timerEl.className =
-          remain < 60 ? "aura-timer aura-timer-danger" : "aura-timer";
       }
       if (timerBar && cfg.maxEnabled) {
         var pct = Math.min(100, (elapsed / cfg.maxSeconds) * 100);
         timerBar.style.width = pct + "%";
       }
-
-      if (cfg.minEnabled) {
-        var wait = cfg.minSeconds - elapsed;
-        if (wait > 0) {
-          if (minHintEl)
-            minHintEl.textContent =
-              "⏳ Debes esperar " + formatSeconds(wait) + " para poder enviar.";
-        } else {
-          if (minHintEl) minHintEl.remove();
-          if (!submitBtn && footer) {
-            var isLast = self.currentPage === self.pages.length - 1;
-            var btn = document.createElement("button");
-            btn.type = "button";
-            btn.className = "aura-button aura-button-primary";
-            btn.setAttribute("data-aura-action", isLast ? "complete" : "next");
-            btn.setAttribute("data-aura-submit", "");
-            btn.innerHTML =
-              (isLast
-                ? escapeHtml(self.definition.completeText)
-                : escapeHtml(self.definition.nextText)) + "<span>→</span>";
-            btn.addEventListener("click", function () {
-              var a = btn.dataset.auraAction;
-              if (typeof self[a] === "function") self[a]();
-            });
-            footer.appendChild(btn);
-          }
-          if (timerEl && !cfg.maxEnabled) {
-            timerEl.textContent = "Puedes enviar ahora";
-          }
-        }
-      }
-
       if (cfg.maxEnabled && elapsed >= cfg.maxSeconds && !self._timeExpired) {
         self._timeExpired = true;
         clearInterval(self._timerId);
@@ -571,51 +569,62 @@
       }
     }, 1000);
   };
-  AuraSurvey.prototype.normalizeSchema = function () {
+  CanvasForm.prototype.normalizeSchema = function () {
     this.pages.forEach(function (page) {
       if (!Array.isArray(page.elements)) {
         page.elements = [];
       }
-      if (page.visibleIf && !page.auraConditions) {
+      if (page.visibleIf && !page.canvasformConditions) {
         ensureConditionalState(page);
       }
-      if (page.auraConditions) {
+      if (page.canvasformConditions) {
         buildVisibleIf(page);
       }
       page.elements.forEach(function (question) {
         if (!question) return;
-        if (question.visibleIf && !question.auraConditions) {
+        if (question.visibleIf && !question.canvasformConditions) {
           ensureConditionalState(question);
         }
-        if (question.auraConditions) {
+        if (question.canvasformConditions) {
           buildVisibleIf(question);
         }
       });
     });
   };
-  AuraSurvey.prototype.on = function (event, callback) {
+  CanvasForm.prototype.on = function (event, callback) {
     (this._listeners[event] || (this._listeners[event] = [])).push(callback);
     return this;
   };
-  AuraSurvey.prototype.emit = function (event, payload) {
+  CanvasForm.prototype.emit = function (event, payload) {
     (this._listeners[event] || []).slice().forEach(
       function (cb) {
         cb(payload, this);
       }.bind(this),
     );
   };
-  AuraSurvey.prototype.getValue = function (name) {
+  CanvasForm.prototype.getValue = function (name) {
     return this.values[name];
   };
-  AuraSurvey.prototype.getData = function () {
+  CanvasForm.prototype.getData = function () {
     var data = clone(this.values) || {};
     var cfg = this.getTimeLimitConfig();
     if (cfg) {
-      data._meta = { timeElapsed: this.getElapsedSeconds(), timeLimit: cfg };
+      data._meta = data._meta || {};
+      data._meta.timeElapsed = this.getElapsedSeconds();
+      data._meta.timeLimit = cfg;
+    }
+    if (this._geoData) {
+      var src = this._geoData.coordinates || this._geoData;
+      data.coordinates = {
+        latitude: src.latitude,
+        longitude: src.longitude,
+        accuracy: src.accuracy,
+        timestamp: src.timestamp,
+      };
     }
     return data;
   };
-  AuraSurvey.prototype.setValue = function (name, value) {
+  CanvasForm.prototype.setValue = function (name, value) {
     this.values[name] = value;
     this.renderPage();
     this.emit("valueChanged", {
@@ -625,30 +634,32 @@
     });
     return this;
   };
-  AuraSurvey.prototype.visible = function (question) {
+  CanvasForm.prototype.visible = function (question) {
     if (!question || !question.visibleIf) return true;
     if (
-      Array.isArray(question.auraConditions) &&
-      question.auraConditions.length
+      Array.isArray(question.canvasformConditions) &&
+      question.canvasformConditions.length
     ) {
       var logic =
-        String(question.auraConditionLogic || "and").toLowerCase() === "or"
+        String(question.canvasformConditionLogic || "and").toLowerCase() ===
+        "or"
           ? "or"
           : "and";
       var result =
         logic === "or"
-          ? question.auraConditions.some(
+          ? question.canvasformConditions.some(
               function (c) {
                 return compareCondition(this.values[c.question], c);
               }.bind(this),
             )
-          : question.auraConditions.every(
+          : question.canvasformConditions.every(
               function (c) {
                 return compareCondition(this.values[c.question], c);
               }.bind(this),
             );
       if (
-        String(question.auraConditionAction || "show").toLowerCase() === "hide"
+        String(question.canvasformConditionAction || "show").toLowerCase() ===
+        "hide"
       ) {
         return !result;
       }
@@ -656,40 +667,46 @@
     }
     return this.evaluateExpression(question.visibleIf);
   };
-  AuraSurvey.prototype.isPageVisible = function (page) {
+  CanvasForm.prototype.isPageVisible = function (page) {
     if (!page) return false;
     if (
       !page.visibleIf &&
-      (!page.auraConditions || !page.auraConditions.length)
+      (!page.canvasformConditions || !page.canvasformConditions.length)
     )
       return true;
-    if (Array.isArray(page.auraConditions) && page.auraConditions.length) {
+    if (
+      Array.isArray(page.canvasformConditions) &&
+      page.canvasformConditions.length
+    ) {
       var logic =
-        String(page.auraConditionLogic || "and").toLowerCase() === "or"
+        String(page.canvasformConditionLogic || "and").toLowerCase() === "or"
           ? "or"
           : "and";
       var result =
         logic === "or"
-          ? page.auraConditions.some(
+          ? page.canvasformConditions.some(
               function (c) {
                 return compareCondition(this.values[c.question], c);
               }.bind(this),
             )
-          : page.auraConditions.every(
+          : page.canvasformConditions.every(
               function (c) {
                 return compareCondition(this.values[c.question], c);
               }.bind(this),
             );
-      if (String(page.auraConditionAction || "show").toLowerCase() === "hide")
+      if (
+        String(page.canvasformConditionAction || "show").toLowerCase() ===
+        "hide"
+      )
         return !result;
       return result;
     }
     return this.evaluateExpression(page.visibleIf);
   };
-  AuraSurvey.prototype.getVisiblePages = function () {
+  CanvasForm.prototype.getVisiblePages = function () {
     return this.pages.filter(this.isPageVisible.bind(this));
   };
-  AuraSurvey.prototype.getNextVisibleIndex = function (from) {
+  CanvasForm.prototype.getNextVisibleIndex = function (from) {
     var next = from + 1;
     while (next < this.pages.length) {
       if (this.isPageVisible(this.pages[next])) return next;
@@ -697,7 +714,7 @@
     }
     return -1;
   };
-  AuraSurvey.prototype.getPrevVisibleIndex = function (from) {
+  CanvasForm.prototype.getPrevVisibleIndex = function (from) {
     var prev = from - 1;
     while (prev >= 0) {
       if (this.isPageVisible(this.pages[prev])) return prev;
@@ -705,7 +722,7 @@
     }
     return -1;
   };
-  AuraSurvey.prototype.evaluateExpression = function (expression) {
+  CanvasForm.prototype.evaluateExpression = function (expression) {
     if (!expression) return true;
     var source = String(expression).replace(/\s+/g, " ").trim();
     if (!source) return true;
@@ -765,83 +782,172 @@
       value: rawValue,
     });
   };
-  AuraSurvey.prototype.bindSignatures = function () {
-    this.root.querySelectorAll("[data-signature]").forEach(
-      function (canvas) {
-        var context = canvas.getContext("2d");
-        if (!context) return;
-        var drawing = false;
-        var position = function (event) {
-          var rect = canvas.getBoundingClientRect();
-          var source =
-            event.touches && event.touches.length ? event.touches[0] : event;
-          return {
-            x: ((source.clientX - rect.left) * canvas.width) / rect.width,
-            y: ((source.clientY - rect.top) * canvas.height) / rect.height,
-          };
+
+  CanvasForm.prototype.bindSignatures = function () {
+    var self = this;
+    var cfg = getCanvasConfig();
+    var uploadUrl = cfg.UPLOAD_URL || cfg.API_URL || "/api/uploads";
+
+    this.root.querySelectorAll("[data-signature]").forEach(function (canvas) {
+      var context = canvas.getContext("2d");
+      if (!context) return;
+      var drawing = false;
+      var hasStroke = false;
+      var saveTimeout = null;
+
+      var position = function (event) {
+        var rect = canvas.getBoundingClientRect();
+        var source =
+          event.touches && event.touches.length ? event.touches[0] : event;
+        return {
+          x: ((source.clientX - rect.left) * canvas.width) / rect.width,
+          y: ((source.clientY - rect.top) * canvas.height) / rect.height,
         };
-        context.strokeStyle = "#185c49";
-        context.fillStyle = "#185c49";
-        context.lineWidth = 3;
-        context.lineCap = "round";
-        context.lineJoin = "round";
-        var start = function (event) {
-          drawing = true;
-          var point = position(event);
-          context.beginPath();
-          context.arc(point.x, point.y, 1.5, 0, Math.PI * 2);
-          context.fill();
-          context.beginPath();
-          context.moveTo(point.x, point.y);
-          if (canvas.setPointerCapture && event.pointerId != null) {
-            try {
-              canvas.setPointerCapture(event.pointerId);
-            } catch (e) {}
-          }
-          this.values[canvas.dataset.signature] = canvas.toDataURL("image/png");
-          event.preventDefault();
-        }.bind(this);
-        var draw = function (event) {
-          if (!drawing) return;
-          var point = position(event);
-          context.lineTo(point.x, point.y);
-          context.stroke();
-          this.values[canvas.dataset.signature] = canvas.toDataURL("image/png");
-          event.preventDefault();
-        }.bind(this);
-        var end = function () {
-          drawing = false;
-        };
-        canvas.addEventListener("pointerdown", start);
-        canvas.addEventListener("pointermove", draw);
-        canvas.addEventListener("pointerup", end);
-        canvas.addEventListener("pointercancel", end);
-      }.bind(this),
-    );
-    this.root.querySelectorAll("[data-clear-signature]").forEach(
-      function (button) {
+      };
+
+      context.strokeStyle = "#0A0A0B";
+      context.fillStyle = "#0A0A0B";
+      context.lineWidth = 2.5;
+      context.lineCap = "round";
+      context.lineJoin = "round";
+
+      var start = function (event) {
+        drawing = true;
+        hasStroke = true;
+        if (saveTimeout) {
+          clearTimeout(saveTimeout);
+          saveTimeout = null;
+        }
+        var point = position(event);
+        context.beginPath();
+        context.arc(point.x, point.y, 1.2, 0, Math.PI * 2);
+        context.fill();
+        context.beginPath();
+        context.moveTo(point.x, point.y);
+        self.values[canvas.dataset.signature] = canvas.toDataURL("image/png");
+        if (canvas.setPointerCapture && event.pointerId != null) {
+          try {
+            canvas.setPointerCapture(event.pointerId);
+          } catch (e) {}
+        }
+        event.preventDefault();
+      };
+
+      var draw = function (event) {
+        if (!drawing) return;
+        var point = position(event);
+        context.lineTo(point.x, point.y);
+        context.stroke();
+        event.preventDefault();
+      };
+
+      var scheduleUpload = function () {
+        if (saveTimeout) clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(function () {
+          if (!hasStroke) return;
+          canvas.toBlob(
+            function (blob) {
+              if (!blob) return;
+              var statusEl = self.root.querySelector(
+                '[data-file-for="' + cssEscape(canvas.dataset.signature) + '"]',
+              );
+              if (statusEl) statusEl.textContent = "Guardando firma...";
+
+              var doUpload;
+              if (
+                cfg.uploadHandler &&
+                typeof cfg.uploadHandler === "function"
+              ) {
+                doUpload = cfg.uploadHandler(
+                  blob,
+                  canvas.dataset.signature,
+                  "signature",
+                );
+              } else {
+                var fd = new FormData();
+                fd.append("file", blob, "firma-" + Date.now() + ".jpg");
+                fd.append("fieldName", canvas.dataset.signature);
+                var headers = {};
+                if (cfg.TOKEN) headers["Authorization"] = "Bearer " + cfg.TOKEN;
+                doUpload = fetch(uploadUrl, {
+                  method: "POST",
+                  body: fd,
+                  headers: headers,
+                }).then(function (r) {
+                  return r.json();
+                });
+              }
+
+              doUpload
+                .then(function (res) {
+                  self.values[canvas.dataset.signature] = {
+                    name: "firma.jpg",
+                    type: "image/jpeg",
+                    size: blob.size,
+                    url: res.url || res.location || res.path,
+                    storageKey: res.storageKey,
+                  };
+                  if (statusEl) statusEl.textContent = "✓ Firma guardada";
+                  self.emit("valueChanged", {
+                    name: canvas.dataset.signature,
+                    value: self.values[canvas.dataset.signature],
+                    data: self.getData(),
+                  });
+                  self.emit("fileUploaded", {
+                    name: canvas.dataset.signature,
+                    file: self.values[canvas.dataset.signature],
+                  });
+                })
+                .catch(function () {
+                  if (statusEl) statusEl.textContent = "Error al guardar firma";
+                });
+            },
+            "image/jpeg",
+            0.6,
+          );
+        }, 900);
+      };
+
+      var end = function () {
+        if (!drawing) return;
+        drawing = false;
+        scheduleUpload();
+      };
+
+      canvas.addEventListener("pointerdown", start);
+      canvas.addEventListener("pointermove", draw);
+      canvas.addEventListener("pointerup", end);
+      canvas.addEventListener("pointercancel", end);
+      canvas.addEventListener("pointerleave", end);
+    });
+
+    this.root
+      .querySelectorAll("[data-clear-signature]")
+      .forEach(function (button) {
         button.onclick = function () {
           var name = button.dataset.clearSignature;
-          var canvas = this.root.querySelector(
+          var canvas = self.root.querySelector(
             '[data-signature="' + cssEscape(name) + '"]',
           );
           if (canvas) {
-            var context = canvas.getContext("2d");
-            if (context) {
-              context.clearRect(0, 0, canvas.width, canvas.height);
-            }
+            var ctx = canvas.getContext("2d");
+            if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
           }
-          delete this.values[name];
-          this.emit("valueChanged", {
+          delete self.values[name];
+          var statusEl = self.root.querySelector(
+            '[data-file-for="' + cssEscape(name) + '"]',
+          );
+          if (statusEl) statusEl.textContent = "Firma borrada";
+          self.emit("valueChanged", {
             name: name,
             value: "",
-            data: this.getData(),
+            data: self.getData(),
           });
-        }.bind(this);
-      }.bind(this),
-    );
+        };
+      });
   };
-  AuraSurvey.prototype.refreshConditionalVisibility = function () {
+
+  CanvasForm.prototype.refreshConditionalVisibility = function () {
     var page = this.pages[this.currentPage];
     if (!page) return;
     var shouldRender = false;
@@ -868,7 +974,7 @@
       this.renderPage();
     }
   };
-  AuraSurvey.prototype.cssEscape = function (value) {
+  CanvasForm.prototype.cssEscape = function (value) {
     if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
       return CSS.escape(String(value));
     }
@@ -877,7 +983,7 @@
       "\\$1",
     );
   };
-  AuraSurvey.prototype.bindAutocomplete = function () {
+  CanvasForm.prototype.bindAutocomplete = function () {
     var survey = this;
     survey.root.querySelectorAll("[data-autocomplete]").forEach(function (box) {
       var input = box.querySelector("[data-autocomplete-input]");
@@ -944,8 +1050,11 @@
           event.stopPropagation();
           var selectedValue = option.dataset.optionValue;
           var selectedText = option.dataset.optionText;
-
-          if (question.type === "dropdown" || name === question.name) {
+          if (
+            question.type === "dropdown" ||
+            question.type === "select" ||
+            name === question.name
+          ) {
             survey.values[name] = selectedValue;
             input.value = selectedText;
           } else if (question.type === "tel") {
@@ -969,7 +1078,7 @@
       });
     });
   };
-  AuraSurvey.prototype.moveRanking = function (button, event) {
+  CanvasForm.prototype.moveRanking = function (button, event) {
     event.preventDefault();
     var section = button.closest("[data-question]");
     if (!section) return;
@@ -991,27 +1100,34 @@
       data: this.getData(),
     });
   };
-  AuraSurvey.prototype.renderQuestion = function (question) {
+  CanvasForm.prototype.renderQuestion = function (question) {
     var value = this.values[question.name];
-    var id = "aura-" + question.name;
+    var id = "canvasform-" + question.name;
+    var conditionalClass =
+      question.visibleIf ||
+      (Array.isArray(question.canvasformConditions) &&
+        question.canvasformConditions.length)
+        ? " canvasform-question-conditional"
+        : "";
+    var qWidth = question.width || question.canvasformWidth || 100;
+    var allowed = [25, 33, 50, 66, 75, 100];
+    if (allowed.indexOf(qWidth) === -1) qWidth = 100;
+    if (LAYOUT_TYPES.indexOf(question.type) !== -1) qWidth = 100;
+    var wClass = " w-" + qWidth;
+    var layoutInner = "";
     if (question.type === "heading") {
-      return (
-        '<h3 class="aura-design-heading">' +
+      layoutInner =
+        '<h3 class="canvasform-design-heading">' +
         escapeHtml(question.title || "") +
-        "</h3>"
-      );
-    }
-    if (question.type === "description") {
-      return (
-        '<p class="aura-design-description">' +
+        "</h3>";
+    } else if (question.type === "description") {
+      layoutInner =
+        '<p class="canvasform-design-description">' +
         escapeHtml(question.description || question.title || "") +
-        "</p>"
-      );
-    }
-    if (question.type === "separator") {
-      return '<hr class="aura-design-separator">';
-    }
-    if (question.type === "image") {
+        "</p>";
+    } else if (question.type === "separator") {
+      layoutInner = '<hr class="canvasform-design-separator">';
+    } else if (question.type === "image") {
       var rawUrl = question.src || question.url || question.imageUrl || "";
       var imgUrl = rawUrl;
       try {
@@ -1021,37 +1137,55 @@
           if (real) imgUrl = decodeURIComponent(real);
         }
       } catch (e) {}
-      if (!imgUrl) return "";
-      return (
-        '<figure class="aura-design-media"><img src="' +
-        escapeHtml(imgUrl) +
-        '" alt="' +
-        escapeHtml(question.alt || question.title || "") +
-        '" loading="lazy" style="max-width:100%;border-radius:12px;"></figure>'
-      );
-    }
-    if (question.type === "video") {
+      if (imgUrl) {
+        layoutInner =
+          '<figure class="canvasform-design-media"><img src="' +
+          escapeHtml(imgUrl) +
+          '" alt="' +
+          escapeHtml(question.alt || question.title || "") +
+          '" loading="lazy"></figure>';
+      }
+    } else if (question.type === "video") {
       var videoUrl = question.src || question.url || question.videoUrl || "";
       var youtube = videoUrl.match(
         /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i,
       );
       if (youtube) {
-        return (
-          '<div class="aura-design-media"><div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:12px;"><iframe src="https://www.youtube.com/embed/' +
+        layoutInner =
+          '<div class="canvasform-design-media"><div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:12px;"><iframe src="https://www.youtube.com/embed/' +
           escapeHtml(youtube[1]) +
           '" title="' +
           escapeHtml(question.title || "Video") +
-          '" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div></div>'
-        );
-      }
-      if (videoUrl) {
-        return (
-          '<div class="aura-design-media"><video src="' +
+          '" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;" allowfullscreen></iframe></div></div>';
+      } else if (videoUrl) {
+        layoutInner =
+          '<div class="canvasform-design-media"><video src="' +
           escapeHtml(videoUrl) +
-          '" controls style="width:100%;border-radius:12px;"></video></div>'
-        );
+          '" controls></video></div>';
       }
-      return '<div class="aura-design-media"><p class="aura-media-error">Usa un enlace válido de YouTube.</p></div>';
+    } else if (question.type === "section") {
+      layoutInner =
+        '<div class="canvasform-design-section"><h3>' +
+        escapeHtml(question.title || "") +
+        "</h3><p>" +
+        escapeHtml(question.description || "") +
+        "</p></div>";
+    }
+    if (LAYOUT_TYPES.indexOf(question.type) !== -1) {
+      return (
+        '<section class="canvasform-question' +
+        conditionalClass +
+        wClass +
+        ' canvasform-question--full" data-question="' +
+        escapeHtml(question.name) +
+        '" data-type="' +
+        escapeHtml(question.type) +
+        '" data-width="' +
+        qWidth +
+        '">' +
+        layoutInner +
+        "</section>"
+      );
     }
     if (question.type === "hidden") {
       return (
@@ -1062,34 +1196,27 @@
         '">'
       );
     }
-    if (question.type === "section") {
-      return (
-        '<div class="aura-design-section"><h3>' +
-        escapeHtml(question.title || "") +
-        "</h3><p>" +
-        escapeHtml(question.description || "") +
-        "</p></div>"
-      );
-    }
     var required = question.isRequired
-      ? '<span class="aura-required" aria-hidden="true">*</span>'
+      ? '<span class="canvasform-required" aria-hidden="true">*</span>'
       : "";
     var label =
-      '<label class="aura-label" for="' +
+      '<label class="canvasform-label" for="' +
       id +
       '">' +
       escapeHtml(question.title || "") +
       required +
       "</label>";
     var help = question.description
-      ? '<div class="aura-help">' + escapeHtml(question.description) + "</div>"
+      ? '<div class="canvasform-help">' +
+        escapeHtml(question.description) +
+        "</div>"
       : "";
     var input = "";
     var options = question.choices || [];
     if (question.type === "radiogroup" || question.type === "checkbox") {
       var selected = Array.isArray(value) ? value : [value];
       input =
-        '<div class="aura-options" role="group">' +
+        '<div class="canvasform-options" role="group">' +
         options
           .map(function (choice) {
             var item =
@@ -1099,7 +1226,7 @@
             var checked = selected.indexOf(item.value) !== -1 ? " checked" : "";
             var type = question.type === "checkbox" ? "checkbox" : "radio";
             return (
-              '<label class="aura-option"><input type="' +
+              '<label class="canvasform-option"><input type="' +
               type +
               '" name="' +
               escapeHtml(question.name) +
@@ -1107,29 +1234,29 @@
               escapeHtml(item.value) +
               '"' +
               checked +
-              '><span class="aura-option-mark"></span><span>' +
+              '><span class="canvasform-option-mark"></span><span>' +
               escapeHtml(item.text) +
               "</span></label>"
             );
           })
           .join("") +
         "</div>";
-    } else if (question.type === "dropdown") {
+    } else if (question.type === "dropdown" || question.type === "select") {
       var selectedChoice = options.find(function (c) {
         return getChoiceValue(c) === value;
       });
       input =
-        '<div class="aura-autocomplete" data-autocomplete="' +
+        '<div class="canvasform-autocomplete" data-autocomplete="' +
         escapeHtml(question.name) +
         '"><input id="' +
         id +
-        '" class="aura-control" data-autocomplete-input autocomplete="off" placeholder="' +
+        '" class="canvasform-control" data-autocomplete-input autocomplete="off" placeholder="' +
         escapeHtml(question.placeholder || "Escribe para buscar...") +
         '" value="' +
         escapeHtml(
           selectedChoice ? getChoiceText(selectedChoice) : value || "",
         ) +
-        '"><div class="aura-autocomplete-list" data-autocomplete-list role="listbox" hidden>' +
+        '"><div class="canvasform-autocomplete-list" data-autocomplete-list role="listbox" hidden>' +
         options
           .map(function (choice) {
             var item =
@@ -1151,7 +1278,7 @@
     } else if (question.type === "rating") {
       var max = question.rateMax || 5;
       input =
-        '<div class="aura-rating" role="radiogroup">' +
+        '<div class="canvasform-rating" role="radiogroup">' +
         Array.from({ length: max }, function (_, index) {
           var rating = index + 1;
           return (
@@ -1169,7 +1296,7 @@
         "</div>";
     } else if (question.type === "imagechoice") {
       input =
-        '<div class="aura-image-choices">' +
+        '<div class="canvasform-image-choices">' +
         (question.choices || [])
           .map(function (choice) {
             var item =
@@ -1198,7 +1325,7 @@
       var scaleMin = question.rateMin != null ? question.rateMin : 0;
       var scaleMax = question.rateMax != null ? question.rateMax : 10;
       input =
-        '<div class="aura-scale" role="radiogroup">' +
+        '<div class="canvasform-scale" role="radiogroup">' +
         Array.from({ length: scaleMax - scaleMin + 1 }, function (_, index) {
           var number = index + scaleMin;
           return (
@@ -1224,7 +1351,7 @@
             : sliderMin
           : value;
       input =
-        '<div class="aura-slider"><div class="aura-slider-labels"><span>' +
+        '<div class="canvasform-slider"><div class="canvasform-slider-labels"><span>' +
         escapeHtml(sliderMin) +
         "</span><output>" +
         escapeHtml(sliderValue) +
@@ -1245,8 +1372,16 @@
         '"></div>';
     } else if (question.type === "emojis") {
       input =
-        '<div class="aura-emojis">' +
-        (question.choices || ["😡", "😞", "😐", "🙂", "😍"])
+        '<div class="canvasform-emojis">' +
+        (
+          question.choices || [
+            "\uD83D\uDE21",
+            "\uD83D\uDE1E",
+            "\uD83D\uDE10",
+            "\uD83D\uDE42",
+            "\uD83D\uDE0D",
+          ]
+        )
           .map(function (emoji) {
             var item =
               typeof emoji === "object" ? emoji : { value: emoji, text: emoji };
@@ -1266,7 +1401,7 @@
         "</div>";
     } else if (question.type === "ranking") {
       input =
-        '<ol class="aura-ranking">' +
+        '<ol class="canvasform-ranking">' +
         (question.choices || [])
           .map(function (choice, index) {
             var item =
@@ -1297,7 +1432,7 @@
             ? "checkbox"
             : "radio";
       input =
-        '<div class="aura-matrix-scroll"><table class="aura-matrix"><thead><tr><th></th>' +
+        '<div class="canvasform-matrix-scroll"><table class="canvasform-matrix"><thead><tr><th></th>' +
         (question.columns || [])
           .map(function (column) {
             return "<th>" + escapeHtml(getChoiceText(column)) + "</th>";
@@ -1335,25 +1470,25 @@
         id +
         '" name="' +
         escapeHtml(question.name) +
-        '" class="aura-control" type="' +
+        '" class="canvasform-control" type="' +
         (question.type === "time" ? "time" : "datetime-local") +
         '" value="' +
         escapeHtml(value || "") +
         '">';
     } else if (question.type === "daterange") {
       input =
-        '<div class="aura-date-range"><input class="aura-control" name="' +
+        '<div class="canvasform-date-range"><input class="canvasform-control" name="' +
         escapeHtml(question.name + "_start") +
         '" type="date" value="' +
         escapeHtml(value && value.start) +
-        '" aria-label="Fecha inicial"><span>hasta</span><input class="aura-control" name="' +
+        '" aria-label="Fecha inicial"><span>hasta</span><input class="canvasform-control" name="' +
         escapeHtml(question.name + "_end") +
         '" type="date" value="' +
         escapeHtml(value && value.end) +
         '" aria-label="Fecha final"></div>';
     } else if (question.type === "boolean") {
       input =
-        '<label class="aura-toggle"><input id="' +
+        '<label class="canvasform-toggle"><input id="' +
         id +
         '" type="checkbox" name="' +
         escapeHtml(question.name) +
@@ -1380,11 +1515,11 @@
           return c.code === phone.country;
         }) || countryCodes[0];
       input =
-        '<div class="aura-phone"><div class="aura-autocomplete" data-autocomplete="' +
+        '<div class="canvasform-phone"><div class="canvasform-autocomplete" data-autocomplete="' +
         escapeHtml(question.name + "_country") +
-        '"><input class="aura-control aura-country" data-autocomplete-input autocomplete="off" aria-label="País" placeholder="Busca país..." value="' +
+        '"><input class="canvasform-control canvasform-country" data-autocomplete-input autocomplete="off" aria-label="País" placeholder="Busca país..." value="' +
         escapeHtml(selectedCountry.name + " (" + selectedCountry.code + ")") +
-        '"><div class="aura-autocomplete-list" data-autocomplete-list role="listbox" hidden>' +
+        '"><div class="canvasform-autocomplete-list" data-autocomplete-list role="listbox" hidden>' +
         countryCodes
           .map(function (c) {
             return (
@@ -1402,7 +1537,7 @@
         id +
         '" name="' +
         escapeHtml(question.name) +
-        '" class="aura-control" type="tel" value="' +
+        '" class="canvasform-control" type="tel" value="' +
         escapeHtml(phone.number) +
         '" placeholder="' +
         escapeHtml(question.placeholder || "300 000 0000") +
@@ -1413,9 +1548,9 @@
         id +
         '" name="' +
         escapeHtml(question.name) +
-        '" class="aura-control aura-file" type="file" accept="' +
+        '" class="canvasform-control canvasform-file" type="file" accept="' +
         escapeHtml(question.accept || "") +
-        '"><div class="aura-file-status" data-file-for="' +
+        '"><div class="canvasform-file-status" data-file-for="' +
         escapeHtml(question.name) +
         '">' +
         (value && value.name
@@ -1424,20 +1559,22 @@
         "</div>";
     } else if (question.type === "signature") {
       input =
-        '<div class="aura-signature-wrap"><canvas id="' +
+        '<div class="canvasform-signature-wrap"><canvas id="' +
         id +
-        '" class="aura-signature" width="600" height="180" data-signature="' +
+        '" class="canvasform-signature" width="600" height="180" data-signature="' +
         escapeHtml(question.name) +
-        '"></canvas><button type="button" class="aura-signature-clear" data-clear-signature="' +
+        '"></canvas><button type="button" class="canvasform-signature-clear" data-clear-signature="' +
         escapeHtml(question.name) +
-        '">Limpiar firma</button></div>';
+        '">Limpiar firma</button><div class="canvasform-file-status" data-file-for="' +
+        escapeHtml(question.name) +
+        '"></div></div>';
     } else if (question.type === "date") {
       input =
-        '<div class="aura-date-control"><input id="' +
+        '<div class="canvasform-date-control"><input id="' +
         id +
         '" name="' +
         escapeHtml(question.name) +
-        '" class="aura-control" type="date" value="' +
+        '" class="canvasform-control" type="date" value="' +
         escapeHtml(value || "") +
         '"><span>▣</span></div>';
     } else if (question.type === "comment" || question.type === "textarea") {
@@ -1446,7 +1583,7 @@
         id +
         '" name="' +
         escapeHtml(question.name) +
-        '" class="aura-control" rows="' +
+        '" class="canvasform-control" rows="' +
         escapeHtml(question.rows || 4) +
         '" placeholder="' +
         escapeHtml(question.placeholder || "") +
@@ -1455,7 +1592,7 @@
         "</textarea>";
     } else if (question.type === "calculated") {
       input =
-        '<output class="aura-calculated" id="' +
+        '<output class="canvasform-calculated" id="' +
         id +
         '">' +
         escapeHtml(value == null ? question.defaultValue || "" : value) +
@@ -1472,7 +1609,7 @@
         id +
         '" name="' +
         escapeHtml(question.name) +
-        '" class="aura-control" type="' +
+        '" class="canvasform-control" type="' +
         escapeHtml(inputType) +
         '" value="' +
         escapeHtml(value || "") +
@@ -1480,26 +1617,27 @@
         escapeHtml(question.placeholder || "") +
         '">';
     }
-    var conditionalClass =
-      question.visibleIf ||
-      (Array.isArray(question.auraConditions) && question.auraConditions.length)
-        ? " aura-question-conditional"
-        : "";
     return (
-      '<section class="aura-question' +
+      '<section class="canvasform-question' +
       conditionalClass +
+      wClass +
       '" data-question="' +
       escapeHtml(question.name) +
+      '" data-type="' +
+      escapeHtml(question.type) +
+      '" data-width="' +
+      qWidth +
       '">' +
       label +
       help +
       input +
-      '<div class="aura-error" data-error-for="' +
+      '<div class="canvasform-error" data-error-for="' +
       escapeHtml(question.name) +
       '" role="alert"></div></section>'
     );
   };
-  AuraSurvey.prototype._handleChange = function (event) {
+
+  CanvasForm.prototype._handleChange = function (event) {
     var field = event.target;
     if (!field || !field.name) return;
     var questionName = field.name;
@@ -1518,6 +1656,9 @@
       '[name="' + cssEscape(field.name) + '"]',
     );
     var value;
+    var cfg = getCanvasConfig();
+    var uploadUrl = cfg.UPLOAD_URL || cfg.API_URL || "/api/uploads";
+
     if (question.type === "checkbox") {
       value = Array.from(fields)
         .filter(function (i) {
@@ -1565,33 +1706,127 @@
     } else if (question.type === "file") {
       var file = field.files && field.files[0];
       if (!file) return;
-      var maxSize = Number(question.maxSize || 5242880);
-      if (file.size > maxSize) {
-        field.value = "";
-        var fileError = this.root.querySelector(
-          '[data-error-for="' + cssEscape(question.name) + '"]',
-        );
-        if (fileError) {
-          fileError.textContent =
-            "El archivo supera el tamaño máximo permitido.";
+
+      var statusEl = this.root.querySelector(
+        '[data-file-for="' + cssEscape(question.name) + '"]',
+      );
+      var fileError = this.root.querySelector(
+        '[data-error-for="' + cssEscape(question.name) + '"]',
+      );
+
+      var acceptStr = question.accept || "";
+      var fileMode = question.fileMode || "all";
+      var mime = (file.type || "").toLowerCase();
+      var fName = (file.name || "").toLowerCase();
+      var isValidType = true;
+
+      if (fileMode === "image") {
+        isValidType = mime.indexOf("image/") === 0;
+      } else if (fileMode === "pdf") {
+        isValidType = mime === "application/pdf" || fName.endsWith(".pdf");
+      } else if (fileMode === "document") {
+        isValidType =
+          /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|csv)$/.test(fName) ||
+          /^(application\/(pdf|msword|vnd\.ms-excel|vnd\.openxmlformats)|text\/)/.test(
+            mime,
+          );
+      } else if (fileMode === "image_document") {
+        isValidType =
+          mime.indexOf("image/") === 0 ||
+          /\.(pdf|doc|docx|xls|xlsx)$/.test(fName) ||
+          mime === "application/pdf";
+      } else if (acceptStr && acceptStr !== "*/*") {
+        if (
+          acceptStr.indexOf("image/*") !== -1 &&
+          mime.indexOf("image/") !== 0
+        ) {
+          if (acceptStr === "image/*") isValidType = false;
         }
+      }
+
+      if (!isValidType) {
+        field.value = "";
+        var msg = "Tipo no permitido. ";
+        if (fileMode === "image") msg += "Solo se permiten imágenes.";
+        else if (fileMode === "pdf") msg += "Solo se permite PDF.";
+        else if (fileMode === "document")
+          msg += "Solo documentos (PDF, Word, Excel).";
+        else if (fileMode === "image_document")
+          msg += "Solo imágenes y documentos.";
+        else msg += "Permitido: " + (acceptStr || "*/*");
+
+        if (fileError) fileError.textContent = msg;
+        if (statusEl) statusEl.textContent = "❌ " + file.name + " rechazado";
         return;
       }
-      var reader = new FileReader();
-      reader.onload = function () {
-        this.values[question.name] = {
-          name: file.name,
-          type: file.type,
-          size: file.size,
-          base64: reader.result,
-        };
-        this.emit("valueChanged", {
-          name: question.name,
-          value: this.values[question.name],
-          data: this.getData(),
+
+      var maxMB = question.maxSizeMB || cfg.MAX_FILE_MB || 5;
+      var maxSize = Number(question.maxSize || maxMB * 1024 * 1024);
+      if (file.size > maxSize) {
+        field.value = "";
+        if (fileError) {
+          fileError.textContent =
+            "Máximo " +
+            maxMB +
+            "MB (tu archivo: " +
+            (file.size / 1024 / 1024).toFixed(2) +
+            "MB)";
+        }
+        if (statusEl) statusEl.textContent = "❌ Archivo muy grande";
+        return;
+      }
+
+      if (fileError) fileError.textContent = "";
+      if (statusEl) statusEl.textContent = "Subiendo " + file.name + "...";
+
+      var self = this;
+      var uploadPromise;
+      if (cfg.uploadHandler && typeof cfg.uploadHandler === "function") {
+        uploadPromise = cfg.uploadHandler(file, question.name, "file");
+      } else {
+        var fd = new FormData();
+        fd.append("file", file);
+        fd.append("fieldName", question.name);
+        fd.append("fileMode", fileMode);
+        fd.append("accept", acceptStr);
+        var headers = {};
+        if (cfg.TOKEN) headers["Authorization"] = "Bearer " + cfg.TOKEN;
+        uploadPromise = fetch(uploadUrl, {
+          method: "POST",
+          body: fd,
+          headers: headers,
+        }).then(function (r) {
+          if (!r.ok) throw new Error("upload");
+          return r.json();
         });
-      }.bind(this);
-      reader.readAsDataURL(file);
+      }
+      uploadPromise
+        .then(function (res) {
+          self.values[question.name] = {
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            url: res.url || res.location || res.path,
+            storageKey: res.storageKey,
+            fileMode: fileMode,
+          };
+          if (statusEl) statusEl.textContent = "✓ " + file.name;
+          if (fileError) fileError.textContent = "";
+          self.emit("valueChanged", {
+            name: question.name,
+            value: self.values[question.name],
+            data: self.getData(),
+          });
+          self.emit("fileUploaded", {
+            name: question.name,
+            file: self.values[question.name],
+          });
+        })
+        .catch(function () {
+          if (statusEl) statusEl.textContent = "Error al subir";
+          if (fileError) fileError.textContent = "Error al subir el archivo";
+          field.value = "";
+        });
       return;
     } else if (
       question.type === "radiogroup" ||
@@ -1639,6 +1874,7 @@
         "checkbox",
         "radiogroup",
         "dropdown",
+        "select",
         "rating",
         "scale",
         "nps",
@@ -1649,7 +1885,8 @@
       this.renderPage();
     }
   };
-  AuraSurvey.prototype.validate = function () {
+
+  CanvasForm.prototype.validate = function () {
     var valid = true;
     var questions = this.pages[this.currentPage].elements || [];
     questions.filter(this.visible.bind(this)).forEach(
@@ -1708,19 +1945,18 @@
     );
     return valid;
   };
-  AuraSurvey.prototype.render = function () {
-    this.host.classList.add("aura-survey-host");
-    this.host.innerHTML = '<div class="aura-survey" role="form"></div>';
+  CanvasForm.prototype.render = function () {
+    this.host.classList.add("canvasform-host");
+    this.host.innerHTML = '<div class="canvasform" role="form"></div>';
     this.root = this.host.firstElementChild;
     this.root.addEventListener("change", this._boundChange);
     this.root.addEventListener("input", this._boundChange);
     this.renderPage();
     return this;
   };
-  AuraSurvey.prototype.renderPage = function () {
+  CanvasForm.prototype.renderPage = function () {
     var page = this.pages[this.currentPage];
     if (!page) return;
-
     if (!this.isPageVisible(page)) {
       var n = this.getNextVisibleIndex(this.currentPage);
       if (n !== -1) {
@@ -1733,61 +1969,72 @@
         return this.renderPage();
       }
     }
-
     page = this.pages[this.currentPage];
     var visiblePages = this.getVisiblePages();
     var visibleIndex = visiblePages.indexOf(page);
     if (visibleIndex === -1) visibleIndex = 0;
-
     var visibleQuestions = (page.elements || []).filter(
       this.visible.bind(this),
     );
     var showBotton =
       this.definition.showBotton !== false &&
       this.definition.showButton !== false;
-
     var progress = Math.round(
       ((visibleIndex + 1) / (visiblePages.length || 1)) * 100,
     );
-
     var pageLabel =
       visiblePages.length > 1 && this.definition.showPageNumbers
-        ? '<span class="aura-page-count">Página ' +
+        ? '<span class="canvasform-page-count">Página ' +
           (visibleIndex + 1) +
           " de " +
           visiblePages.length +
           "</span>"
         : visiblePages.length === 1
-          ? '<span class="aura-page-count">Página 1 de 1</span>'
+          ? '<span class="canvasform-page-count">Página 1 de 1</span>'
           : "";
-
     var cfg = this.getTimeLimitConfig();
+    var geoCfg = this.getGeoLocationConfig();
     var timerMarkup =
       cfg && cfg.enabled
-        ? '<div class="aura-timer-wrap"><div class="aura-timer-progress"><div data-aura-timer-bar style="width:0%"></div></div><div class="aura-timer" data-aura-timer>Cargando...</div></div>'
+        ? '<div class="canvasform-timer-wrap"><div class="canvasform-timer-progress"><div data-canvasform-timer-bar style="width:0%"></div></div><div class="canvasform-timer" data-canvasform-timer>Cargando...</div></div>'
         : "";
+    var geoMarkup = "";
+    if (geoCfg) {
+      var isLocating =
+        this._geoStatus === "locating" || this._geoStatus === "idle";
+      var text = isLocating ? "OBTENIENDO UBICACIÓN…" : "UBICACIÓN REGISTRADA";
+      var dotBg = isLocating ? "#d97706" : "#0f7a4a";
+      var display = isLocating || this._geoStatus === "ok" ? "flex" : "none";
+      geoMarkup =
+        '<div data-canvasform-geo style="display:' +
+        display +
+        ';align-items:center;gap:6px;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#4a6350;background:#f0f5f1;border:1px solid #dbe6dd;padding:6px 12px;border-radius:999px;margin:12px 32px 0;width:fit-content;line-height:1"><span style="width:6px;height:6px;background:' +
+        dotBg +
+        ';border-radius:50%;display:inline-block;flex-shrink:0"></span><span>' +
+        text +
+        "</span></div>";
+    }
     var progressMarkup =
       (this.definition.showProgress
-        ? '<div class="aura-progress"><div class="aura-progress-bar" style="width:' +
+        ? '<div class="canvasform-progress"><div class="canvasform-progress-bar" style="width:' +
           progress +
           '%"></div></div>'
-        : "") + timerMarkup;
-
+        : "") +
+      timerMarkup +
+      geoMarkup;
     var minCheck = this.checkMinTime(false);
     var minHint = !minCheck.ok
-      ? '<div class="aura-time-error" data-aura-min-hint>⏳ Debes esperar ' +
+      ? '<div class="canvasform-time-error" data-canvasform-min-hint>Debes esperar ' +
         escapeHtml(formatSeconds(minCheck.remain)) +
         " para poder enviar.</div>"
       : "";
-
     var isLastVisible = visibleIndex === visiblePages.length - 1;
-
     var primaryButtonHtml = "";
     if (showBotton && minCheck.ok) {
       primaryButtonHtml =
-        '<button type="button" class="aura-button aura-button-primary" data-aura-action="' +
+        '<button type="button" class="canvasform-button canvasform-button-primary" data-canvasform-action="' +
         (isLastVisible ? "complete" : "next") +
-        '" data-aura-submit>' +
+        '" data-canvasform-submit>' +
         escapeHtml(
           isLastVisible
             ? this.definition.completeText
@@ -1795,11 +2042,10 @@
         ) +
         "<span>→</span></button>";
     }
-
     var footerHtml = showBotton
-      ? '<footer class="aura-footer">' +
+      ? '<footer class="canvasform-footer">' +
         (visibleIndex > 0
-          ? '<button type="button" class="aura-button aura-button-ghost" data-aura-action="previous">' +
+          ? '<button type="button" class="canvasform-button canvasform-button-ghost" data-canvasform-action="previous">' +
             escapeHtml(this.definition.previousText) +
             "</button>"
           : "<span></span>") +
@@ -1807,10 +2053,9 @@
         "</div>" +
         (primaryButtonHtml || "<span></span>") +
         "</footer>"
-      : '<footer class="aura-footer" style="border:none;"><span></span><span></span></footer>';
-
+      : '<footer class="canvasform-footer" style="border:none;"><span></span><span></span></footer>';
     this.root.innerHTML =
-      '<header class="aura-header"><div><span class="aura-kicker">AURA / FORM</span><h1>' +
+      '<header class="canvasform-header"><div><span class="canvasform-kicker">CANVASFORM • V1.0.0</span><h1>' +
       escapeHtml(this.definition.title) +
       "</h1><p>" +
       escapeHtml(this.definition.description) +
@@ -1818,29 +2063,27 @@
       pageLabel +
       "</header>" +
       progressMarkup +
-      '<main class="aura-page"><div class="aura-page-heading"><span class="aura-step">0' +
+      '<main class="canvasform-page"><div class="canvasform-page-heading"><span class="canvasform-step">0' +
       (visibleIndex + 1) +
       "</span><div><h2>" +
       escapeHtml(page.title || "") +
       "</h2>" +
       (page.description ? "<p>" + escapeHtml(page.description) + "</p>" : "") +
-      '</div></div><div class="aura-questions">' +
+      '</div></div><div class="canvasform-questions">' +
       visibleQuestions.map(this.renderQuestion.bind(this)).join("") +
       "</div></main>" +
       footerHtml;
-
-    this.root.querySelectorAll("[data-aura-action]").forEach(
+    this.root.querySelectorAll("[data-canvasform-action]").forEach(
       function (button) {
         button.addEventListener(
           "click",
           function () {
-            var a = button.dataset.auraAction;
+            var a = button.dataset.canvasformAction;
             if (typeof this[a] === "function") this[a]();
           }.bind(this),
         );
       }.bind(this),
     );
-
     this.bindSignatures();
     this.bindAutocomplete();
     if (this._timerId) {
@@ -1849,7 +2092,7 @@
     }
     this.startTimer();
   };
-  AuraSurvey.prototype.next = function () {
+  CanvasForm.prototype.next = function () {
     if (!this.validate()) return false;
     var nextIdx = this.getNextVisibleIndex(this.currentPage);
     if (nextIdx !== -1) {
@@ -1861,7 +2104,7 @@
     }
     return true;
   };
-  AuraSurvey.prototype.previous = function () {
+  CanvasForm.prototype.previous = function () {
     var prevIdx = this.getPrevVisibleIndex(this.currentPage);
     if (prevIdx !== -1) {
       this.currentPage = prevIdx;
@@ -1870,7 +2113,7 @@
     }
     return true;
   };
-  AuraSurvey.prototype.complete = function (isAuto) {
+  CanvasForm.prototype.complete = function (isAuto) {
     if (
       !isAuto &&
       (this.definition.showBotton === false ||
@@ -1892,17 +2135,19 @@
       return false;
     if (!this.validate()) return false;
     this.root.innerHTML =
-      '<div class="aura-complete">' +
+      '<div class="canvasform-complete">' +
       this.definition.completedHtml +
-      '<button type="button" class="aura-button aura-button-ghost" data-aura-action="restart">Responder de nuevo</button></div>';
-    var restartButton = this.root.querySelector('[data-aura-action="restart"]');
+      '<button type="button" class="canvasform-button canvasform-button-ghost" data-canvasform-action="restart">Responder de nuevo</button></div>';
+    var restartButton = this.root.querySelector(
+      '[data-canvasform-action="restart"]',
+    );
     if (restartButton) {
       restartButton.addEventListener("click", this.restart.bind(this));
     }
     this.emit("complete", this.getData());
     return true;
   };
-  AuraSurvey.prototype.restart = function () {
+  CanvasForm.prototype.restart = function () {
     this.currentPage = 0;
     this.values = merge({}, this.definition.data || {});
     this.renderPage();
@@ -1910,10 +2155,13 @@
     this._startTime = Date.now();
     this._timeExpired = false;
     this._forceComplete = false;
+    this._geoData = null;
+    this._geoStatus = "idle";
     this.startTimer();
+    this.captureGeoLocation();
     return this;
   };
-  AuraSurvey.prototype.destroy = function () {
+  CanvasForm.prototype.destroy = function () {
     if (this._timerId) clearInterval(this._timerId);
     this._autocompleteHandlers.forEach(function (item) {
       item.node.removeEventListener(item.type, item.handler);
@@ -1933,7 +2181,11 @@
     this._forceComplete = false;
     this.startTimer();
   };
-  AuraSurvey.findQuestion = findQuestion;
-  global.AuraSurvey = AuraSurvey;
-  global.AuraSurvey.version = VERSION;
+  CanvasForm.findQuestion = findQuestion;
+  global.CanvasForm = CanvasForm;
+  global.CanvasFormSurvey = CanvasForm;
+  global.CanvasFormResponse = CanvasForm;
+  global.CanvasformSurvey = CanvasForm;
+  global.CanvasForm.version = VERSION;
+  global.CanvasFormSurvey.version = VERSION;
 })(window);

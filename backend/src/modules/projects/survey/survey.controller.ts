@@ -8,7 +8,9 @@ import {
   Delete,
   Query,
   UseGuards,
+  Res,
 } from "@nestjs/common";
+import { Response } from "express";
 import { SurveyService } from "./survey.service";
 import { CreateSurveyDto } from "./dto/create-survey.dto";
 import { UpdateSurveyDto } from "./dto/update-survey.dto";
@@ -57,10 +59,22 @@ export class SurveyController {
     return this.surveyService.findByCode(code);
   }
 
-  @Public()
-  @Get("by-char/:surveyId")
-  findByChar(@Param("surveyId") surveyId: string) {
-    return this.surveyService.findByChar(surveyId);
+  @Get(":id/print")
+  @RequirePermissions("survey:read")
+  async print(
+    @Param("id") id: string,
+    @CurrentCompanyId() companyId: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const buffer = await this.surveyService.printExcel(id, companyId);
+
+    res.set({
+      "Content-Type":
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Disposition": `attachment; filename="encuesta-${id}.xlsx"`,
+      "Content-Length": String(buffer.length),
+    });
+    res.send(buffer);
   }
 
   @Get(":id")

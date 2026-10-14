@@ -49,7 +49,7 @@ const staticRoutes: RouteRecordRaw[] = [
     path: "/survey-response/:code",
     name: "Survey Response",
     component: () => import("../views/surveys/response/index.vue"),
-    meta: { title: "Signin", public: true },
+    meta: { title: "Survey Response", public: true },
   },
 ];
 

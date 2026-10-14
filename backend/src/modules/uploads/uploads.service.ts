@@ -23,22 +23,36 @@ export class UploadsService {
   ): SavedFileInfo {
     const dest = path.join(this.basePath, "docs", companyId, folderId);
     if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
-
-    const safeName = file.originalname
-      .replace(/\s+/g, "_")
-      .replace(/[^a-zA-Z0-9._-]/g, "");
-
+    const safeName = file.originalname.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9._-]/g, "");
     const filename = `${Date.now()}-${safeName}`;
-    const fullPath = path.join(dest, filename);
-
-    fs.writeFileSync(fullPath, file.buffer);
-
+    fs.writeFileSync(path.join(dest, filename), file.buffer);
     return {
       storageKey: `docs/${companyId}/${folderId}/${filename}`,
       mimeType: file.mimetype,
       size: file.size,
       originalName: file.originalname,
-      filename: filename,
+      filename,
+    };
+  }
+
+  saveSurveyFile(
+    surveyId: string,
+    subFolder: "img" | "docs" | "signatures",
+    file: MulterFile,
+  ): SavedFileInfo {
+    const dest = path.join(this.basePath, "survey", surveyId, subFolder);
+    if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+
+    const safeName = file.originalname.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9._-]/g, "");
+    const filename = `${Date.now()}-${safeName}`;
+    fs.writeFileSync(path.join(dest, filename), file.buffer);
+
+    return {
+      storageKey: `survey/${surveyId}/${subFolder}/${filename}`,
+      mimeType: file.mimetype,
+      size: file.size,
+      originalName: file.originalname,
+      filename,
     };
   }
 
