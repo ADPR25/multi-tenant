@@ -155,11 +155,13 @@
   background: #111;
 }
 
+/* --- FIX PRINCIPAL --- */
 .canvasform-body {
   display: grid;
   grid-template-columns: 260px 1fr 320px;
   flex: 1;
   min-height: calc(100vh - 52px);
+  align-items: start; /* evita que el grid se quede a 100vh */
 }
 
 .canvasform-palette {
@@ -169,8 +171,17 @@
   flex-direction: column;
   position: sticky;
   top: 52px;
-  height: calc(100vh - 52px);
+  height: auto;
+  max-height: calc(100vh - 52px);
+  align-self: start;
+  overflow: hidden;
 }
+.canvasform-palette > div:nth-child(2) {
+  flex: 1;
+  overflow: auto;
+  padding-bottom: 12px;
+}
+
 .canvasform-search {
   padding: 12px;
   border-bottom: 1px solid var(--border);
@@ -277,6 +288,9 @@
   background-color: #f6f6f8;
   background-image: radial-gradient(#e8e8ec 1px, transparent 1px);
   background-size: 20px 20px;
+  min-height: calc(100vh - 52px);
+  overflow: visible;
+  align-self: stretch;
 }
 .canvasform-canvas-card {
   background: #fff;
@@ -285,9 +299,11 @@
   box-shadow:
     0 1px 2px rgba(0, 0, 0, 0.04),
     0 8px 24px rgba(0, 0, 0, 0.06);
-  max-width: 800px;
+  max-width: 100% !important;
+  width: 100%;
   margin: 0 auto;
   padding: 28px;
+  overflow: visible;
 }
 .canvasform-canvas-head {
   display: flex;
@@ -338,11 +354,14 @@
 }
 
 .canvasform-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
+  display: grid !important;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 12px;
+  align-items: start;
 }
 .canvasform-field {
+  width: auto !important;
+  flex: none !important;
   position: relative;
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -351,6 +370,61 @@
   cursor: pointer;
   transition: 0.18s;
 }
+.canvasform-field.w-25 {
+  grid-column: span 3;
+}
+.canvasform-field.w-33 {
+  grid-column: span 4;
+}
+.canvasform-field.w-50 {
+  grid-column: span 6;
+}
+.canvasform-field.w-66 {
+  grid-column: span 8;
+}
+.canvasform-field.w-75 {
+  grid-column: span 9;
+}
+.canvasform-field.w-100 {
+  grid-column: span 12;
+}
+
+.canvasform-field:last-child:nth-child(odd):not(.w-100) {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 1400px) {
+  .canvasform-body {
+    grid-template-columns: 280px 1fr 380px;
+  }
+  .canvasform-canvas-card {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .canvasform-body {
+    grid-template-columns: 1fr;
+  }
+  .canvasform-palette,
+  .canvasform-inspector {
+    position: relative;
+    top: 0;
+    max-height: none;
+  }
+  .canvasform-grid {
+    grid-template-columns: 1fr;
+  }
+  .canvasform-field.w-25,
+  .canvasform-field.w-33,
+  .canvasform-field.w-50,
+  .canvasform-field.w-66,
+  .canvasform-field.w-75 {
+    grid-column: span 1 !important;
+  }
+}
+
 .canvasform-field:hover {
   border-color: #d8d8de;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
@@ -361,33 +435,6 @@
     0 0 0 1.5px #0a0a0b,
     0 8px 24px rgba(0, 0, 0, 0.08);
   transform: scale(1.01);
-}
-.canvasform-field.w-25 {
-  width: calc(25% - 12px);
-}
-.canvasform-field.w-33 {
-  width: calc(33.333% - 11px);
-}
-.canvasform-field.w-50 {
-  width: calc(50% - 8px);
-}
-.canvasform-field.w-66 {
-  width: calc(66.666% - 6px);
-}
-.canvasform-field.w-75 {
-  width: calc(75% - 4px);
-}
-.canvasform-field.w-100 {
-  width: 100%;
-}
-@media (max-width: 1100px) {
-  .canvasform-field.w-25,
-  .canvasform-field.w-33,
-  .canvasform-field.w-50,
-  .canvasform-field.w-66,
-  .canvasform-field.w-75 {
-    width: 100%;
-  }
 }
 
 .canvasform-field-top {
@@ -488,7 +535,9 @@
   flex-direction: column;
   position: sticky;
   top: 52px;
-  height: calc(100vh - 52px);
+  height: auto;
+  max-height: calc(100vh - 52px);
+  align-self: start;
 }
 .canvasform-insp-head {
   height: 52px;
@@ -611,10 +660,16 @@
 .canvasform-switch input:checked + .canvasform-switch-track {
   background: #000;
 }
-.canvasform-switch input:checked + .canvasform-switch-track .canvasform-switch-thumb {
+.canvasform-switch
+  input:checked
+  + .canvasform-switch-track
+  .canvasform-switch-thumb {
   transform: translateX(18px);
 }
-.canvasform-switch-sm input:checked + .canvasform-switch-track .canvasform-switch-thumb {
+.canvasform-switch-sm
+  input:checked
+  + .canvasform-switch-track
+  .canvasform-switch-thumb {
   transform: translateX(14px);
 }
 .canvasform-insp-actions {

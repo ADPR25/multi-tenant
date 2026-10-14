@@ -89,7 +89,6 @@
   background: #000;
   transition: width 0.35s ease;
 }
-
 .canvasform-timer-wrap {
   padding: 12px 32px;
   background: #fcfcfd;
@@ -121,7 +120,6 @@
 .canvasform-timer-progress [data-canvasform-timer-bar].is-danger {
   background: #bf4934;
 }
-
 .canvasform-time-error {
   font: 500 12px var(--font);
   color: #bf4934;
@@ -130,7 +128,6 @@
   padding: 8px 12px;
   border-radius: 10px;
 }
-
 [data-canvasform-geo] {
   display: flex;
   align-items: center;
@@ -182,10 +179,27 @@
   align-items: flex-start;
 }
 .canvasform-question {
+  position: relative;
   box-sizing: border-box;
   width: 100%;
   flex: 0 0 100%;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fff;
+  padding: 16px;
+  transition: 0.18s;
 }
+.canvasform-question:hover {
+  border-color: var(--border-strong);
+}
+.canvasform-question.has-error {
+  border-color: #bf4934;
+  box-shadow: 0 0 0 1.5px #bf4934;
+}
+.canvasform-question-conditional {
+  border-style: dashed;
+}
+
 .canvasform-question.w-25 {
   width: calc(25% - 12px);
   flex: 0 0 calc(25% - 12px);
@@ -218,34 +232,6 @@
 .canvasform-question[data-type="video"] {
   width: 100% !important;
   flex: 0 0 100% !important;
-}
-@media (max-width: 600px) {
-  .canvasform-question.w-25,
-  .canvasform-question.w-33,
-  .canvasform-question.w-50,
-  .canvasform-question.w-66,
-  .canvasform-question.w-75 {
-    width: 100% !important;
-    flex: 0 0 100% !important;
-  }
-}
-.canvasform-question {
-  position: relative;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: #fff;
-  padding: 16px;
-  transition: 0.18s;
-}
-.canvasform-question:hover {
-  border-color: var(--border-strong);
-}
-.canvasform-question.has-error {
-  border-color: #bf4934;
-  box-shadow: 0 0 0 1.5px #bf4934;
-}
-.canvasform-question-conditional {
-  border-style: dashed;
 }
 
 .canvasform-label {
@@ -588,6 +574,7 @@ textarea.canvasform-control {
   width: 100%;
   border: 1px solid var(--border);
   border-radius: 12px;
+  -webkit-overflow-scrolling: touch;
 }
 .canvasform-matrix {
   width: 100%;
@@ -746,7 +733,7 @@ textarea.canvasform-control {
 .canvasform-date-control {
   position: relative;
 }
-.canvasform-date-control .canvasform-control {
+.canvasform-date-control.canvasform-control {
   padding-right: 40px;
 }
 .canvasform-date-control span {
@@ -757,7 +744,6 @@ textarea.canvasform-control {
   color: var(--text-3);
   pointer-events: none;
 }
-
 .canvasform-calculated {
   display: block;
   padding: 12px;
@@ -767,7 +753,32 @@ textarea.canvasform-control {
   font: 500 13px var(--font);
 }
 
-@media (max-width: 600px) {
+@media (max-width: 700px) {
+  .canvasform-host {
+    margin: 0;
+  }
+  .canvasform {
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+  }
+  .canvasform-header,
+  .canvasform-page,
+  .canvasform-footer,
+  .canvasform-timer-wrap {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+  .canvasform-questions {
+    gap: 14px;
+  }
+  .canvasform-question {
+    padding: 14px;
+  }
+  .canvasform-phone,
+  .canvasform-date-range {
+    grid-template-columns: 1fr;
+  }
   .canvasform-question.w-25,
   .canvasform-question.w-33,
   .canvasform-question.w-50,
@@ -777,57 +788,86 @@ textarea.canvasform-control {
     flex: 0 0 100% !important;
   }
 
-  .canvasform-host {
-    margin: 12px;
+  .canvasform-matrix-scroll {
+    border: 0;
+    overflow: visible;
+    background: transparent;
   }
-  .canvasform-header,
-  .canvasform-page,
-  .canvasform-footer,
-  .canvasform-timer-wrap {
-    padding-left: 20px;
-    padding-right: 20px;
+  .canvasform-matrix {
+    min-width: 0 !important;
+    display: grid;
+    gap: 12px;
+    border: 0;
   }
-  .canvasform-phone,
-  .canvasform-date-range {
-    grid-template-columns: 1fr;
+  .canvasform-matrix thead {
+    display: none;
+  }
+  .canvasform-matrix tbody {
+    display: grid;
+    gap: 12px;
+  }
+  .canvasform-matrix tr {
+    display: grid;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    gap: 2px;
+  }
+  .canvasform-matrix th {
+    background: transparent;
+    border: 0;
+    padding: 0 0 6px;
+    text-align: left;
+    font-size: 13px;
+    white-space: normal;
+  }
+  .canvasform-matrix th:first-child {
+    font-size: 14px;
+    font-weight: 600;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 6px;
+  }
+  .canvasform-matrix td {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 10px;
+    border: 0;
+    border-bottom: 1px dashed #f0f0f3;
+    padding: 10px 0;
+    text-align: left;
+  }
+  .canvasform-matrix td:last-child {
+    border-bottom: 0;
+  }
+  .canvasform-matrix td::before {
+    content: attr(data-col);
+    font: 600 12px var(--font);
+    color: var(--text);
+    white-space: normal;
+    line-height: 1.3;
+  }
+  .canvasform-matrix td:first-child {
+    display: none;
+  }
+  .canvasform-matrix td input {
+    width: 22px;
+    height: 22px;
+  }
+  .canvasform-matrix td input[type="text"] {
+    width: 100%;
+    height: 38px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0 10px;
+    font-size: 13px;
   }
 }
 
-.canvasform-question {
-  width: 100%;
-  flex: 0 0 100%;
-  box-sizing: border-box;
-}
-.canvasform-question.w-25 {
-  width: calc(25% - 12px);
-  flex: 0 0 calc(25% - 12px);
-}
-.canvasform-question.w-33 {
-  width: calc(33.333% - 11px);
-  flex: 0 0 calc(33.333% - 11px);
-}
-.canvasform-question.w-50 {
-  width: calc(50% - 8px);
-  flex: 0 0 calc(50% - 8px);
-}
-.canvasform-question.w-66 {
-  width: calc(66.666% - 6px);
-  flex: 0 0 calc(66.666% - 6px);
-}
-.canvasform-question.w-75 {
-  width: calc(75% - 4px);
-  flex: 0 0 calc(75% - 4px);
-}
-.canvasform-question.w-100 {
-  width: 100%;
-  flex: 0 0 100%;
-}
-.canvasform-question[data-type="heading"],
-.canvasform-question[data-type="description"],
-.canvasform-question[data-type="separator"],
-.canvasform-question[data-type="section"],
-.canvasform-question[data-type="image"],
-.canvasform-question[data-type="video"] {
-  width: 100% !important;
-  flex: 0 0 100% !important;
+@media (max-width: 420px) {
+  .canvasform-control {
+    font-size: 16px;
+  }
 }

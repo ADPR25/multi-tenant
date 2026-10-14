@@ -1,6 +1,6 @@
 (function (global) {
   "use strict";
-  var VERSION = "V1.0.0";
+  var VERSION = "2.7.1";
   var defaults = {
     title: "Canvasform survey",
     description: "",
@@ -75,11 +75,13 @@
     return String(value).replace(/([^\w-])/g, "\\$1");
   }
   function isEmpty(value) {
-    return (
-      value == null ||
-      value === "" ||
-      (Array.isArray(value) && value.length === 0)
-    );
+    if (value == null || value === "") return true;
+    if (Array.isArray(value) && value.length === 0) return true;
+    if (typeof value === "object") {
+      // FIX: objeto vacio de matriz tambien cuenta como vacio
+      return Object.keys(value).length === 0;
+    }
+    return false;
   }
   function normalizeOperator(operator) {
     var v = String(operator || "=").toLowerCase();
@@ -787,14 +789,12 @@
     var self = this;
     var cfg = getCanvasConfig();
     var uploadUrl = cfg.UPLOAD_URL || cfg.API_URL || "/api/uploads";
-
     this.root.querySelectorAll("[data-signature]").forEach(function (canvas) {
       var context = canvas.getContext("2d");
       if (!context) return;
       var drawing = false;
       var hasStroke = false;
       var saveTimeout = null;
-
       var position = function (event) {
         var rect = canvas.getBoundingClientRect();
         var source =
@@ -804,13 +804,11 @@
           y: ((source.clientY - rect.top) * canvas.height) / rect.height,
         };
       };
-
       context.strokeStyle = "#0A0A0B";
       context.fillStyle = "#0A0A0B";
       context.lineWidth = 2.5;
       context.lineCap = "round";
       context.lineJoin = "round";
-
       var start = function (event) {
         drawing = true;
         hasStroke = true;
@@ -832,7 +830,6 @@
         }
         event.preventDefault();
       };
-
       var draw = function (event) {
         if (!drawing) return;
         var point = position(event);
@@ -840,7 +837,6 @@
         context.stroke();
         event.preventDefault();
       };
-
       var scheduleUpload = function () {
         if (saveTimeout) clearTimeout(saveTimeout);
         saveTimeout = setTimeout(function () {
@@ -852,7 +848,6 @@
                 '[data-file-for="' + cssEscape(canvas.dataset.signature) + '"]',
               );
               if (statusEl) statusEl.textContent = "Guardando firma...";
-
               var doUpload;
               if (
                 cfg.uploadHandler &&
@@ -877,7 +872,6 @@
                   return r.json();
                 });
               }
-
               doUpload
                 .then(function (res) {
                   self.values[canvas.dataset.signature] = {
@@ -907,20 +901,17 @@
           );
         }, 900);
       };
-
       var end = function () {
         if (!drawing) return;
         drawing = false;
         scheduleUpload();
       };
-
       canvas.addEventListener("pointerdown", start);
       canvas.addEventListener("pointermove", draw);
       canvas.addEventListener("pointerup", end);
       canvas.addEventListener("pointercancel", end);
       canvas.addEventListener("pointerleave", end);
     });
-
     this.root
       .querySelectorAll("[data-clear-signature]")
       .forEach(function (button) {
@@ -1100,8 +1091,11 @@
       data: this.getData(),
     });
   };
+
+  // ================== RENDER QUESTION - FIX MATRIZ COMPLETO ==================
   CanvasForm.prototype.renderQuestion = function (question) {
-    var value = this.values[question.name];
+    var self = this;
+    var value = self.values[question.name];
     var id = "canvasform-" + question.name;
     var conditionalClass =
       question.visibleIf ||
@@ -1373,15 +1367,7 @@
     } else if (question.type === "emojis") {
       input =
         '<div class="canvasform-emojis">' +
-        (
-          question.choices || [
-            "\uD83D\uDE21",
-            "\uD83D\uDE1E",
-            "\uD83D\uDE10",
-            "\uD83D\uDE42",
-            "\uD83D\uDE0D",
-          ]
-        )
+        (question.choices || ["😡", "😞", "😐", "🙂", "😍"])
           .map(function (emoji) {
             var item =
               typeof emoji === "object" ? emoji : { value: emoji, text: emoji };
@@ -1425,12 +1411,15 @@
       question.type === "matrixcheckbox" ||
       question.type === "matrixtext"
     ) {
+      // ===== FIX COMPLETO RESPONSIVE + GUARDADO =====
       var matrixInput =
         question.type === "matrixtext"
           ? "text"
           : question.type === "matrixcheckbox"
             ? "checkbox"
             : "radio";
+      var currentVal = value && typeof value === "object" ? value : {};
+
       input =
         '<div class="canvasform-matrix-scroll"><table class="canvasform-matrix"><thead><tr><th></th>' +
         (question.columns || [])
@@ -1443,19 +1432,60 @@
           .map(function (row, rowIndex) {
             var rowText = getChoiceText(row);
             return (
-              "<tr><th>" +
+              '<tr><th data-row="' +
+              escapeHtml(rowText) +
+              '">' +
               escapeHtml(rowText) +
               "</th>" +
               (question.columns || [])
-                .map(function (_, columnIndex) {
+                .map(function (col, columnIndex) {
+                  var colText = getChoiceText(col);
+                  var fieldName = question.name + "_" + rowIndex;
+                  var isChecked = false;
+                  var textVal = "";
+
+                  if (matrixInput === "text") {
+                    textVal =
+                      currentVal[rowText] != null ? currentVal[rowText] : "";
+                    // si currentVal[rowText] es objeto (por compat), buscar
+                    if (typeof textVal === "object") textVal = "";
+                    return (
+                      '<td data-col="' +
+                      escapeHtml(colText) +
+                      '" data-row="' +
+                      escapeHtml(rowText) +
+                      '"><input type="text" name="' +
+                      escapeHtml(fieldName) +
+                      '" value="' +
+                      escapeHtml(textVal) +
+                      '" placeholder="' +
+                      escapeHtml(colText) +
+                      '" class="canvasform-control" style="height:36px;"></td>'
+                    );
+                  }
+
+                  if (question.type === "matrix") {
+                    isChecked = currentVal[rowText] === colText;
+                  } else if (question.type === "matrixcheckbox") {
+                    isChecked =
+                      Array.isArray(currentVal[rowText]) &&
+                      currentVal[rowText].indexOf(colText) !== -1;
+                  }
+
                   return (
-                    '<td><input type="' +
+                    '<td data-col="' +
+                    escapeHtml(colText) +
+                    '" data-row="' +
+                    escapeHtml(rowText) +
+                    '"><input type="' +
                     matrixInput +
                     '" name="' +
-                    escapeHtml(question.name + "_" + rowIndex) +
+                    escapeHtml(fieldName) +
                     '" value="' +
                     columnIndex +
-                    '"></td>'
+                    '"' +
+                    (isChecked ? " checked" : "") +
+                    "></td>"
                   );
                 })
                 .join("") +
@@ -1650,15 +1680,33 @@
     if (questionName.slice(-4) === "_end") {
       questionName = questionName.slice(0, -4);
     }
-    var question = this.findQuestion(questionName);
+    // Para matriz: f123_0 -> f123
+    var baseNameForMatrix = questionName;
+    if (questionName.indexOf("_") !== -1) {
+      var parts = questionName.split("_");
+      var last = parts[parts.length - 1];
+      if (/^\d+$/.test(last)) {
+        baseNameForMatrix = parts.slice(0, -1).join("_");
+      }
+    }
+    var question =
+      this.findQuestion(questionName) || this.findQuestion(baseNameForMatrix);
     if (!question) return;
+    // si es matriz, el nombre real es baseNameForMatrix
+    if (
+      question.type === "matrix" ||
+      question.type === "matrixcheckbox" ||
+      question.type === "matrixtext"
+    ) {
+      questionName = baseNameForMatrix;
+    }
+
     var fields = this.root.querySelectorAll(
       '[name="' + cssEscape(field.name) + '"]',
     );
     var value;
     var cfg = getCanvasConfig();
     var uploadUrl = cfg.UPLOAD_URL || cfg.API_URL || "/api/uploads";
-
     if (question.type === "checkbox") {
       value = Array.from(fields)
         .filter(function (i) {
@@ -1706,20 +1754,17 @@
     } else if (question.type === "file") {
       var file = field.files && field.files[0];
       if (!file) return;
-
       var statusEl = this.root.querySelector(
         '[data-file-for="' + cssEscape(question.name) + '"]',
       );
       var fileError = this.root.querySelector(
         '[data-error-for="' + cssEscape(question.name) + '"]',
       );
-
       var acceptStr = question.accept || "";
       var fileMode = question.fileMode || "all";
       var mime = (file.type || "").toLowerCase();
       var fName = (file.name || "").toLowerCase();
       var isValidType = true;
-
       if (fileMode === "image") {
         isValidType = mime.indexOf("image/") === 0;
       } else if (fileMode === "pdf") {
@@ -1743,7 +1788,6 @@
           if (acceptStr === "image/*") isValidType = false;
         }
       }
-
       if (!isValidType) {
         field.value = "";
         var msg = "Tipo no permitido. ";
@@ -1754,12 +1798,10 @@
         else if (fileMode === "image_document")
           msg += "Solo imágenes y documentos.";
         else msg += "Permitido: " + (acceptStr || "*/*");
-
         if (fileError) fileError.textContent = msg;
         if (statusEl) statusEl.textContent = "❌ " + file.name + " rechazado";
         return;
       }
-
       var maxMB = question.maxSizeMB || cfg.MAX_FILE_MB || 5;
       var maxSize = Number(question.maxSize || maxMB * 1024 * 1024);
       if (file.size > maxSize) {
@@ -1775,10 +1817,8 @@
         if (statusEl) statusEl.textContent = "❌ Archivo muy grande";
         return;
       }
-
       if (fileError) fileError.textContent = "";
       if (statusEl) statusEl.textContent = "Subiendo " + file.name + "...";
-
       var self = this;
       var uploadPromise;
       if (cfg.uploadHandler && typeof cfg.uploadHandler === "function") {
@@ -1856,9 +1896,54 @@
       question.type === "matrixcheckbox" ||
       question.type === "matrixtext"
     ) {
-      value = this.values[question.name] || {};
-      value[field.name] =
-        field.type === "checkbox" ? field.checked : field.value;
+      // ================= FIX MATRIZ - GUARDA TODO =================
+      var selfM = this;
+      var rowIdx = parseInt(field.name.split("_").pop() || "0", 10);
+      var rowText =
+        question.rows && question.rows[rowIdx] != null
+          ? getChoiceText(question.rows[rowIdx])
+          : field.name;
+
+      if (
+        !selfM.values[question.name] ||
+        typeof selfM.values[question.name] !== "object" ||
+        Array.isArray(selfM.values[question.name])
+      ) {
+        selfM.values[question.name] = {};
+      }
+
+      if (question.type === "matrixtext") {
+        selfM.values[question.name][rowText] = field.value;
+        value = selfM.values[question.name];
+      } else {
+        var colIdx = parseInt(field.value, 10);
+        var colText =
+          question.columns && question.columns[colIdx] != null
+            ? getChoiceText(question.columns[colIdx])
+            : field.value;
+
+        if (question.type === "matrix") {
+          selfM.values[question.name][rowText] = colText;
+          value = selfM.values[question.name];
+        } else if (question.type === "matrixcheckbox") {
+          var currentRowVal = selfM.values[question.name][rowText];
+          if (!Array.isArray(currentRowVal)) currentRowVal = [];
+          if (field.checked) {
+            if (currentRowVal.indexOf(colText) === -1)
+              currentRowVal.push(colText);
+          } else {
+            currentRowVal = currentRowVal.filter(function (c) {
+              return c !== colText;
+            });
+          }
+          if (currentRowVal.length === 0) {
+            delete selfM.values[question.name][rowText];
+          } else {
+            selfM.values[question.name][rowText] = currentRowVal;
+          }
+          value = selfM.values[question.name];
+        }
+      }
     } else {
       value = field.value;
     }
@@ -2055,7 +2140,7 @@
         "</footer>"
       : '<footer class="canvasform-footer" style="border:none;"><span></span><span></span></footer>';
     this.root.innerHTML =
-      '<header class="canvasform-header"><div><span class="canvasform-kicker">CANVASFORM • V1.0.0</span><h1>' +
+      '<header class="canvasform-header"><div><span class="canvasform-kicker">CANVASFORM • V1.0.1</span><h1>' +
       escapeHtml(this.definition.title) +
       "</h1><p>" +
       escapeHtml(this.definition.description) +

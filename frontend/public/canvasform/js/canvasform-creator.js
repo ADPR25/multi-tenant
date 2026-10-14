@@ -1,6 +1,6 @@
 (function (global) {
   "use strict";
-  var VERSION = "1.0.0";
+  var VERSION = "2.7.1";
 
   var TYPES = {
     text: {
@@ -784,6 +784,16 @@
     var headTitle = esc(this.schema.title);
     var currentPage = self.getCurrentPage();
     var pageElements = currentPage.elements || [];
+    var currentRowWidth = 0;
+    pageElements.forEach(function (el) {
+      currentRowWidth += el.width || 100;
+      if (currentRowWidth >= 100) {
+        currentRowWidth = 0;
+      } else if (currentRowWidth > 0 && currentRowWidth < 100) {
+        var next = pageElements[pageElements.indexOf(el) + 1];
+        if (!next) el._isLastInRow = true;
+      }
+    });
     var fieldCount = self.schema.fields.length;
     var pageFieldCount = pageElements.length;
     var totalWidth = pageElements.reduce(function (a, b) {
@@ -961,6 +971,7 @@
               : f.width === 75
                 ? "w-75"
                 : "w-100";
+    if (f._isLastInRow && f.width < 100) wClass = "w-100";
     var label = f.label || f.type;
     var ph = f.placeholder || "";
     var icon = TYPES[f.type] ? TYPES[f.type].icon : "T";
