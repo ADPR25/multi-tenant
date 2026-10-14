@@ -78,8 +78,31 @@
     if (value == null || value === "") return true;
     if (Array.isArray(value) && value.length === 0) return true;
     if (typeof value === "object") {
-      // FIX: objeto vacio de matriz tambien cuenta como vacio
-      return Object.keys(value).length === 0;
+      var keys = Object.keys(value);
+      if (keys.length === 0) return true;
+      for (var i = 0; i < keys.length; i++) {
+        var v = value[keys[i]];
+        if (v == null || v === "") continue;
+        if (Array.isArray(v)) {
+          if (
+            v.length > 0 &&
+            v.some(function (x) {
+              return x != null && x !== "";
+            })
+          )
+            return false;
+          continue;
+        }
+        if (typeof v === "object") {
+          var sub = Object.keys(v);
+          for (var j = 0; j < sub.length; j++) {
+            if (v[sub[j]] != null && v[sub[j]] !== "") return false;
+          }
+          continue;
+        }
+        return false;
+      }
+      return true;
     }
     return false;
   }
@@ -1411,7 +1434,6 @@
       question.type === "matrixcheckbox" ||
       question.type === "matrixtext"
     ) {
-      // ===== FIX COMPLETO RESPONSIVE + GUARDADO =====
       var matrixInput =
         question.type === "matrixtext"
           ? "text"
@@ -1423,14 +1445,32 @@
       input =
         '<div class="canvasform-matrix-scroll"><table class="canvasform-matrix"><thead><tr><th></th>' +
         (question.columns || [])
-          .map(function (column) {
-            return "<th>" + escapeHtml(getChoiceText(column)) + "</th>";
+          .map(function (c) {
+            return "<th>" + escapeHtml(getChoiceText(c)) + "</th>";
           })
           .join("") +
         "</tr></thead><tbody>" +
         (question.rows || [])
           .map(function (row, rowIndex) {
             var rowText = getChoiceText(row);
+            var rowData = currentVal[rowText];
+            if (
+              typeof rowData !== "object" ||
+              rowData === null ||
+              Array.isArray(rowData)
+            ) {
+              rowData = {};
+              if (
+                currentVal[rowText] != null &&
+                typeof currentVal[rowText] !== "object"
+              ) {
+                var firstCol =
+                  question.columns && question.columns[0]
+                    ? getChoiceText(question.columns[0])
+                    : "0";
+                rowData[firstCol] = currentVal[rowText];
+              }
+            }
             return (
               '<tr><th data-row="' +
               escapeHtml(rowText) +
@@ -1440,53 +1480,57 @@
               (question.columns || [])
                 .map(function (col, columnIndex) {
                   var colText = getChoiceText(col);
-                  var fieldName = question.name + "_" + rowIndex;
+                  var fieldName =
+                    question.name + "_" + rowIndex + "_" + columnIndex;
+                  var val =
+                    rowData[colText] != null
+                      ? rowData[colText]
+                      : rowData[columnIndex] != null
+                        ? rowData[columnIndex]
+                        : "";
                   var isChecked = false;
-                  var textVal = "";
-
-                  if (matrixInput === "text") {
-                    textVal =
-                      currentVal[rowText] != null ? currentVal[rowText] : "";
-                    // si currentVal[rowText] es objeto (por compat), buscar
-                    if (typeof textVal === "object") textVal = "";
-                    return (
-                      '<td data-col="' +
-                      escapeHtml(colText) +
-                      '" data-row="' +
-                      escapeHtml(rowText) +
-                      '"><input type="text" name="' +
-                      escapeHtml(fieldName) +
-                      '" value="' +
-                      escapeHtml(textVal) +
-                      '" placeholder="' +
-                      escapeHtml(colText) +
-                      '" class="canvasform-control" style="height:36px;"></td>'
-                    );
-                  }
-
-                  if (question.type === "matrix") {
+                  if (question.type === "matrix")
                     isChecked = currentVal[rowText] === colText;
-                  } else if (question.type === "matrixcheckbox") {
+                  else if (question.type === "matrixcheckbox")
                     isChecked =
                       Array.isArray(currentVal[rowText]) &&
                       currentVal[rowText].indexOf(colText) !== -1;
-                  }
 
-                  return (
-                    '<td data-col="' +
-                    escapeHtml(colText) +
-                    '" data-row="' +
-                    escapeHtml(rowText) +
-                    '"><input type="' +
-                    matrixInput +
-                    '" name="' +
-                    escapeHtml(fieldName) +
-                    '" value="' +
-                    columnIndex +
-                    '"' +
-                    (isChecked ? " checked" : "") +
-                    "></td>"
-                  );
+                  if (matrixInput === "text") {
+                    return (
+                      '<td data-col="' +
+                      escapeHtml(colText) +
+                      '"><input type="text" class="canvasform-control" name="' +
+                      escapeHtml(fieldName) +
+                      '" data-row="' +
+                      escapeHtml(rowText) +
+                      '" data-col="' +
+                      escapeHtml(colText) +
+                      '" value="' +
+                      escapeHtml(val) +
+                      '" placeholder="' +
+                      escapeHtml(colText) +
+                      '" style="height:36px;"></td>'
+                    );
+                  } else {
+                    return (
+                      '<td data-col="' +
+                      escapeHtml(colText) +
+                      '"><input type="' +
+                      matrixInput +
+                      '" name="' +
+                      escapeHtml(question.name + "_" + rowIndex) +
+                      '" value="' +
+                      columnIndex +
+                      '" data-row="' +
+                      escapeHtml(rowText) +
+                      '" data-col="' +
+                      escapeHtml(colText) +
+                      '"' +
+                      (isChecked ? " checked" : "") +
+                      "></td>"
+                    );
+                  }
                 })
                 .join("") +
               "</tr>"
@@ -1670,36 +1714,26 @@
   CanvasForm.prototype._handleChange = function (event) {
     var field = event.target;
     if (!field || !field.name) return;
-    var questionName = field.name;
-    if (questionName.slice(-8) === "_country") {
+    var rawName = field.name;
+    var questionName = rawName;
+
+    if (questionName.slice(-8) === "_country")
       questionName = questionName.slice(0, -8);
-    }
-    if (questionName.slice(-6) === "_start") {
+    if (questionName.slice(-6) === "_start")
       questionName = questionName.slice(0, -6);
-    }
-    if (questionName.slice(-4) === "_end") {
+    if (questionName.slice(-4) === "_end")
       questionName = questionName.slice(0, -4);
+
+    var temp = questionName;
+    if (temp.indexOf("_") !== -1) {
+      var p = temp.split("_");
+      while (p.length > 1 && /^\d+$/.test(p[p.length - 1])) p.pop();
+      var stripped = p.join("_");
+      if (this.findQuestion(stripped)) questionName = stripped;
     }
-    // Para matriz: f123_0 -> f123
-    var baseNameForMatrix = questionName;
-    if (questionName.indexOf("_") !== -1) {
-      var parts = questionName.split("_");
-      var last = parts[parts.length - 1];
-      if (/^\d+$/.test(last)) {
-        baseNameForMatrix = parts.slice(0, -1).join("_");
-      }
-    }
-    var question =
-      this.findQuestion(questionName) || this.findQuestion(baseNameForMatrix);
+
+    var question = this.findQuestion(questionName);
     if (!question) return;
-    // si es matriz, el nombre real es baseNameForMatrix
-    if (
-      question.type === "matrix" ||
-      question.type === "matrixcheckbox" ||
-      question.type === "matrixtext"
-    ) {
-      questionName = baseNameForMatrix;
-    }
 
     var fields = this.root.querySelectorAll(
       '[name="' + cssEscape(field.name) + '"]',
@@ -1707,6 +1741,7 @@
     var value;
     var cfg = getCanvasConfig();
     var uploadUrl = cfg.UPLOAD_URL || cfg.API_URL || "/api/uploads";
+
     if (question.type === "checkbox") {
       value = Array.from(fields)
         .filter(function (i) {
@@ -1743,12 +1778,10 @@
           question.countryCodes[0].code) ||
         "+57";
       if (countryField) {
-        var countryOption = (question.countryCodes || []).find(function (c) {
+        var co = (question.countryCodes || []).find(function (c) {
           return c.name + " (" + c.code + ")" === countryField.value;
         });
-        if (countryOption) {
-          currentCountry = countryOption.code;
-        }
+        if (co) currentCountry = co.code;
       }
       value = { country: currentCountry, number: field.value };
     } else if (question.type === "file") {
@@ -1765,40 +1798,23 @@
       var mime = (file.type || "").toLowerCase();
       var fName = (file.name || "").toLowerCase();
       var isValidType = true;
-      if (fileMode === "image") {
-        isValidType = mime.indexOf("image/") === 0;
-      } else if (fileMode === "pdf") {
+      if (fileMode === "image") isValidType = mime.indexOf("image/") === 0;
+      else if (fileMode === "pdf")
         isValidType = mime === "application/pdf" || fName.endsWith(".pdf");
-      } else if (fileMode === "document") {
+      else if (fileMode === "document")
         isValidType =
           /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|csv)$/.test(fName) ||
           /^(application\/(pdf|msword|vnd\.ms-excel|vnd\.openxmlformats)|text\/)/.test(
             mime,
           );
-      } else if (fileMode === "image_document") {
+      else if (fileMode === "image_document")
         isValidType =
           mime.indexOf("image/") === 0 ||
           /\.(pdf|doc|docx|xls|xlsx)$/.test(fName) ||
           mime === "application/pdf";
-      } else if (acceptStr && acceptStr !== "*/*") {
-        if (
-          acceptStr.indexOf("image/*") !== -1 &&
-          mime.indexOf("image/") !== 0
-        ) {
-          if (acceptStr === "image/*") isValidType = false;
-        }
-      }
       if (!isValidType) {
         field.value = "";
-        var msg = "Tipo no permitido. ";
-        if (fileMode === "image") msg += "Solo se permiten imágenes.";
-        else if (fileMode === "pdf") msg += "Solo se permite PDF.";
-        else if (fileMode === "document")
-          msg += "Solo documentos (PDF, Word, Excel).";
-        else if (fileMode === "image_document")
-          msg += "Solo imágenes y documentos.";
-        else msg += "Permitido: " + (acceptStr || "*/*");
-        if (fileError) fileError.textContent = msg;
+        if (fileError) fileError.textContent = "Tipo no permitido.";
         if (statusEl) statusEl.textContent = "❌ " + file.name + " rechazado";
         return;
       }
@@ -1806,14 +1822,7 @@
       var maxSize = Number(question.maxSize || maxMB * 1024 * 1024);
       if (file.size > maxSize) {
         field.value = "";
-        if (fileError) {
-          fileError.textContent =
-            "Máximo " +
-            maxMB +
-            "MB (tu archivo: " +
-            (file.size / 1024 / 1024).toFixed(2) +
-            "MB)";
-        }
+        if (fileError) fileError.textContent = "Máximo " + maxMB + "MB";
         if (statusEl) statusEl.textContent = "❌ Archivo muy grande";
         return;
       }
@@ -1821,14 +1830,12 @@
       if (statusEl) statusEl.textContent = "Subiendo " + file.name + "...";
       var self = this;
       var uploadPromise;
-      if (cfg.uploadHandler && typeof cfg.uploadHandler === "function") {
+      if (cfg.uploadHandler && typeof cfg.uploadHandler === "function")
         uploadPromise = cfg.uploadHandler(file, question.name, "file");
-      } else {
+      else {
         var fd = new FormData();
         fd.append("file", file);
         fd.append("fieldName", question.name);
-        fd.append("fileMode", fileMode);
-        fd.append("accept", acceptStr);
         var headers = {};
         if (cfg.TOKEN) headers["Authorization"] = "Bearer " + cfg.TOKEN;
         uploadPromise = fetch(uploadUrl, {
@@ -1851,99 +1858,107 @@
             fileMode: fileMode,
           };
           if (statusEl) statusEl.textContent = "✓ " + file.name;
-          if (fileError) fileError.textContent = "";
           self.emit("valueChanged", {
             name: question.name,
             value: self.values[question.name],
             data: self.getData(),
           });
-          self.emit("fileUploaded", {
-            name: question.name,
-            file: self.values[question.name],
-          });
         })
         .catch(function () {
           if (statusEl) statusEl.textContent = "Error al subir";
-          if (fileError) fileError.textContent = "Error al subir el archivo";
           field.value = "";
         });
       return;
     } else if (
-      question.type === "radiogroup" ||
-      question.type === "rating" ||
-      question.type === "scale" ||
-      question.type === "nps" ||
-      question.type === "imagechoice" ||
-      question.type === "emojis"
+      ["radiogroup", "rating", "scale", "nps", "imagechoice", "emojis"].indexOf(
+        question.type,
+      ) !== -1
     ) {
       var checked = Array.from(fields).find(function (i) {
         return i.checked;
       });
       value = checked ? checked.value : "";
     } else if (question.type === "daterange") {
-      var startField = this.root.querySelector(
+      var sF = this.root.querySelector(
         '[name="' + cssEscape(question.name + "_start") + '"]',
       );
-      var endField = this.root.querySelector(
+      var eF = this.root.querySelector(
         '[name="' + cssEscape(question.name + "_end") + '"]',
       );
-      value = {
-        start: startField ? startField.value : "",
-        end: endField ? endField.value : "",
-      };
+      value = { start: sF ? sF.value : "", end: eF ? eF.value : "" };
     } else if (
       question.type === "matrix" ||
       question.type === "matrixcheckbox" ||
       question.type === "matrixtext"
     ) {
-      // ================= FIX MATRIZ - GUARDA TODO =================
       var selfM = this;
-      var rowIdx = parseInt(field.name.split("_").pop() || "0", 10);
+      var parts = rawName.split("_");
+      var colIdx = 0,
+        rowIdx = 0;
+
+      if (
+        question.type === "matrixtext" &&
+        parts.length >= 3 &&
+        /^\d+$/.test(parts[parts.length - 1]) &&
+        /^\d+$/.test(parts[parts.length - 2])
+      ) {
+        colIdx = parseInt(parts.pop(), 10);
+        rowIdx = parseInt(parts.pop(), 10);
+      } else {
+        rowIdx = parseInt(parts.pop(), 10);
+        if (isNaN(rowIdx)) rowIdx = 0;
+        if (question.type !== "matrixtext") {
+          colIdx = parseInt(field.value, 10);
+          if (isNaN(colIdx)) colIdx = 0;
+        }
+      }
+
       var rowText =
         question.rows && question.rows[rowIdx] != null
           ? getChoiceText(question.rows[rowIdx])
-          : field.name;
+          : "row_" + rowIdx;
+      var colText =
+        question.columns && question.columns[colIdx] != null
+          ? getChoiceText(question.columns[colIdx])
+          : "col_" + colIdx;
 
       if (
-        !selfM.values[question.name] ||
-        typeof selfM.values[question.name] !== "object" ||
-        Array.isArray(selfM.values[question.name])
-      ) {
-        selfM.values[question.name] = {};
-      }
+        !selfM.values[questionName] ||
+        typeof selfM.values[questionName] !== "object" ||
+        Array.isArray(selfM.values[questionName])
+      )
+        selfM.values[questionName] = {};
 
       if (question.type === "matrixtext") {
-        selfM.values[question.name][rowText] = field.value;
-        value = selfM.values[question.name];
+        if (
+          !selfM.values[questionName][rowText] ||
+          typeof selfM.values[questionName][rowText] !== "object" ||
+          Array.isArray(selfM.values[questionName][rowText])
+        )
+          selfM.values[questionName][rowText] = {};
+        selfM.values[questionName][rowText][colText] = field.value;
+        var hasAny = Object.keys(selfM.values[questionName][rowText]).some(
+          function (k) {
+            return selfM.values[questionName][rowText][k] !== "";
+          },
+        );
+        if (!hasAny) delete selfM.values[questionName][rowText];
+      } else if (question.type === "matrix") {
+        selfM.values[questionName][rowText] = colText;
       } else {
-        var colIdx = parseInt(field.value, 10);
-        var colText =
-          question.columns && question.columns[colIdx] != null
-            ? getChoiceText(question.columns[colIdx])
-            : field.value;
-
-        if (question.type === "matrix") {
-          selfM.values[question.name][rowText] = colText;
-          value = selfM.values[question.name];
-        } else if (question.type === "matrixcheckbox") {
-          var currentRowVal = selfM.values[question.name][rowText];
-          if (!Array.isArray(currentRowVal)) currentRowVal = [];
-          if (field.checked) {
-            if (currentRowVal.indexOf(colText) === -1)
-              currentRowVal.push(colText);
-          } else {
-            currentRowVal = currentRowVal.filter(function (c) {
-              return c !== colText;
-            });
-          }
-          if (currentRowVal.length === 0) {
-            delete selfM.values[question.name][rowText];
-          } else {
-            selfM.values[question.name][rowText] = currentRowVal;
-          }
-          value = selfM.values[question.name];
+        var cur = selfM.values[questionName][rowText];
+        if (!Array.isArray(cur)) cur = [];
+        if (field.checked) {
+          if (cur.indexOf(colText) === -1) cur.push(colText);
+        } else {
+          cur = cur.filter(function (c) {
+            return c !== colText;
+          });
         }
+        if (cur.length === 0) delete selfM.values[questionName][rowText];
+        else selfM.values[questionName][rowText] = cur;
       }
+      value = selfM.values[questionName];
     } else {
       value = field.value;
     }
@@ -1966,9 +1981,8 @@
         "imagechoice",
         "emojis",
       ].indexOf(question.type) !== -1
-    ) {
+    )
       this.renderPage();
-    }
   };
 
   CanvasForm.prototype.validate = function () {
